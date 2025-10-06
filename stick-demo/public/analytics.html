@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .chart-container {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .chart-placeholder {
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        .metric-card {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-orange);
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-xs);
+        }
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .metric-change {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            margin-top: var(--spacing-xs);
+        }
+        .metric-change.positive {
+            color: var(--accent-green);
+        }
+        .metric-change.negative {
+            color: var(--accent-red);
+        }
+        .performance-bar {
+            background: var(--glass-tertiary);
+            height: 40px;
+            border-radius: var(--radius-sm);
+            margin: var(--spacing-sm) 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .performance-fill {
+            height: 100%;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            transition: width 0.5s ease;
+        }
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: var(--glass-tertiary);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-sm);
+            transition: all 0.3s ease;
+        }
+        .leaderboard-item:hover {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+        }
+        .leaderboard-rank {
+            width: 40px;
+            height: 40px;
+            border-radius: 0px;
+            background: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            margin-right: var(--spacing-md);
+        }
+        .leaderboard-info {
+            flex: 1;
+        }
+        .leaderboard-value {
+            font-weight: 700;
+            color: var(--accent-orange);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-glass">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="practice.html">Practice Plans</a></li>
+                <li><a href="past-practices.html">Past Practices</a></li>
+                <li><a href="roster.html">Roster</a></li>
+                <li><a href="drills.html">Drills</a></li>
+                <li><a href="videos.html">Videos</a></li>
+                <li><a href="analytics.html" class="active">Analytics</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Header -->
+        <section class="flex-between mb-xl">
+            <div>
+                <h1 style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-sm);">
+                    Analytics Dashboard
+                </h1>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
+                    Deep insights into team performance and practice effectiveness
+                </p>
+            </div>
+            <div class="flex gap-md">
+                <button class="glass-button" onclick="exportReport()">
+                    📊 Export Report
+                </button>
+                <button class="glass-button primary" onclick="generateInsights()">
+                    🤖 AI Insights
+                </button>
+            </div>
+        </section>
+
+        <!-- Key Metrics -->
+        <section class="grid grid-4 gap-lg mb-xl">
+            <div class="metric-card">
+                <div class="metric-value" style="color: var(--accent-orange);">94%</div>
+                <div class="metric-label">Team Performance</div>
+                <div class="metric-change positive">+5% from last week</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" style="color: var(--accent-blue);">145</div>
+                <div class="metric-label">Total Kills</div>
+                <div class="metric-change positive">+12 this week</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" style="color: var(--accent-green);">87%</div>
+                <div class="metric-label">Practice Efficiency</div>
+                <div class="metric-change positive">+3% improvement</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" style="color: var(--accent-amber);">4.8</div>
+                <div class="metric-label">Coach Rating</div>
+                <div class="metric-change positive">+0.2 points</div>
+            </div>
+        </section>
+
+        <div class="grid grid-2 gap-lg mb-xl">
+            <!-- Performance Trends Chart -->
+            <div class="glass-card">
+                <div class="p-lg">
+                    <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                        📈 Performance Trends
+                    </h2>
+                    <div class="chart-container">
+                        <div class="chart-placeholder">
+                            <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📊</div>
+                            <div>Interactive performance chart would display here</div>
+                            <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">
+                                Showing kills, blocks, aces, and digs over time
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drill Effectiveness -->
+            <div class="glass-card">
+                <div class="p-lg">
+                    <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                        🎯 Drill Effectiveness
+                    </h2>
+                    <div class="chart-container">
+                        <div class="chart-placeholder">
+                            <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📋</div>
+                            <div>Drill success rate analytics would display here</div>
+                            <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">
+                                Success rates, time efficiency, and improvement metrics
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-2 gap-lg mb-xl">
+            <!-- Player Performance Breakdown -->
+            <div class="glass-card">
+                <div class="p-lg">
+                    <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                        👤 Individual Performance
+                    </h2>
+                    
+                    <div class="mb-md">
+                        <div class="flex-between mb-xs">
+                            <span style="color: var(--text-secondary);">Emma Martinez - Kills</span>
+                            <span style="color: var(--accent-orange); font-weight: 600;">145</span>
+                        </div>
+                        <div class="performance-bar">
+                            <div class="performance-fill" style="width: 90%; background: linear-gradient(90deg, var(--accent-orange), #e55a2b);">
+                                90%
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-md">
+                        <div class="flex-between mb-xs">
+                            <span style="color: var(--text-secondary);">Olivia Chen - Assists</span>
+                            <span style="color: var(--accent-blue); font-weight: 600;">298</span>
+                        </div>
+                        <div class="performance-bar">
+                            <div class="performance-fill" style="width: 95%; background: linear-gradient(90deg, var(--accent-blue), #0099cc);">
+                                95%
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-md">
+                        <div class="flex-between mb-xs">
+                            <span style="color: var(--text-secondary);">Ava Thompson - Digs</span>
+                            <span style="color: var(--accent-green); font-weight: 600;">234</span>
+                        </div>
+                        <div class="performance-bar">
+                            <div class="performance-fill" style="width: 85%; background: linear-gradient(90deg, var(--accent-green), #3ba39a);">
+                                85%
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-md">
+                        <div class="flex-between mb-xs">
+                            <span style="color: var(--text-secondary);">Sophia Williams - Blocks</span>
+                            <span style="color: var(--accent-amber); font-weight: 600;">67</span>
+                        </div>
+                        <div class="performance-bar">
+                            <div class="performance-fill" style="width: 78%; background: linear-gradient(90deg, var(--accent-amber), #ccaa00);">
+                                78%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Performers Leaderboard -->
+            <div class="glass-card">
+                <div class="p-lg">
+                    <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                        🏆 Top Performers
+                    </h2>
+                    
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">1</div>
+                        <div class="leaderboard-info">
+                            <div style="font-weight: 600; color: var(--text-primary);">Emma Martinez</div>
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Outside Hitter</div>
+                        </div>
+                        <div class="leaderboard-value">145 Kills</div>
+                    </div>
+
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank" style="background: var(--accent-blue);">2</div>
+                        <div class="leaderboard-info">
+                            <div style="font-weight: 600; color: var(--text-primary);">Olivia Chen</div>
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Setter</div>
+                        </div>
+                        <div class="leaderboard-value">298 Assists</div>
+                    </div>
+
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank" style="background: var(--accent-green);">3</div>
+                        <div class="leaderboard-info">
+                            <div style="font-weight: 600; color: var(--text-primary);">Ava Thompson</div>
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Libero</div>
+                        </div>
+                        <div class="leaderboard-value">234 Digs</div>
+                    </div>
+
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank" style="background: var(--accent-amber);">4</div>
+                        <div class="leaderboard-info">
+                            <div style="font-weight: 600; color: var(--text-primary);">Mia Rodriguez</div>
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Outside Hitter</div>
+                        </div>
+                        <div class="leaderboard-value">112 Kills</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Analytics Tables -->
+        <div class="grid grid-2 gap-lg">
+            <!-- Practice Efficiency Analysis -->
+            <div class="glass-card">
+                <div class="p-lg">
+                    <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                        ⏱️ Practice Efficiency
+                    </h2>
+                    
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>Practice Date</th>
+                                <th>Duration</th>
+                                <th>Efficiency</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Oct 5, 2025</td>
+                                <td>120 min</td>
+                                <td style="color: var(--accent-green); font-weight: 600;">92%</td>
+                                <td style="color: var(--accent-amber);">⭐⭐⭐⭐⭐</td>
+                            </tr>
+                            <tr>
+                                <td>Oct 3, 2025</td>
+                                <td>90 min</td>
+                                <td style="color: var(--accent-green); font-weight: 600;">88%</td>
+                                <td style="color: var(--accent-amber);">⭐⭐⭐⭐</td>
+                            </tr>
+                            <tr>
+                                <td>Oct 1, 2025</td>
+                                <td>105 min</td>
+                                <td style="color: var(--accent-amber); font-weight: 600;">85%</td>
+                                <td style="color: var(--accent-amber);">⭐⭐⭐⭐</td>
+                            </tr>
+                            <tr>
+                                <td>Sep 28, 2025</td>
+                                <td>95 min</td>
+                                <td style="color: var(--accent-orange); font-weight: 600;">79%</td>
+                                <td style="color: var(--accent-amber);">⭐⭐⭐</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Skill Development Tracking -->
+            <div class="glass-card">
+                <div class="p-lg">
+                    <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                        📈 Skill Development
+                    </h2>
+                    
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>Skill Area</th>
+                                <th>Team Average</th>
+                                <th>Improvement</th>
+                                <th>Focus Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Attacking</td>
+                                <td style="color: var(--accent-orange); font-weight: 600;">4.2/5</td>
+                                <td style="color: var(--accent-green);">+0.3</td>
+                                <td>High</td>
+                            </tr>
+                            <tr>
+                                <td>Setting</td>
+                                <td style="color: var(--accent-blue); font-weight: 600;">4.5/5</td>
+                                <td style="color: var(--accent-green);">+0.2</td>
+                                <td>Medium</td>
+                            </tr>
+                            <tr>
+                                <td>Defense</td>
+                                <td style="color: var(--accent-green); font-weight: 600;">4.0/5</td>
+                                <td style="color: var(--accent-green);">+0.4</td>
+                                <td>High</td>
+                            </tr>
+                            <tr>
+                                <td>Serving</td>
+                                <td style="color: var(--accent-amber); font-weight: 600;">3.8/5</td>
+                                <td style="color: var(--accent-red);">-0.1</td>
+                                <td>Critical</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function exportReport() {
+            glassModal.show({
+                title: 'Generate Analytics Report',
+                message: 'Generating comprehensive analytics report...\n\nReport will include:\n• Team performance metrics\n• Individual player statistics\n• Practice efficiency analysis\n• Skill development trends\n• Recommendations for improvement',
+                type: 'info',
+                buttons: [
+                    { text: 'Generate PDF', type: 'primary', action: () => glassModal.hide() },
+                    { text: 'Export to Excel', type: 'default', action: () => glassModal.hide() },
+                    { text: 'Cancel', type: 'default', action: () => glassModal.hide() }
+                ]
+            });
+        }
+
+        function generateInsights() {
+            glassModal.show({
+                title: 'AI Analysis Complete! 🤖',
+                message: 'Key Insights:\n• Emma Martinez shows 15% improvement in attack accuracy\n• Team defense is strongest area (+12% vs league average)\n• Serving needs focus - recommend 20% more practice time\n• Practice efficiency peaked on Oct 5th - replicate drill sequence\n• Recommend video analysis for Sophia\'s blocking technique',
+                type: 'success',
+                buttons: [
+                    { text: 'View Detailed Analysis', type: 'primary', action: () => glassModal.hide() },
+                    { text: 'Export Insights', type: 'default', action: () => glassModal.hide() },
+                    { text: 'Close', type: 'default', action: () => glassModal.hide() }
+                ]
+            });
+        }
+
+        // Animate performance bars on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const performanceFills = document.querySelectorAll('.performance-fill');
+            
+            setTimeout(() => {
+                performanceFills.forEach((fill, index) => {
+                    setTimeout(() => {
+                        fill.style.transform = 'scaleX(1)';
+                        fill.style.transformOrigin = 'left';
+                    }, index * 200);
+                });
+            }, 500);
+        });
+    </script>
+    <script src="/js/modal.js"></script>
+</body>
+</html>

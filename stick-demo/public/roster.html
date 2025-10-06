@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Roster - PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .player-card {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .player-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-orange);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .player-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 0px;
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: var(--spacing-md);
+        }
+        .player-position {
+            background: var(--accent-orange);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 0px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-mini {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--glass-border-light);
+        }
+        .stat-mini:last-child {
+            border-bottom: none;
+        }
+        .jersey-number {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            background: var(--glass-primary);
+            color: var(--accent-orange);
+            width: 40px;
+            height: 40px;
+            border-radius: 0px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            border: 2px solid var(--accent-orange);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-glass">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="practice.html">Practice Plans</a></li>
+                <li><a href="past-practices.html">Past Practices</a></li>
+                <li><a href="roster.html" class="active">Roster</a></li>
+                <li><a href="drills.html">Drills</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Header -->
+        <section class="flex-between mb-xl">
+            <div>
+                <h1 style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-sm);">
+                    Team Roster
+                </h1>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
+                    Riverside High Volleyball • Fall 2025 Season
+                </p>
+            </div>
+            <button class="glass-button primary" onclick="addNewPlayer()">
+                👤 Add Player
+            </button>
+        </section>
+
+        <!-- Team Overview -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-2xl);">
+                    📊 Team Overview
+                </h2>
+                
+                <div class="grid grid-4 gap-md">
+                    <div class="text-center">
+                        <div id="totalPlayers" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--accent-orange);">0</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Total Players</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="attendanceRate" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--accent-green);">0%</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Attendance Rate</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="avgSkillLevel" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--accent-blue);">0</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Avg Skill Level</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="avgHeight" style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--accent-amber);">0</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Avg Height</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Player Cards Grid -->
+        <section class="grid grid-3 gap-lg mb-xl" id="playerGrid">
+            <!-- Players will be loaded here -->
+        </section>
+
+        <!-- Detailed Roster Table -->
+        <section class="glass-card">
+            <div class="p-lg">
+                <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-2xl);">
+                    📋 Detailed Roster
+                </h2>
+                
+                <table class="glass-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Player</th>
+                            <th>Position</th>
+                            <th>Year</th>
+                            <th>Height</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rosterTable">
+                        <!-- Roster data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add Player Modal -->
+    <div id="addPlayerModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">👤 Add New Player</h2>
+                <button class="modal-close" onclick="closeAddPlayerModal()">✕</button>
+            </div>
+            <form id="addPlayerForm" onsubmit="submitNewPlayer(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="jerseyNumber">Jersey Number</label>
+                        <input type="number" id="jerseyNumber" name="jerseyNumber" class="glass-input" min="1" max="99" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="position">Position</label>
+                        <select id="position" name="position" class="glass-input" required>
+                            <option value="">Select Position</option>
+                            <option value="Setter">Setter</option>
+                            <option value="Outside Hitter">Outside Hitter</option>
+                            <option value="Middle Blocker">Middle Blocker</option>
+                            <option value="Right Side">Right Side</option>
+                            <option value="Libero">Libero</option>
+                            <option value="Defensive Specialist">Defensive Specialist</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="height">Height</label>
+                        <input type="text" id="height" name="height" class="glass-input" placeholder="e.g., 5'8&quot;">
+                    </div>
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <select id="year" name="year" class="glass-input" required>
+                            <option value="">Select Year</option>
+                            <option value="Freshman">Freshman</option>
+                            <option value="Sophomore">Sophomore</option>
+                            <option value="Junior">Junior</option>
+                            <option value="Senior">Senior</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="skillLevel">Skill Level</label>
+                        <select id="skillLevel" name="skillLevel" class="glass-input" required>
+                            <option value="">Select Level</option>
+                            <option value="1">1 - Beginner</option>
+                            <option value="2">2 - Developing</option>
+                            <option value="3">3 - Intermediate</option>
+                            <option value="4">4 - Advanced</option>
+                            <option value="5">5 - Elite</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="glass-button" onclick="closeAddPlayerModal()">Cancel</button>
+                    <button type="submit" class="glass-button primary">Add Player</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Player Modal -->
+    <div id="editPlayerModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">✏️ Edit Player</h2>
+                <button class="modal-close" onclick="closeEditPlayerModal()">✕</button>
+            </div>
+            <form id="editPlayerForm" onsubmit="submitEditPlayer(event)">
+                <input type="hidden" id="editPlayerId" name="playerId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="editFirstName">First Name</label>
+                        <input type="text" id="editFirstName" name="firstName" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editLastName">Last Name</label>
+                        <input type="text" id="editLastName" name="lastName" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editJerseyNumber">Jersey Number</label>
+                        <input type="number" id="editJerseyNumber" name="jerseyNumber" class="glass-input" min="1" max="99" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPosition">Position</label>
+                        <select id="editPosition" name="position" class="glass-input" required>
+                            <option value="">Select Position</option>
+                            <option value="Setter">Setter</option>
+                            <option value="Outside Hitter">Outside Hitter</option>
+                            <option value="Middle Blocker">Middle Blocker</option>
+                            <option value="Right Side">Right Side</option>
+                            <option value="Libero">Libero</option>
+                            <option value="Defensive Specialist">Defensive Specialist</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editHeight">Height</label>
+                        <input type="text" id="editHeight" name="height" class="glass-input" placeholder="e.g., 5'8&quot;">
+                    </div>
+                    <div class="form-group">
+                        <label for="editYear">Year</label>
+                        <select id="editYear" name="year" class="glass-input" required>
+                            <option value="">Select Year</option>
+                            <option value="Freshman">Freshman</option>
+                            <option value="Sophomore">Sophomore</option>
+                            <option value="Junior">Junior</option>
+                            <option value="Senior">Senior</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editSkillLevel">Skill Level</label>
+                        <select id="editSkillLevel" name="skillLevel" class="glass-input" required>
+                            <option value="">Select Level</option>
+                            <option value="1">1 - Beginner</option>
+                            <option value="2">2 - Developing</option>
+                            <option value="3">3 - Intermediate</option>
+                            <option value="4">4 - Advanced</option>
+                            <option value="5">5 - Elite</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Stats Section -->
+                <div style="margin-top: var(--spacing-lg);">
+                    <h3 style="color: var(--accent-orange); margin-bottom: var(--spacing-md);">Player Statistics</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editKills">Kills</label>
+                            <input type="number" id="editKills" name="kills" class="glass-input" min="0" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="editBlocks">Blocks</label>
+                            <input type="number" id="editBlocks" name="blocks" class="glass-input" min="0" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="editAces">Aces</label>
+                            <input type="number" id="editAces" name="aces" class="glass-input" min="0" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDigs">Digs</label>
+                            <input type="number" id="editDigs" name="digs" class="glass-input" min="0" placeholder="0">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="glass-button" onclick="closeEditPlayerModal()">Cancel</button>
+                    <button type="submit" class="glass-button primary">Update Player</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            border-radius: 0;
+            padding: var(--spacing-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: var(--font-size-xl);
+            cursor: pointer;
+            padding: var(--spacing-sm);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+        }
+
+        .glass-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script>
+        // Update team overview with real data
+        async function updateTeamOverview(players) {
+            try {
+                // Fetch team statistics from the API
+                const response = await fetch('/api/team/stats');
+                const teamStats = await response.json();
+                
+                // Update the DOM with real data using IDs
+                document.getElementById('totalPlayers').textContent = teamStats.totalPlayers;
+                document.getElementById('attendanceRate').textContent = teamStats.attendanceRate;
+                document.getElementById('avgSkillLevel').textContent = teamStats.avgSkillLevel;
+                document.getElementById('avgHeight').textContent = teamStats.avgHeight;
+                
+            } catch (error) {
+                console.error('Error fetching team statistics:', error);
+                // Fallback to client-side calculation
+                const totalPlayers = players.length;
+                const avgSkillLevel = totalPlayers > 0 ? 
+                    (players.reduce((sum, player) => sum + player.skillLevel, 0) / totalPlayers).toFixed(1) : 0;
+                
+                // Calculate average height (fallback)
+                let avgHeight = "N/A";
+                if (totalPlayers > 0) {
+                    const heights = players.filter(p => p.height && p.height.includes("'"));
+                    if (heights.length > 0) {
+                        const totalInches = heights.reduce((sum, player) => {
+                            const [feet, inches] = player.height.split("'");
+                            const inchPart = inches ? parseInt(inches.replace('"', '')) : 0;
+                            return sum + (parseInt(feet) * 12 + inchPart);
+                        }, 0);
+                        const avgInches = totalInches / heights.length;
+                        const avgFeet = Math.floor(avgInches / 12);
+                        const avgRemainingInches = Math.round(avgInches % 12);
+                        avgHeight = `${avgFeet}'${avgRemainingInches}"`;
+                    }
+                }
+                
+                // Update with fallback values
+                document.getElementById('totalPlayers').textContent = totalPlayers;
+                document.getElementById('attendanceRate').textContent = "95%"; // Default fallback
+                document.getElementById('avgSkillLevel').textContent = avgSkillLevel;
+                document.getElementById('avgHeight').textContent = avgHeight;
+            }
+        }
+
+        // Load player data
+        async function loadPlayerData() {
+            try {
+                const response = await fetch('/api/players');
+                const players = await response.json();
+                
+                // Update team overview with real data
+                updateTeamOverview(players);
+                
+                // Load player cards
+                const playerGrid = document.getElementById('playerGrid');
+                playerGrid.innerHTML = ''; // Clear existing cards
+                players.forEach(player => {
+                    const card = document.createElement('div');
+                    card.className = 'player-card';
+                    
+                    const initials = player.firstName.charAt(0) + player.lastName.charAt(0);
+                    const skillStars = '⭐'.repeat(player.skillLevel);
+                    
+                    card.innerHTML = `
+                        <div class="jersey-number">${player.jerseyNumber}</div>
+                        <div class="player-avatar">${initials}</div>
+                        <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-xs);">
+                            ${player.firstName} ${player.lastName}
+                        </h3>
+                        <div class="flex-between mb-md">
+                            <span class="player-position">${player.position}</span>
+                            <span style="color: var(--text-secondary);">${player.year}</span>
+                        </div>
+                        <div style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+                            Height: ${player.height} • Skill: ${skillStars}
+                        </div>
+                        
+                        <div style="display: flex; gap: var(--spacing-xs);">
+                            <button class="glass-button" onclick="editPlayer(${player.id})" style="flex: 1;">
+                                ✏️ Edit
+                            </button>
+                            <button class="glass-button" onclick="viewPlayerProfile(${player.id})" style="flex: 1;">
+                                View Profile
+                            </button>
+                        </div>
+                    `;
+                    
+                    playerGrid.appendChild(card);
+                });
+
+                // Load roster table
+                const rosterTable = document.getElementById('rosterTable');
+                rosterTable.innerHTML = ''; // Clear existing rows
+                players.forEach(player => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="font-weight: 700; color: var(--accent-orange);">${player.jerseyNumber}</td>
+                        <td>
+                            <div style="font-weight: 600;">${player.firstName} ${player.lastName}</div>
+                            <div style="color: var(--text-tertiary); font-size: var(--font-size-sm);">${player.year}</div>
+                        </td>
+                        <td>
+                            <span class="player-position" style="font-size: 10px; padding: 1px 6px;">
+                                ${player.position}
+                            </span>
+                        </td>
+                        <td>${player.year}</td>
+                        <td>${player.height}</td>
+                        <td>
+                            <button class="glass-button" onclick="editPlayer(${player.id})" 
+                                    style="padding: 4px 8px; font-size: 12px; margin-right: 4px;">
+                                ✏️ Edit
+                            </button>
+                            <button class="glass-button" onclick="viewPlayerProfile(${player.id})" 
+                                    style="padding: 4px 8px; font-size: 12px;">
+                                View
+                            </button>
+                        </td>
+                    `;
+                    rosterTable.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('Error loading player data:', error);
+            }
+        }
+
+        function addNewPlayer() {
+            document.getElementById('addPlayerModal').style.display = 'flex';
+        }
+
+        function closeAddPlayerModal() {
+            document.getElementById('addPlayerModal').style.display = 'none';
+            document.getElementById('addPlayerForm').reset();
+        }
+
+        async function submitNewPlayer(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const playerData = {
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                jerseyNumber: parseInt(formData.get('jerseyNumber')),
+                position: formData.get('position'),
+                skillLevel: parseInt(formData.get('skillLevel')),
+                height: formData.get('height'),
+                year: formData.get('year')
+            };
+
+            try {
+                const response = await fetch('/api/players', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(playerData)
+                });
+
+                if (response.ok) {
+                    const newPlayer = await response.json();
+                    console.log('Player added successfully:', newPlayer);
+                    
+                    // Close modal and refresh the player list
+                    closeAddPlayerModal();
+                    loadPlayerData();
+                    
+                    // Show success notification
+                    if (window.pracTracDemo) {
+                        window.pracTracDemo.showNotification('Player added successfully!', 'success');
+                    }
+                } else {
+                    throw new Error('Failed to add player');
+                }
+            } catch (error) {
+                console.error('Error adding player:', error);
+                if (window.pracTracDemo) {
+                    window.pracTracDemo.showNotification('Error adding player', 'error');
+                }
+            }
+        }
+
+        function viewPlayerProfile(playerId) {
+            // In a real app, this would navigate to player profile page
+            window.location.href = `player-profile.html?player=${playerId}`;
+        }
+
+        function editPlayer(playerId) {
+            // Fetch player data and populate the edit form
+            fetch(`/api/players/${playerId}`)
+                .then(response => response.json())
+                .then(player => {
+                    document.getElementById('editPlayerId').value = player.id;
+                    document.getElementById('editFirstName').value = player.firstName;
+                    document.getElementById('editLastName').value = player.lastName;
+                    document.getElementById('editJerseyNumber').value = player.jerseyNumber;
+                    document.getElementById('editPosition').value = player.position;
+                    document.getElementById('editHeight').value = player.height;
+                    document.getElementById('editYear').value = player.year;
+                    document.getElementById('editSkillLevel').value = player.skillLevel;
+                    
+                    // Populate stats
+                    document.getElementById('editKills').value = player.stats.kills || 0;
+                    document.getElementById('editBlocks').value = player.stats.blocks || 0;
+                    document.getElementById('editAces').value = player.stats.aces || 0;
+                    document.getElementById('editDigs').value = player.stats.digs || 0;
+                    
+                    // Show the modal
+                    document.getElementById('editPlayerModal').style.display = 'flex';
+                })
+                .catch(error => {
+                    console.error('Error fetching player data:', error);
+                    if (window.pracTracDemo) {
+                        window.pracTracDemo.showNotification('Error loading player data', 'error');
+                    }
+                });
+        }
+
+        function closeEditPlayerModal() {
+            document.getElementById('editPlayerModal').style.display = 'none';
+            document.getElementById('editPlayerForm').reset();
+        }
+
+        async function submitEditPlayer(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const playerId = formData.get('playerId');
+            const playerData = {
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                jerseyNumber: parseInt(formData.get('jerseyNumber')),
+                position: formData.get('position'),
+                skillLevel: parseInt(formData.get('skillLevel')),
+                height: formData.get('height'),
+                year: formData.get('year'),
+                stats: {
+                    kills: parseInt(formData.get('kills')) || 0,
+                    blocks: parseInt(formData.get('blocks')) || 0,
+                    aces: parseInt(formData.get('aces')) || 0,
+                    digs: parseInt(formData.get('digs')) || 0,
+                    assists: 0 // Default value, can be added to form later if needed
+                }
+            };
+
+            try {
+                const response = await fetch(`/api/players/${playerId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(playerData)
+                });
+
+                if (response.ok) {
+                    const updatedPlayer = await response.json();
+                    console.log('Player updated successfully:', updatedPlayer);
+                    
+                    // Close modal and refresh the player list
+                    closeEditPlayerModal();
+                    location.reload(); // Refresh the page to show updated data
+                    
+                    // Show success notification
+                    if (window.pracTracDemo) {
+                        window.pracTracDemo.showNotification('Player updated successfully!', 'success');
+                    }
+                } else {
+                    throw new Error('Failed to update player');
+                }
+            } catch (error) {
+                console.error('Error updating player:', error);
+                if (window.pracTracDemo) {
+                    window.pracTracDemo.showNotification('Error updating player', 'error');
+                }
+            }
+        }
+        
+        // Navigate to player profile page
+        function viewPlayerProfile(playerId) {
+            window.location.href = `player-profile.html?id=${playerId}`;
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPlayerData();
+        });
+    </script>
+    <script src="/js/modal.js"></script>
+</body>
+</html>

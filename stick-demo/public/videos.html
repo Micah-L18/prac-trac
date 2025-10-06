@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Library - PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .video-card {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .video-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-orange);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .video-thumbnail {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--glass-primary), var(--glass-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .video-thumbnail::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                var(--accent-orange) 0%, 
+                var(--accent-blue) 50%, 
+                var(--accent-green) 100%);
+            opacity: 0.1;
+        }
+        .play-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 0px;
+            background: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1;
+            position: relative;
+        }
+        .play-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+        }
+        .video-duration {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: var(--glass-primary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 0px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .video-content {
+            padding: var(--spacing-lg);
+        }
+        .video-category {
+            background: var(--accent-blue);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 0px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: var(--spacing-sm);
+        }
+        .video-player-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(20px);
+        }
+        .video-player {
+            width: 90%;
+            max-width: 800px;
+            background: var(--glass-primary);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            border: 1px solid var(--glass-border);
+        }
+        .video-placeholder {
+            width: 100%;
+            height: 450px;
+            background: var(--glass-secondary);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        .recording-indicator {
+            background: var(--accent-red);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 0px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-glass">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="practice.html">Practice Plans</a></li>
+                <li><a href="past-practices.html">Past Practices</a></li>
+                <li><a href="roster.html">Roster</a></li>
+                <li><a href="drills.html">Drills</a></li>
+                <li><a href="videos.html" class="active">Videos</a></li>
+                <li><a href="analytics.html">Analytics</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Header -->
+        <section class="flex-between mb-xl">
+            <div>
+                <h1 style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-sm);">
+                    Video Library
+                </h1>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
+                    Professional drill demonstrations and custom training videos
+                </p>
+            </div>
+            <div class="flex gap-md">
+                <button class="glass-button" onclick="startRecording()">
+                    🎥 Record Video
+                </button>
+                <button class="glass-button primary" onclick="uploadVideo()">
+                    📤 Upload Video
+                </button>
+            </div>
+        </section>
+
+        <!-- Video Stats -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                    📊 Video Library Stats
+                </h2>
+                <div class="grid grid-4 gap-md">
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-orange);">500+</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Professional Videos</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-blue);">24</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Custom Recordings</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-green);">156</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Total Views</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-amber);">2.3 GB</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Storage Used</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Recording Section -->
+        <section class="glass-card mb-xl" id="recordingSection" style="display: none;">
+            <div class="p-lg">
+                <h2 class="mb-lg" style="color: var(--accent-red); font-size: var(--font-size-xl);">
+                    🎥 Video Recording
+                </h2>
+                
+                <div class="video-placeholder">
+                    <div class="text-center">
+                        <div class="recording-indicator mb-md">
+                            🔴 RECORDING
+                        </div>
+                        <div style="font-size: 48px; margin-bottom: var(--spacing-md);">📹</div>
+                        <div style="color: var(--text-secondary);">Camera preview would appear here</div>
+                        <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">
+                            Recording: 00:45
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-center gap-lg">
+                    <button class="glass-button" onclick="stopRecording()" style="background: var(--accent-red);">
+                        ⏹️ Stop Recording
+                    </button>
+                    <button class="glass-button" onclick="pauseRecording()">
+                        ⏸️ Pause
+                    </button>
+                    <button class="glass-button" onclick="cancelRecording()">
+                        ❌ Cancel
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filter and Search -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <div class="grid grid-2 gap-lg">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                            Search Videos
+                        </label>
+                        <input type="text" class="glass-input" placeholder="Search by title, category, or skill..." 
+                               id="searchInput" onkeyup="filterVideos()">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                            Filter by Category
+                        </label>
+                        <select class="glass-input" id="categoryFilter" onchange="filterVideos()">
+                            <option value="">All Categories</option>
+                            <option value="Attacking">Attacking</option>
+                            <option value="Setting">Setting</option>
+                            <option value="Defense">Defense</option>
+                            <option value="Serving">Serving</option>
+                            <option value="Blocking">Blocking</option>
+                            <option value="Custom">Custom Videos</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Grid -->
+        <section class="grid grid-3 gap-lg" id="videoGrid">
+            <!-- Videos will be loaded here -->
+        </section>
+    </main>
+
+    <!-- Video Player Modal -->
+    <div id="videoPlayerModal" class="video-player-modal">
+        <div class="video-player">
+            <div class="flex-between mb-lg">
+                <h2 id="videoPlayerTitle" style="color: var(--accent-orange);">Video Title</h2>
+                <button class="glass-button" onclick="closeVideoPlayer()">❌ Close</button>
+            </div>
+            
+            <div class="video-placeholder">
+                <div class="text-center">
+                    <div style="font-size: 64px; margin-bottom: var(--spacing-md);">▶️</div>
+                    <div style="color: var(--text-secondary);">Video player would be embedded here</div>
+                    <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">
+                        Controls: Play, Pause, Slow Motion, Frame-by-Frame
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-center gap-lg mt-lg">
+                <button class="glass-button primary">▶️ Play</button>
+                <button class="glass-button">⏸️ Pause</button>
+                <button class="glass-button">🐌 Slow Motion</button>
+                <button class="glass-button">📝 Add Annotation</button>
+            </div>
+
+            <div class="mt-lg">
+                <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-sm);">Video Description</h3>
+                <p id="videoPlayerDescription" style="color: var(--text-secondary); line-height: 1.6;">
+                    Video description will appear here...
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allVideos = [];
+        let filteredVideos = [];
+
+        // Load video data
+        async function loadVideoData() {
+            try {
+                const response = await fetch('/api/videos');
+                allVideos = await response.json();
+                
+                // Add some custom videos to demonstrate variety
+                const customVideos = [
+                    {
+                        id: 4,
+                        title: "Team Serve Practice Session",
+                        category: "Custom",
+                        duration: "8:22",
+                        description: "Recording of today's serving practice with individual feedback"
+                    },
+                    {
+                        id: 5,
+                        title: "Emma's Spike Technique Analysis",
+                        category: "Custom", 
+                        duration: "2:15",
+                        description: "Slow-motion analysis of Emma's attacking form and improvement areas"
+                    },
+                    {
+                        id: 6,
+                        title: "Blocking Fundamentals",
+                        category: "Blocking",
+                        duration: "5:30",
+                        description: "Professional demonstration of proper blocking technique and timing"
+                    }
+                ];
+                
+                allVideos = [...allVideos, ...customVideos];
+                filteredVideos = [...allVideos];
+                renderVideos();
+            } catch (error) {
+                console.error('Error loading video data:', error);
+            }
+        }
+
+        function renderVideos() {
+            const videoGrid = document.getElementById('videoGrid');
+            videoGrid.innerHTML = '';
+
+            filteredVideos.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                
+                // Category colors
+                const categoryColors = {
+                    'Attacking': 'var(--accent-orange)',
+                    'Setting': 'var(--accent-blue)', 
+                    'Defense': 'var(--accent-green)',
+                    'Serving': 'var(--accent-amber)',
+                    'Blocking': 'var(--accent-red)',
+                    'Custom': 'var(--glass-primary)'
+                };
+
+                card.innerHTML = `
+                    <div class="video-thumbnail" onclick="playVideo(${video.id})">
+                        <div class="play-button">▶️</div>
+                        <div class="video-duration">${video.duration}</div>
+                    </div>
+                    
+                    <div class="video-content">
+                        <div class="video-category" style="background: ${categoryColors[video.category] || 'var(--accent-blue)'};">
+                            ${video.category}
+                        </div>
+                        
+                        <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-sm); font-size: var(--font-size-lg);">
+                            ${video.title}
+                        </h3>
+                        
+                        <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md); line-height: 1.5;">
+                            ${video.description}
+                        </p>
+                        
+                        <div class="flex-between">
+                            <button class="glass-button" onclick="playVideo(${video.id})">
+                                ▶️ Watch
+                            </button>
+                            <div class="flex gap-sm">
+                                <button class="glass-button" onclick="downloadVideo(${video.id})" 
+                                        style="padding: 6px; font-size: 12px;">
+                                    📥
+                                </button>
+                                <button class="glass-button" onclick="shareVideo(${video.id})" 
+                                        style="padding: 6px; font-size: 12px;">
+                                    📤
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                videoGrid.appendChild(card);
+            });
+        }
+
+        function filterVideos() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            
+            filteredVideos = allVideos.filter(video => {
+                const matchesSearch = video.title.toLowerCase().includes(searchTerm) ||
+                                    video.description.toLowerCase().includes(searchTerm) ||
+                                    video.category.toLowerCase().includes(searchTerm);
+                
+                const matchesCategory = !categoryFilter || video.category === categoryFilter;
+                
+                return matchesSearch && matchesCategory;
+            });
+            
+            renderVideos();
+        }
+
+        function playVideo(videoId) {
+            const video = allVideos.find(v => v.id === videoId);
+            if (video) {
+                document.getElementById('videoPlayerTitle').textContent = video.title;
+                document.getElementById('videoPlayerDescription').textContent = video.description;
+                document.getElementById('videoPlayerModal').style.display = 'flex';
+            }
+        }
+
+        function closeVideoPlayer() {
+            document.getElementById('videoPlayerModal').style.display = 'none';
+        }
+
+        function startRecording() {
+            document.getElementById('recordingSection').style.display = 'block';
+            document.getElementById('recordingSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function stopRecording() {
+            glassModal.success('Video recording saved! Processing and adding to library...', 'Recording Complete');
+            document.getElementById('recordingSection').style.display = 'none';
+        }
+
+        function pauseRecording() {
+            glassModal.warning('Recording paused', 'Recording Status');
+        }
+
+        function cancelRecording() {
+            document.getElementById('recordingSection').style.display = 'none';
+        }
+
+        function uploadVideo() {
+            glassModal.show({
+                title: 'Upload Video',
+                message: 'Video upload functionality would open here.\n\nSupported formats:\n• MP4, MOV, AVI\n• Max size: 500MB\n• HD quality recommended',
+                type: 'info',
+                buttons: [
+                    { text: 'Choose File', type: 'primary', action: () => glassModal.hide() },
+                    { text: 'Cancel', type: 'default', action: () => glassModal.hide() }
+                ]
+            });
+        }
+
+        function downloadVideo(videoId) {
+            glassModal.success(`Downloading video ${videoId} for offline use`, 'Download Started');
+        }
+
+        function shareVideo(videoId) {
+            glassModal.show({
+                title: 'Share Video',
+                message: `Sharing video ${videoId} with team or other coaches.\n\nShare options:\n• Email to team members\n• Copy shareable link\n• Export to coaching platform`,
+                type: 'info',
+                buttons: [
+                    { text: 'Share via Email', type: 'primary', action: () => glassModal.hide() },
+                    { text: 'Copy Link', type: 'default', action: () => glassModal.hide() },
+                    { text: 'Cancel', type: 'default', action: () => glassModal.hide() }
+                ]
+            });
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('videoPlayerModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeVideoPlayer();
+            }
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadVideoData();
+        });
+    </script>
+    <script src="/js/modal.js"></script>
+</body>
+</html>

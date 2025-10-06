@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drill Library - PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .drill-card {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .drill-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-orange);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .drill-card.favorite {
+            border-color: var(--accent-amber);
+        }
+        .favorite-star {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--glass-border);
+        }
+        .favorite-star.active {
+            color: var(--accent-amber);
+        }
+        .favorite-star:hover {
+            transform: scale(1.2);
+        }
+        .drill-category {
+            background: var(--accent-blue);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 0px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: var(--spacing-sm);
+        }
+        .drill-difficulty {
+            display: flex;
+            gap: 2px;
+            margin-bottom: var(--spacing-sm);
+        }
+        .star {
+            color: var(--accent-amber);
+            font-size: 16px;
+        }
+        .star.empty {
+            color: var(--glass-border);
+        }
+        .filter-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+            flex-wrap: wrap;
+        }
+        .filter-tab {
+            background: var(--glass-tertiary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .filter-tab.active,
+        .filter-tab:hover {
+            background: var(--accent-orange);
+            color: white;
+            border-color: var(--accent-orange);
+        }
+        .drill-stats {
+            background: var(--glass-tertiary);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+        }
+        .drill-stat {
+            text-align: center;
+        }
+        .drill-stat-value {
+            font-weight: 600;
+            color: var(--accent-orange);
+        }
+        .drill-stat-label {
+            color: var(--text-tertiary);
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-glass">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="practice.html">Practice Plans</a></li>
+                <li><a href="past-practices.html">Past Practices</a></li>
+                <li><a href="roster.html">Roster</a></li>
+                <li><a href="drills.html" class="active">Drills</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Header -->
+        <section class="flex-between mb-xl">
+            <div>
+                <h1 style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-sm);">
+                    Drill Library
+                </h1>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
+                    Professional volleyball drills with custom statistics tracking
+                </p>
+            </div>
+            <button class="glass-button primary" onclick="createCustomDrill()">
+                ⚡ Create Custom Drill
+            </button>
+        </section>
+
+        <!-- Search and Filters -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <div class="grid grid-2 gap-lg mb-lg">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                            Search Drills
+                        </label>
+                        <input type="text" class="glass-input" placeholder="Search by name, skill, or equipment..." 
+                               id="searchInput" onkeyup="filterDrills()">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                            Difficulty Level
+                        </label>
+                        <select class="glass-input" id="difficultyFilter" onchange="filterDrills()">
+                            <option value="">All Levels</option>
+                            <option value="1">Beginner (⭐)</option>
+                            <option value="2">Easy (⭐⭐)</option>
+                            <option value="3">Intermediate (⭐⭐⭐)</option>
+                            <option value="4">Advanced (⭐⭐⭐⭐)</option>
+                            <option value="5">Expert (⭐⭐⭐⭐⭐)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-tabs">
+                    <div class="filter-tab active" onclick="filterByCategory('all')">All Drills</div>
+                    <div class="filter-tab" onclick="filterByCategory('favorites')">⭐ Favorites</div>
+                    <div class="filter-tab" onclick="filterByCategory('Warm-up')">Warm-up</div>
+                    <div class="filter-tab" onclick="filterByCategory('Offense')">Offense</div>
+                    <div class="filter-tab" onclick="filterByCategory('Defense')">Defense</div>
+                    <div class="filter-tab" onclick="filterByCategory('Serve/Receive')">Serve/Receive</div>
+                    <div class="filter-tab" onclick="filterByCategory('Conditioning')">Conditioning</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Stats -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                    📊 Drill Statistics
+                </h2>
+                <div class="grid grid-2 gap-md">
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-orange);" id="totalDrills">0</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Total Drills</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-amber);" id="favoriteDrills">0</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Favorites</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Drill Cards -->
+        <section class="grid grid-3 gap-lg" id="drillGrid">
+            <!-- Drills will be loaded here -->
+        </section>
+
+        <!-- Custom Drill Builder Modal (Hidden by default) -->
+        <div id="customDrillModal" class="modal" style="display: none;">
+            <div class="modal-content" style="width: 90%; max-width: 600px;">
+                <div class="modal-header">
+                    <h2 style="color: var(--accent-orange); margin: 0;">⚡ Create Custom Drill</h2>
+                    <button class="modal-close" onclick="closeCustomDrillModal()">✕</button>
+                </div>
+                
+                <form id="customDrillForm" onsubmit="saveCustomDrill(event)">
+                    <div class="grid grid-2 gap-md mb-md">
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Drill Name</label>
+                            <input type="text" id="drillName" name="name" class="glass-input" placeholder="Custom Passing Drill" required>
+                        </div>
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Category</label>
+                            <select id="drillCategory" name="category" class="glass-input" required>
+                                <option value="">Select Category</option>
+                                <option value="Warm-up">Warm-up</option>
+                                <option value="Offense">Offense</option>
+                                <option value="Defense">Defense</option>
+                                <option value="Serve/Receive">Serve/Receive</option>
+                                <option value="Conditioning">Conditioning</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-md">
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Description</label>
+                        <textarea id="drillDescription" name="description" class="glass-input" rows="3" placeholder="Describe the drill objective and execution..." required></textarea>
+                    </div>
+
+                    <div class="grid grid-3 gap-md mb-md">
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Duration (min)</label>
+                            <input type="number" id="drillDuration" name="duration" class="glass-input" placeholder="15" min="1" max="120" required>
+                        </div>
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Min Players</label>
+                            <input type="number" id="drillMinPlayers" name="minPlayers" class="glass-input" placeholder="4" min="1" max="20" required>
+                        </div>
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Max Players</label>
+                            <input type="number" id="drillMaxPlayers" name="maxPlayers" class="glass-input" placeholder="12" min="1" max="20" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-2 gap-md mb-lg">
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Difficulty Level</label>
+                            <select id="drillDifficulty" name="difficulty" class="glass-input" required>
+                                <option value="">Select Difficulty</option>
+                                <option value="1">1 - Beginner</option>
+                                <option value="2">2 - Easy</option>
+                                <option value="3">3 - Intermediate</option>
+                                <option value="4">4 - Advanced</option>
+                                <option value="5">5 - Elite</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Equipment (comma-separated)</label>
+                            <input type="text" id="drillEquipment" name="equipment" class="glass-input" placeholder="Volleyballs, Net, Cones">
+                        </div>
+                    </div>
+
+                    <div class="mb-lg">
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Focus Areas (comma-separated)</label>
+                        <input type="text" id="drillFocus" name="focus" class="glass-input" placeholder="Passing, Setting, Communication">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="glass-button" onclick="closeCustomDrillModal()">Cancel</button>
+                        <button type="submit" class="glass-button primary">Save Drill</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let allDrills = [];
+        let filteredDrills = [];
+        let favoriteDrills = JSON.parse(localStorage.getItem('favoriteDrills')) || [];
+
+        // Load drill data
+        async function loadDrillData() {
+            try {
+                const response = await fetch('/api/drills');
+                allDrills = await response.json();
+                filteredDrills = [...allDrills];
+                updateStatistics();
+                renderDrills();
+            } catch (error) {
+                console.error('Error loading drill data:', error);
+            }
+        }
+
+        function updateStatistics() {
+            document.getElementById('totalDrills').textContent = allDrills.length;
+            document.getElementById('favoriteDrills').textContent = favoriteDrills.length;
+        }
+
+        function toggleFavorite(drillId) {
+            const index = favoriteDrills.indexOf(drillId);
+            if (index === -1) {
+                favoriteDrills.push(drillId);
+            } else {
+                favoriteDrills.splice(index, 1);
+            }
+            localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
+            updateStatistics();
+            renderDrills();
+        }
+
+        function editDrill(drillId) {
+            const drill = allDrills.find(d => d.id === drillId);
+            if (drill) {
+                // Update modal title for editing
+                document.querySelector('#customDrillModal h2').textContent = '✏️ Edit Drill';
+                
+                // Populate edit form with drill data
+                document.getElementById('drillName').value = drill.name;
+                document.getElementById('drillCategory').value = drill.category;
+                document.getElementById('drillDescription').value = drill.description;
+                document.getElementById('drillDuration').value = drill.duration;
+                document.getElementById('drillMinPlayers').value = drill.minPlayers;
+                document.getElementById('drillMaxPlayers').value = drill.maxPlayers;
+                document.getElementById('drillDifficulty').value = drill.difficulty;
+                document.getElementById('drillEquipment').value = drill.equipment.join(', ');
+                document.getElementById('drillFocus').value = drill.focus.join(', ');
+                
+                // Show modal
+                document.getElementById('customDrillModal').style.display = 'flex';
+                
+                // Store the drill ID for editing
+                document.getElementById('customDrillForm').setAttribute('data-edit-id', drillId);
+            }
+        }
+
+        function renderDrills() {
+            const drillGrid = document.getElementById('drillGrid');
+            drillGrid.innerHTML = '';
+
+            filteredDrills.forEach(drill => {
+                const card = document.createElement('div');
+                card.className = `drill-card ${favoriteDrills.includes(drill.id) ? 'favorite' : ''}`;
+                
+                // Create star rating
+                const stars = Array.from({length: 5}, (_, i) => 
+                    `<span class="star ${i < drill.difficulty ? '' : 'empty'}">⭐</span>`
+                ).join('');
+
+                // Get category color
+                const categoryColors = {
+                    'Warm-up': 'var(--accent-green)',
+                    'Offense': 'var(--accent-orange)', 
+                    'Defense': 'var(--accent-blue)',
+                    'Serve/Receive': 'var(--accent-amber)'
+                };
+
+                const isFavorite = favoriteDrills.includes(drill.id);
+
+                card.innerHTML = `
+                    <button class="favorite-star ${isFavorite ? 'active' : ''}" onclick="toggleFavorite(${drill.id})">
+                        ⭐
+                    </button>
+                    
+                    <div class="drill-category" style="background: ${categoryColors[drill.category] || 'var(--accent-blue)'};">
+                        ${drill.category}
+                    </div>
+                    
+                    <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-sm); font-size: var(--font-size-lg);">
+                        ${drill.name}
+                    </h3>
+                    
+                    <div class="drill-difficulty">
+                        ${stars}
+                        <span style="color: var(--text-secondary); margin-left: var(--spacing-sm); font-size: var(--font-size-sm);">
+                            Level ${drill.difficulty}
+                        </span>
+                    </div>
+                    
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md); line-height: 1.5;">
+                        ${drill.description}
+                    </p>
+                    
+                    <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">
+                        <div><strong>Duration:</strong> ${drill.duration} minutes</div>
+                        <div><strong>Players:</strong> ${drill.minPlayers}-${drill.maxPlayers}</div>
+                        <div><strong>Equipment:</strong> ${drill.equipment.join(', ')}</div>
+                    </div>
+                    
+                    <div style="background: var(--glass-tertiary); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: var(--spacing-md);">
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">
+                            <strong>Focus Areas:</strong>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                            ${drill.focus.map(skill => 
+                                `<span style="background: var(--glass-primary); color: var(--accent-orange); padding: 2px 6px; border-radius: 0px; font-size: 10px;">${skill}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+
+                    <div class="flex-center mt-md">
+                        <button class="glass-button primary" onclick="editDrill(${drill.id})" style="width: 100%;">
+                            ✏️ Edit Drill
+                        </button>
+                    </div>
+                `;
+                
+                drillGrid.appendChild(card);
+            });
+        }
+
+        function filterDrills() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const difficultyFilter = document.getElementById('difficultyFilter').value;
+            
+            filteredDrills = allDrills.filter(drill => {
+                const matchesSearch = drill.name.toLowerCase().includes(searchTerm) ||
+                                    drill.description.toLowerCase().includes(searchTerm) ||
+                                    drill.focus.some(skill => skill.toLowerCase().includes(searchTerm));
+                
+                const matchesDifficulty = !difficultyFilter || drill.difficulty.toString() === difficultyFilter;
+                
+                return matchesSearch && matchesDifficulty;
+            });
+            
+            renderDrills();
+        }
+
+        function filterByCategory(category) {
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (category === 'all') {
+                filteredDrills = [...allDrills];
+            } else if (category === 'favorites') {
+                filteredDrills = allDrills.filter(drill => favoriteDrills.includes(drill.id));
+            } else {
+                filteredDrills = allDrills.filter(drill => drill.category === category);
+            }
+            
+            renderDrills();
+        }
+
+        function createCustomDrill() {
+            // Update modal title for creating
+            document.querySelector('#customDrillModal h2').textContent = '⚡ Create Custom Drill';
+            
+            // Reset form for new drill
+            document.getElementById('customDrillForm').reset();
+            document.getElementById('customDrillForm').removeAttribute('data-edit-id');
+            document.getElementById('customDrillModal').style.display = 'flex';
+        }
+
+        function closeCustomDrillModal() {
+            document.getElementById('customDrillModal').style.display = 'none';
+            document.getElementById('customDrillForm').reset();
+        }
+
+        async function saveCustomDrill(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const editId = event.target.getAttribute('data-edit-id');
+            
+            const drillData = {
+                name: formData.get('name'),
+                category: formData.get('category'),
+                duration: parseInt(formData.get('duration')),
+                difficulty: parseInt(formData.get('difficulty')),
+                description: formData.get('description'),
+                equipment: formData.get('equipment') ? formData.get('equipment').split(',').map(item => item.trim()) : [],
+                minPlayers: parseInt(formData.get('minPlayers')),
+                maxPlayers: parseInt(formData.get('maxPlayers')),
+                focus: formData.get('focus') ? formData.get('focus').split(',').map(item => item.trim()) : []
+            };
+
+            try {
+                const isEdit = editId !== null;
+                const url = isEdit ? `/api/drills/${editId}` : '/api/drills';
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(drillData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`Drill ${isEdit ? 'updated' : 'created'} successfully:`, result);
+                    
+                    // Close modal and refresh the drill list
+                    closeCustomDrillModal();
+                    loadDrillData();
+                    
+                    // Show success notification
+                    glassModal.success(
+                        `Drill ${isEdit ? 'updated' : 'created'} successfully!`,
+                        isEdit ? 'Drill Updated' : 'Drill Created'
+                    );
+                } else {
+                    throw new Error(`Failed to ${isEdit ? 'update' : 'create'} drill`);
+                }
+            } catch (error) {
+                console.error(`Error ${editId ? 'updating' : 'creating'} drill:`, error);
+                glassModal.error(
+                    `Error ${editId ? 'updating' : 'creating'} drill`,
+                    'Operation Failed'
+                );
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDrillData();
+        });
+    </script>
+    <script src="/js/modal.js"></script>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            border-radius: 0;
+            padding: var(--spacing-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: var(--font-size-xl);
+            cursor: pointer;
+            padding: var(--spacing-sm);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: flex-end;
+            margin-top: var(--spacing-lg);
+        }
+    </style>
+</body>
+</html>
