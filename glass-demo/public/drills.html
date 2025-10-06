@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drill Library - PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .drill-card {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            transition: all 0.3s ease;
+        }
+        .drill-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-orange);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .drill-category {
+            background: var(--accent-blue);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: var(--spacing-sm);
+        }
+        .drill-difficulty {
+            display: flex;
+            gap: 2px;
+            margin-bottom: var(--spacing-sm);
+        }
+        .star {
+            color: var(--accent-amber);
+            font-size: 16px;
+        }
+        .star.empty {
+            color: var(--glass-border);
+        }
+        .filter-tabs {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xl);
+            flex-wrap: wrap;
+        }
+        .filter-tab {
+            background: var(--glass-tertiary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .filter-tab.active,
+        .filter-tab:hover {
+            background: var(--accent-orange);
+            color: white;
+            border-color: var(--accent-orange);
+        }
+        .drill-stats {
+            background: var(--glass-tertiary);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+        }
+        .drill-stat {
+            text-align: center;
+        }
+        .drill-stat-value {
+            font-weight: 600;
+            color: var(--accent-orange);
+        }
+        .drill-stat-label {
+            color: var(--text-tertiary);
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-glass">
+            <a href="/" class="logo">🏐 PracTrac</a>
+            <ul class="nav-links">
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/practice">Practice Plans</a></li>
+                <li><a href="/roster">Roster</a></li>
+                <li><a href="/drills" class="active">Drills</a></li>
+                <li><a href="/videos">Videos</a></li>
+                <li><a href="/analytics">Analytics</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-container">
+        <!-- Header -->
+        <section class="flex-between mb-xl">
+            <div>
+                <h1 style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-sm);">
+                    Drill Library
+                </h1>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
+                    Professional volleyball drills with custom statistics tracking
+                </p>
+            </div>
+            <button class="glass-button primary" onclick="createCustomDrill()">
+                ⚡ Create Custom Drill
+            </button>
+        </section>
+
+        <!-- Search and Filters -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <div class="grid grid-2 gap-lg mb-lg">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                            Search Drills
+                        </label>
+                        <input type="text" class="glass-input" placeholder="Search by name, skill, or equipment..." 
+                               id="searchInput" onkeyup="filterDrills()">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                            Difficulty Level
+                        </label>
+                        <select class="glass-input" id="difficultyFilter" onchange="filterDrills()">
+                            <option value="">All Levels</option>
+                            <option value="1">Beginner (⭐)</option>
+                            <option value="2">Easy (⭐⭐)</option>
+                            <option value="3">Intermediate (⭐⭐⭐)</option>
+                            <option value="4">Advanced (⭐⭐⭐⭐)</option>
+                            <option value="5">Expert (⭐⭐⭐⭐⭐)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-tabs">
+                    <div class="filter-tab active" onclick="filterByCategory('all')">All Drills</div>
+                    <div class="filter-tab" onclick="filterByCategory('Warm-up')">Warm-up</div>
+                    <div class="filter-tab" onclick="filterByCategory('Offense')">Offense</div>
+                    <div class="filter-tab" onclick="filterByCategory('Defense')">Defense</div>
+                    <div class="filter-tab" onclick="filterByCategory('Serve/Receive')">Serve/Receive</div>
+                    <div class="filter-tab" onclick="filterByCategory('Conditioning')">Conditioning</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Stats -->
+        <section class="glass-card mb-xl">
+            <div class="p-lg">
+                <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-xl);">
+                    📊 Drill Statistics
+                </h2>
+                <div class="grid grid-4 gap-md">
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-orange);">500+</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Total Drills</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-blue);">47</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Recently Used</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-green);">12</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Custom Drills</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--accent-amber);">8</div>
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">Favorites</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Drill Cards -->
+        <section class="grid grid-3 gap-lg" id="drillGrid">
+            <!-- Drills will be loaded here -->
+        </section>
+
+        <!-- Custom Drill Builder Modal (Hidden by default) -->
+        <div id="customDrillModal" class="glass-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center;">
+            <div style="width: 90%; max-width: 600px; background: var(--glass-primary); padding: var(--spacing-xl); border-radius: var(--radius-xl); border: 1px solid var(--glass-border);">
+                <h2 style="color: var(--accent-orange); margin-bottom: var(--spacing-lg);">⚡ Create Custom Drill</h2>
+                
+                <div class="grid grid-2 gap-md mb-md">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Drill Name</label>
+                        <input type="text" class="glass-input" placeholder="Custom Passing Drill">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Category</label>
+                        <select class="glass-input">
+                            <option>Warm-up</option>
+                            <option>Offense</option>
+                            <option>Defense</option>
+                            <option>Serve/Receive</option>
+                            <option>Conditioning</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-md">
+                    <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Description</label>
+                    <textarea class="glass-input" rows="3" placeholder="Describe the drill objective and execution..."></textarea>
+                </div>
+
+                <div class="grid grid-3 gap-md mb-lg">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Duration (min)</label>
+                        <input type="number" class="glass-input" placeholder="15">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Min Players</label>
+                        <input type="number" class="glass-input" placeholder="4">
+                    </div>
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Max Players</label>
+                        <input type="number" class="glass-input" placeholder="12">
+                    </div>
+                </div>
+
+                <div class="flex-between">
+                    <button class="glass-button" onclick="closeCustomDrillModal()">Cancel</button>
+                    <button class="glass-button primary" onclick="saveCustomDrill()">Save Drill</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let allDrills = [];
+        let filteredDrills = [];
+
+        // Load drill data
+        async function loadDrillData() {
+            try {
+                const response = await fetch('/api/drills');
+                allDrills = await response.json();
+                filteredDrills = [...allDrills];
+                renderDrills();
+            } catch (error) {
+                console.error('Error loading drill data:', error);
+            }
+        }
+
+        function renderDrills() {
+            const drillGrid = document.getElementById('drillGrid');
+            drillGrid.innerHTML = '';
+
+            filteredDrills.forEach(drill => {
+                const card = document.createElement('div');
+                card.className = 'drill-card';
+                
+                // Create star rating
+                const stars = Array.from({length: 5}, (_, i) => 
+                    `<span class="star ${i < drill.difficulty ? '' : 'empty'}">⭐</span>`
+                ).join('');
+
+                // Get category color
+                const categoryColors = {
+                    'Warm-up': 'var(--accent-green)',
+                    'Offense': 'var(--accent-orange)', 
+                    'Defense': 'var(--accent-blue)',
+                    'Serve/Receive': 'var(--accent-amber)'
+                };
+
+                card.innerHTML = `
+                    <div class="drill-category" style="background: ${categoryColors[drill.category] || 'var(--accent-blue)'};">
+                        ${drill.category}
+                    </div>
+                    
+                    <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-sm); font-size: var(--font-size-lg);">
+                        ${drill.name}
+                    </h3>
+                    
+                    <div class="drill-difficulty">
+                        ${stars}
+                        <span style="color: var(--text-secondary); margin-left: var(--spacing-sm); font-size: var(--font-size-sm);">
+                            Level ${drill.difficulty}
+                        </span>
+                    </div>
+                    
+                    <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md); line-height: 1.5;">
+                        ${drill.description}
+                    </p>
+                    
+                    <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">
+                        <div><strong>Duration:</strong> ${drill.duration} minutes</div>
+                        <div><strong>Players:</strong> ${drill.minPlayers}-${drill.maxPlayers}</div>
+                        <div><strong>Equipment:</strong> ${drill.equipment.join(', ')}</div>
+                    </div>
+                    
+                    <div style="background: var(--glass-tertiary); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: var(--spacing-md);">
+                        <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">
+                            <strong>Focus Areas:</strong>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                            ${drill.focus.map(skill => 
+                                `<span style="background: var(--glass-primary); color: var(--accent-orange); padding: 2px 6px; border-radius: 4px; font-size: 10px;">${skill}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+
+                    <div class="drill-stats">
+                        <div class="drill-stat">
+                            <div class="drill-stat-value">23</div>
+                            <div class="drill-stat-label">Times Used</div>
+                        </div>
+                        <div class="drill-stat">
+                            <div class="drill-stat-value">4.8</div>
+                            <div class="drill-stat-label">Rating</div>
+                        </div>
+                        <div class="drill-stat">
+                            <div class="drill-stat-value">85%</div>
+                            <div class="drill-stat-label">Success Rate</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-between mt-md gap-sm">
+                        <button class="glass-button" onclick="addToPractice(${drill.id})" style="flex: 1;">
+                            ➕ Add to Practice
+                        </button>
+                        <button class="glass-button" onclick="assignVideoToDrill(${drill.id})" style="padding: 6px 8px;">
+                            📹
+                        </button>
+                        <button class="glass-button" onclick="viewDrillDetails(${drill.id})" style="padding: 6px 8px;">
+                            👁️
+                        </button>
+                    </div>
+                `;
+                
+                drillGrid.appendChild(card);
+            });
+        }
+
+        function filterDrills() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const difficultyFilter = document.getElementById('difficultyFilter').value;
+            
+            filteredDrills = allDrills.filter(drill => {
+                const matchesSearch = drill.name.toLowerCase().includes(searchTerm) ||
+                                    drill.description.toLowerCase().includes(searchTerm) ||
+                                    drill.focus.some(skill => skill.toLowerCase().includes(searchTerm));
+                
+                const matchesDifficulty = !difficultyFilter || drill.difficulty.toString() === difficultyFilter;
+                
+                return matchesSearch && matchesDifficulty;
+            });
+            
+            renderDrills();
+        }
+
+        function filterByCategory(category) {
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (category === 'all') {
+                filteredDrills = [...allDrills];
+            } else {
+                filteredDrills = allDrills.filter(drill => drill.category === category);
+            }
+            
+            renderDrills();
+        }
+
+        function addToPractice(drillId) {
+            alert(`Drill ${drillId} added to current practice plan! \n\n📹 Tip: You can assign demonstration videos to drills for instant iPad playback during practice.`);
+        }
+
+        function assignVideoToDrill(drillId) {
+            alert(`Video Assignment for Drill ${drillId}! 🎥\n\nSelect from:\n📹 Professional technique demos\n🎯 Custom recorded videos\n⏱️ Timed instruction clips\n\nPerfect for showing proper form on iPad during practice!`);
+        }
+
+        function viewDrillDetails(drillId) {
+            alert(`Drill ${drillId} Details:\n\n📋 Complete instructions\n📊 Success metrics\n🎥 Assigned videos\n👥 Player requirements\n⚙️ Equipment needed\n\nOptimized for iPad coaching display!`);
+        }
+
+        function createCustomDrill() {
+            document.getElementById('customDrillModal').style.display = 'flex';
+        }
+
+        function closeCustomDrillModal() {
+            document.getElementById('customDrillModal').style.display = 'none';
+        }
+
+        function saveCustomDrill() {
+            alert('Custom drill saved successfully!');
+            closeCustomDrillModal();
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDrillData();
+        });
+    </script>
+</body>
+</html>
