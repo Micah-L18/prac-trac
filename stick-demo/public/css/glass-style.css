@@ -630,3 +630,21 @@ body {
 .drill-with-video {
   border-left: 3px solid var(--accent-orange);
 }
+
+/* Clickable Drill Card Styles */
+.clickable-drill-card {
+  transition: all 0.3s ease;
+  border: 1px solid var(--glass-border);
+}
+
+.clickable-drill-card:hover {
+  background: var(--glass-secondary);
+  border-color: var(--accent-orange);
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
+  transform: translateY(-2px);
+}
+
+.clickable-drill-card:active {
+  transform: translateY(0px);
+  box-shadow: 0 2px 10px rgba(255, 107, 53, 0.3);
+}

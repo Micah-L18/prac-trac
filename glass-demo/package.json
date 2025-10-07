@@ -7,13 +7,20 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["volleyball", "coaching", "practice", "management", "glass-ui"],
+  "keywords": [
+    "volleyball",
+    "coaching",
+    "practice",
+    "management",
+    "glass-ui"
+  ],
   "author": "PracTrac Development Team",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "morgan": "^1.10.0"
+    "express": "^4.18.2",
+    "morgan": "^1.10.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

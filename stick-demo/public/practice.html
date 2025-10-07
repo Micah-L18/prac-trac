@@ -21,8 +21,30 @@
         </div>
     </nav>
 
+    <!-- Active Session Banner (hidden by default) -->
+    <div id="activeSessionBanner" class="active-session-banner" style="display: none;">
+        <div class="banner-content">
+            <div class="session-info">
+                <h3>🏐 Active Practice Session</h3>
+                <div class="session-details">
+                    <span id="sessionPracticeName">Practice Name</span>
+                    <span id="sessionStartTime">Started: --:--</span>
+                    <span id="sessionStatus">Status: --</span>
+                </div>
+            </div>
+            <div class="banner-actions">
+                <button id="resumeSessionBtn" class="glass-button primary">
+                    Resume Session
+                </button>
+                <button id="dismissBannerBtn" class="glass-button secondary">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
-    <main class="main-container">
+    <main class="main-container main-with-banner">
         <!-- Header -->
         <section class="flex-between mb-xl">
             <div>
@@ -168,6 +190,41 @@
                     <button type="submit" class="glass-button primary">Update Practice Plan</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Active Practice Conflict Modal -->
+    <div id="activePracticeModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">⚠️ Active Practice Session</h2>
+                <button class="modal-close" onclick="closeActivePracticeModal()">✕</button>
+            </div>
+            
+            <div style="margin-bottom: var(--spacing-lg);">
+                <p style="color: var(--text-primary); margin-bottom: var(--spacing-md);">
+                    There is already an active practice session running:
+                </p>
+                <div style="background: var(--glass-tertiary); padding: var(--spacing-md); border-left: 4px solid var(--accent-orange); margin-bottom: var(--spacing-lg);">
+                    <h4 id="conflictPracticeName" style="color: var(--accent-orange); margin: 0 0 var(--spacing-xs) 0;">Practice Name</h4>
+                    <p id="conflictPracticeDetails" style="color: var(--text-secondary); margin: 0; font-size: var(--font-size-sm);">Started: --:--</p>
+                </div>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-sm);">
+                    You can either resume the current session or end it to start a new practice.
+                </p>
+            </div>
+
+            <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: flex-end; margin-top: var(--spacing-lg);">
+                <button onclick="closeActivePracticeModal()" class="glass-button secondary">
+                    Cancel
+                </button>
+                <button id="resumeConflictBtn" class="glass-button primary">
+                    Resume Current
+                </button>
+                <button id="endCurrentBtn" class="glass-button" style="background-color: var(--accent-red); border-color: var(--accent-red);">
+                    End Current & Start New
+                </button>
+            </div>
         </div>
     </div>
 
@@ -733,8 +790,91 @@
             }
         }
 
-        function startPractice(practiceId) {
-            window.location.href = `practice-mode.html?practice=${practiceId}`;
+        async function startPractice(practiceId) {
+            try {
+                // Check if there's already an active practice session
+                const response = await fetch('/api/practice-sessions/active');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.hasActiveSession && data.session) {
+                        // Show conflict modal
+                        showActivePracticeConflict(data.session, practiceId);
+                        return;
+                    }
+                }
+                
+                // No active session, proceed with starting the practice
+                window.location.href = `practice-mode.html?practice=${practiceId}`;
+            } catch (error) {
+                console.error('Error checking for active session:', error);
+                // If there's an error checking, proceed anyway
+                window.location.href = `practice-mode.html?practice=${practiceId}`;
+            }
+        }
+
+        // Show the active practice conflict modal
+        function showActivePracticeConflict(activeSession, newPracticeId) {
+            const modal = document.getElementById('activePracticeModal');
+            const practiceName = document.getElementById('conflictPracticeName');
+            const practiceDetails = document.getElementById('conflictPracticeDetails');
+            const resumeBtn = document.getElementById('resumeConflictBtn');
+            const endBtn = document.getElementById('endCurrentBtn');
+            
+            // Update modal content
+            practiceName.textContent = activeSession.practice_name;
+            practiceDetails.textContent = `Started: ${new Date(activeSession.started_at).toLocaleTimeString()} | Status: ${activeSession.status === 'paused' ? '⏸️ Paused' : '▶️ Running'}`;
+            
+            // Set up event listeners
+            resumeBtn.onclick = () => {
+                closeActivePracticeModal();
+                resumeSession(activeSession.id);
+            };
+            
+            endBtn.onclick = () => {
+                closeActivePracticeModal();
+                endCurrentAndStartNew(activeSession.id, newPracticeId);
+            };
+            
+            // Show the modal
+            modal.style.display = 'flex';
+        }
+
+        // Close the active practice conflict modal
+        function closeActivePracticeModal() {
+            const modal = document.getElementById('activePracticeModal');
+            modal.style.display = 'none';
+        }
+
+        // End current practice and start new one
+        async function endCurrentAndStartNew(currentSessionId, newPracticeId) {
+            try {
+                // End the current practice session
+                const response = await fetch(`/api/practice-sessions/${currentSessionId}/complete`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        actual_duration: 0, // We're ending it early
+                        notes: 'Ended to start new practice session'
+                    })
+                });
+
+                if (response.ok) {
+                    // Hide the banner if it's showing
+                    hideActiveSessionBanner();
+                    
+                    // Start the new practice
+                    window.location.href = `practice-mode.html?practice=${newPracticeId}`;
+                } else {
+                    console.error('Failed to end current session');
+                    glassModal.error('Failed to end current practice session. Please try again.', 'Error');
+                }
+            } catch (error) {
+                console.error('Error ending current session:', error);
+                glassModal.error('Error ending current practice session. Please try again.', 'Error');
+            }
         }
 
         async function deletePractice(practiceId, practiceName) {
@@ -761,12 +901,95 @@
                     showGlassError('Error deleting practice plan');
                 });
             }
+        } 
+
+        // Check for active practice sessions
+        async function checkForActiveSession() {
+            try {
+                const response = await fetch('/api/practice-sessions/active');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.hasActiveSession && data.session) {
+                        showActiveSessionBanner(data.session);
+                    } else {
+                        // No active session found - hide banner
+                        hideActiveSessionBanner();
+                        console.log('No active practice session found');
+                    }
+                } else {
+                    // Server errors
+                    console.error('Error checking for active session:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.error('Network error checking for active session:', error);
+            }
+        }
+
+        // Show banner for active session
+        function showActiveSessionBanner(session) {
+            const banner = document.getElementById('activeSessionBanner');
+            const mainContainer = document.querySelector('.main-container');
+            const practiceName = document.getElementById('sessionPracticeName');
+            const startTime = document.getElementById('sessionStartTime');
+            const status = document.getElementById('sessionStatus');
+            const resumeBtn = document.getElementById('resumeSessionBtn');
+            const dismissBtn = document.getElementById('dismissBannerBtn');
+            
+            // Update banner content
+            practiceName.textContent = session.practice_name;
+            startTime.textContent = `Started: ${new Date(session.started_at).toLocaleTimeString()}`;
+            status.textContent = `Status: ${session.status === 'paused' ? '⏸️ Paused' : '▶️ Running'}`;
+            
+            // Set up event listeners
+            resumeBtn.onclick = () => resumeSession(session.id);
+            dismissBtn.onclick = hideActiveSessionBanner;
+            
+            // Show the banner and adjust main content
+            banner.style.display = 'block';
+            mainContainer.classList.add('main-with-banner');
+            
+            // Store session data for resume
+            window.activeSessionData = session;
+        }
+
+        // Hide the active session banner
+        function hideActiveSessionBanner() {
+            const banner = document.getElementById('activeSessionBanner');
+            const mainContainer = document.querySelector('.main-container');
+            
+            banner.style.display = 'none';
+            mainContainer.classList.remove('main-with-banner');
+        }
+
+        // Resume active session
+        async function resumeSession(sessionId) {
+            try {
+                // Get the full session data including timer state
+                const response = await fetch(`/api/practice-sessions/${sessionId}`);
+                if (response.ok) {
+                    const sessionData = await response.json();
+                    
+                    // Store session data globally for the practice mode to access
+                    sessionStorage.setItem('resumeSessionData', JSON.stringify(sessionData));
+                    
+                    // Navigate to practice mode with session ID and practice ID
+                    window.location.href = `practice-mode.html?practice=${sessionData.practice_id}&session=${sessionId}&resume=true`;
+                } else {
+                    console.error('Failed to get session data');
+                    glassModal.error('Error resuming session. Please try again.', 'Resume Failed');
+                }
+            } catch (error) {
+                console.error('Error resuming session:', error);
+                glassModal.error('Error resuming session. Please try again.', 'Resume Failed');
+            }
         }
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             loadPractices();
             loadDrills();
+            checkForActiveSession();
             
             // Set default date to today
             const today = new Date().toISOString().split('T')[0];
@@ -775,6 +998,55 @@
                 dateInput.value = today;
             }
         });
+
+        // Save session state when navigating away or refreshing
+        window.addEventListener('beforeunload', function(e) {
+            if (window.currentPracticeSession) {
+                saveSessionState();
+            }
+        });
+
+        // Save current session state to backend
+        async function saveSessionState() {
+            if (!window.currentPracticeSession) return;
+            
+            try {
+                const timerState = {
+                    practiceStartTime: window.practiceStartTime,
+                    currentPhaseStartTime: window.currentPhaseStartTime,
+                    isPaused: true,
+                    pausedAt: new Date().toISOString()
+                };
+                
+                await fetch(`/api/practice-sessions/${window.currentPracticeSession.id}/timer-state`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'paused',
+                        timer_state: timerState,
+                        current_phase_id: window.currentPhaseId || null,
+                        phase_elapsed_time: calculatePhaseElapsedTime(),
+                        total_elapsed_time: calculateTotalElapsedTime()
+                    })
+                });
+            } catch (error) {
+                console.error('Error saving session state:', error);
+            }
+        }
+
+        // Calculate elapsed time for current phase
+        function calculatePhaseElapsedTime() {
+            if (!window.currentPhaseStartTime) return 0;
+            return Math.floor((new Date() - new Date(window.currentPhaseStartTime)) / 1000);
+        }
+
+        // Calculate total elapsed time for practice
+        function calculateTotalElapsedTime() {
+            if (!window.practiceStartTime) return 0;
+            return Math.floor((new Date() - new Date(window.practiceStartTime)) / 1000);
+        }
     </script>
     <script src="/js/modal.js"></script>
 
@@ -796,6 +1068,144 @@
         /* Higher z-index for drill selector when opened on top of other modals */
         #drillSelectorModal {
             z-index: 1100;
+        }
+
+        /* Active session banner styles */
+        .active-session-banner {
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.9), rgba(255, 107, 53, 0.7));
+            border: 2px solid var(--accent-orange);
+            border-radius: 0;
+            padding: var(--spacing-lg);
+            margin: 0;
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 80px; /* Position below the fixed navbar */
+            left: 0;
+            right: 0;
+            z-index: 1200;
+            animation: slideDown 0.3s ease-out;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Adjust main content when banner is visible */
+        .main-container.main-with-banner {
+            margin-top: 140px; /* Account for banner height */
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .banner-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .session-info h3 {
+            color: white;
+            margin: 0 0 var(--spacing-sm) 0;
+            font-size: var(--font-size-lg);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .session-details {
+            display: flex;
+            gap: var(--spacing-lg);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: var(--font-size-sm);
+        }
+
+        .session-details span {
+            font-weight: 500;
+        }
+
+        .banner-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .banner-actions .glass-button {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-sm);
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .banner-actions .glass-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .banner-actions .glass-button.secondary {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .banner-actions .glass-button.secondary:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive design for banner */
+        @media (max-width: 768px) {
+            .banner-content {
+                flex-direction: column;
+                gap: var(--spacing-md);
+                text-align: center;
+            }
+
+            .session-details {
+                flex-direction: column;
+                gap: var(--spacing-xs);
+            }
+
+            .banner-actions {
+                justify-content: center;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Higher z-index for drill selector when opened on top of other modals */
+        #drillSelectorModal {
+            z-index: 1100;
+        }
+
+        /* Active practice conflict modal */
+        #activePracticeModal {
+            z-index: 1300;
+        }
+
+        #activePracticeModal .glass-button {
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        #activePracticeModal .glass-button:hover {
+            transform: translateY(-1px);
         }
 
         .modal-content {

@@ -14,6 +14,113 @@ db.run('PRAGMA foreign_keys = ON');
 
 // Create new tables for practice sessions and attendance tracking
 db.serialize(() => {
+  // Core application tables
+  db.run(`
+    CREATE TABLE IF NOT EXISTS teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      season TEXT NOT NULL,
+      division TEXT NOT NULL,
+      coach TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      firstName TEXT NOT NULL,
+      lastName TEXT NOT NULL,
+      jerseyNumber INTEGER NOT NULL,
+      position TEXT NOT NULL,
+      skillLevel INTEGER NOT NULL CHECK(skillLevel >= 1 AND skillLevel <= 5),
+      height TEXT,
+      year TEXT,
+      team_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS player_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id INTEGER NOT NULL,
+      kills INTEGER DEFAULT 0,
+      blocks INTEGER DEFAULT 0,
+      aces INTEGER DEFAULT 0,
+      digs INTEGER DEFAULT 0,
+      assists INTEGER DEFAULT 0,
+      season TEXT NOT NULL,
+      FOREIGN KEY (player_id) REFERENCES players (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS drills (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      duration INTEGER NOT NULL,
+      difficulty INTEGER NOT NULL CHECK(difficulty >= 1 AND difficulty <= 5),
+      description TEXT,
+      equipment TEXT,
+      minPlayers INTEGER NOT NULL,
+      maxPlayers INTEGER NOT NULL,
+      focus TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS practices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      date TEXT NOT NULL,
+      duration INTEGER NOT NULL,
+      team_id INTEGER,
+      objective TEXT,
+      estimated_duration INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (team_id) REFERENCES teams (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS practice_phases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      practice_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      duration INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      phase_order INTEGER NOT NULL,
+      objective TEXT,
+      FOREIGN KEY (practice_id) REFERENCES practices (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS practice_phase_drills (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phase_id INTEGER NOT NULL,
+      drill_id INTEGER NOT NULL,
+      FOREIGN KEY (phase_id) REFERENCES practice_phases (id),
+      FOREIGN KEY (drill_id) REFERENCES drills (id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS videos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      duration TEXT NOT NULL,
+      thumbnail TEXT,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Create practice_sessions table to track actual practice sessions
   db.run(`
     CREATE TABLE IF NOT EXISTS practice_sessions (
@@ -21,9 +128,14 @@ db.serialize(() => {
       practice_id INTEGER NOT NULL,
       started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       completed_at DATETIME,
-      status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'cancelled')),
+      status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'cancelled', 'paused')),
       actual_duration INTEGER,
       notes TEXT,
+      timer_state TEXT, -- JSON string storing timer data
+      current_phase_id INTEGER,
+      phase_elapsed_time INTEGER DEFAULT 0,
+      total_elapsed_time INTEGER DEFAULT 0,
+      last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (practice_id) REFERENCES practices(id) ON DELETE CASCADE
     )
   `);
@@ -41,11 +153,113 @@ db.serialize(() => {
       FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
       UNIQUE(session_id, player_id)
     )
+  `);
+
+  // Create player_notes table to track individual player notes during practice sessions
+  db.run(`
+    CREATE TABLE IF NOT EXISTS player_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      notes TEXT NOT NULL,
+      note_type TEXT DEFAULT 'practice' CHECK(note_type IN ('practice', 'player')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+    )
   `, (err) => {
     if (err) {
-      console.error('Error creating attendance tables:', err);
+      console.error('Error creating player notes table:', err);
     } else {
-      console.log('✅ Practice session and attendance tables initialized');
+      // Migration: Add note_type column if it doesn't exist and remove UNIQUE constraint
+      db.all("PRAGMA table_info(player_notes)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking table schema:', err);
+          return;
+        }
+        
+        const hasNoteType = columns.some(col => col.name === 'note_type');
+        
+        if (!hasNoteType) {
+          console.log('🔄 Migrating player_notes table to add note_type column...');
+          recreatePlayerNotesTable();
+        } else {
+          // Check if we need to update the constraint to support new values
+          db.all("SELECT sql FROM sqlite_master WHERE type='table' AND name='player_notes'", [], (err, tables) => {
+            if (err) {
+              console.error('Error checking table constraints:', err);
+              return;
+            }
+            
+            const tableSQL = tables[0]?.sql || '';
+            if (tableSQL.includes("note_type IN ('coach', 'player')") || tableSQL.includes('UNIQUE(session_id, player_id)')) {
+              console.log('🔄 Updating player_notes table constraints...');
+              recreatePlayerNotesTable();
+            } else {
+              console.log('✅ Player notes table schema is up to date');
+            }
+          });
+        }
+      });
+      
+      // Helper function to recreate the player_notes table with correct schema
+      function recreatePlayerNotesTable() {
+        // Create new table with correct constraints
+        db.run(`
+          CREATE TABLE player_notes_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            player_id INTEGER NOT NULL,
+            notes TEXT NOT NULL,
+            note_type TEXT DEFAULT 'practice' CHECK(note_type IN ('practice', 'player')),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE,
+            FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+          )
+        `, (err) => {
+          if (err) {
+            console.error('Error creating new player_notes table:', err);
+            return;
+          }
+          
+          // Copy data to new table
+          db.run(`
+            INSERT INTO player_notes_new (id, session_id, player_id, notes, note_type, created_at, updated_at)
+            SELECT id, session_id, player_id, notes, 
+                   CASE 
+                     WHEN COALESCE(note_type, 'coach') = 'coach' THEN 'practice'
+                     ELSE COALESCE(note_type, 'practice')
+                   END, 
+                   created_at, updated_at 
+            FROM player_notes
+          `, (err) => {
+            if (err) {
+              console.error('Error copying data to new table:', err);
+              return;
+            }
+            
+            // Drop old table and rename new one
+            db.run("DROP TABLE player_notes", (err) => {
+              if (err) {
+                console.error('Error dropping old table:', err);
+                return;
+              }
+              
+              db.run("ALTER TABLE player_notes_new RENAME TO player_notes", (err) => {
+                if (err) {
+                  console.error('Error renaming table:', err);
+                } else {
+                  console.log('✅ Player notes table migration completed');
+                }
+              });
+            });
+          });
+        });
+      }
+      
+      console.log('✅ All database tables initialized');
     }
   });
 });
@@ -408,8 +622,8 @@ app.post('/api/players', (req, res) => {
   
   // Insert the player first
   db.run(`
-    INSERT INTO players (firstName, lastName, jerseyNumber, position, skillLevel, height, year, team_id) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO players (firstName, lastName, jerseyNumber, position, skillLevel, height, year) 
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `, [firstName, lastName, jerseyNumber, position, skillLevel, height, year], function(err) {
     if (err) {
       console.error('Error creating player:', err);
@@ -471,17 +685,21 @@ app.put('/api/players/:id', (req, res) => {
 
 // Get player attendance history and statistics
 app.get('/api/players/:id/attendance', (req, res) => {
-  try {
-    const playerId = parseInt(req.params.id);
+  const playerId = parseInt(req.params.id);
+  
+  // Check if player exists first
+  getPlayerById(playerId, (err, player) => {
+    if (err) {
+      console.error('Error fetching player:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
     
-    // Check if player exists
-    const player = getPlayerById(playerId);
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
     
     // Get attendance history
-    const attendanceHistory = db.prepare(`
+    db.all(`
       SELECT 
         CASE 
           WHEN pa.attended = 1 AND pa.late_minutes > 0 THEN 'late'
@@ -497,229 +715,270 @@ app.get('/api/players/:id/attendance', (req, res) => {
       JOIN practices p ON ps.practice_id = p.id
       WHERE pa.player_id = ?
       ORDER BY ps.started_at DESC
-    `).all(playerId);
-    
-    // Calculate statistics
-    const totalPractices = db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM practice_sessions 
-      WHERE started_at <= datetime('now')
-    `).get().count;
-    
-    const attendedPractices = attendanceHistory.filter(a => a.status === 'present' || a.status === 'late').length;
-    const missedPractices = attendanceHistory.filter(a => a.status === 'absent').length;
-    const attendanceRate = totalPractices > 0 ? Math.round((attendedPractices / totalPractices) * 100) : 0;
-    
-    const stats = {
-      totalPractices,
-      practicesAttended: attendedPractices,
-      practicesMissed: missedPractices,
-      attendanceRate: `${attendanceRate}%`
-    };
-    
-    res.json({
-      history: attendanceHistory,
-      stats: stats
+    `, [playerId], (err, attendanceHistory) => {
+      if (err) {
+        console.error('Error fetching attendance history:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      
+      // Calculate statistics
+      db.get(`
+        SELECT COUNT(*) as count 
+        FROM practice_sessions 
+        WHERE started_at <= datetime('now')
+      `, (err, totalResult) => {
+        if (err) {
+          console.error('Error fetching total practices:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        
+        const totalPractices = totalResult.count;
+        const attendedPractices = attendanceHistory.filter(a => a.status === 'present' || a.status === 'late').length;
+        const missedPractices = attendanceHistory.filter(a => a.status === 'absent').length;
+        const attendanceRate = totalPractices > 0 ? Math.round((attendedPractices / totalPractices) * 100) : 0;
+        
+        const stats = {
+          totalPractices,
+          practicesAttended: attendedPractices,
+          practicesMissed: missedPractices,
+          attendanceRate: `${attendanceRate}%`
+        };
+        
+        res.json({
+          history: attendanceHistory,
+          stats: stats
+        });
+      });
     });
-  } catch (error) {
-    console.error('Error fetching player attendance:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  });
 });
 
 // CRUD operations for teams
 app.post('/api/teams', (req, res) => {
-  try {
-    const { name, season, division, coach } = req.body;
+  const { name, season, division, coach } = req.body;
+  
+  db.run(`
+    INSERT INTO teams (name, season, division, coach) 
+    VALUES (?, ?, ?, ?)
+  `, [name, season, division, coach], function(err) {
+    if (err) {
+      console.error('Error creating team:', err);
+      return res.status(500).json({ error: 'Failed to create team' });
+    }
     
-    const insertTeam = db.prepare(`
-      INSERT INTO teams (name, season, division, coach) 
-      VALUES (?, ?, ?, ?)
-    `);
-    
-    const result = insertTeam.run(name, season, division, coach);
-    
-    const newTeam = db.prepare('SELECT * FROM teams WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(newTeam);
-  } catch (error) {
-    console.error('Error creating team:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    // Get the newly created team
+    db.get('SELECT * FROM teams WHERE id = ?', [this.lastID], (err, team) => {
+      if (err) {
+        console.error('Error retrieving team:', err);
+        return res.status(500).json({ error: 'Team created but failed to retrieve' });
+      }
+      res.status(201).json(team);
+    });
+  });
 });
 
 app.put('/api/teams/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { name, season, division, coach } = req.body;
+  const id = parseInt(req.params.id);
+  const { name, season, division, coach } = req.body;
+  
+  db.run(`
+    UPDATE teams 
+    SET name = ?, season = ?, division = ?, coach = ?
+    WHERE id = ?
+  `, [name, season, division, coach, id], function(err) {
+    if (err) {
+      console.error('Error updating team:', err);
+      return res.status(500).json({ error: 'Failed to update team' });
+    }
     
-    const updateTeam = db.prepare(`
-      UPDATE teams 
-      SET name = ?, season = ?, division = ?, coach = ?
-      WHERE id = ?
-    `);
-    updateTeam.run(name, season, division, coach, id);
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
     
-    const updatedTeam = db.prepare('SELECT * FROM teams WHERE id = ?').get(id);
-    res.json(updatedTeam);
-  } catch (error) {
-    console.error('Error updating team:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    // Get the updated team
+    db.get('SELECT * FROM teams WHERE id = ?', [id], (err, team) => {
+      if (err) {
+        console.error('Error retrieving updated team:', err);
+        return res.status(500).json({ error: 'Team updated but failed to retrieve' });
+      }
+      res.json(team);
+    });
+  });
 });
 
 app.delete('/api/teams/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    
-    const deleteTeam = db.prepare('DELETE FROM teams WHERE id = ?');
-    const result = deleteTeam.run(id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'Team deleted successfully' });
-    } else {
-      res.status(404).json({ error: 'Team not found' });
+  const id = parseInt(req.params.id);
+  
+  db.run('DELETE FROM teams WHERE id = ?', [id], function(err) {
+    if (err) {
+      console.error('Error deleting team:', err);
+      return res.status(500).json({ error: 'Failed to delete team' });
     }
-  } catch (error) {
-    console.error('Error deleting team:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    
+    res.json({ message: 'Team deleted successfully' });
+  });
 });
 
 // CRUD operations for drills
 app.post('/api/drills', (req, res) => {
-  try {
-    const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  
+  db.run(`
+    INSERT INTO drills (name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    name, 
+    category, 
+    duration, 
+    difficulty, 
+    description, 
+    JSON.stringify(equipment || []), 
+    minPlayers, 
+    maxPlayers, 
+    JSON.stringify(focus || [])
+  ], function(err) {
+    if (err) {
+      console.error('Error creating drill:', err);
+      return res.status(500).json({ error: 'Failed to create drill' });
+    }
     
-    const insertDrill = db.prepare(`
-      INSERT INTO drills (name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    const result = insertDrill.run(
-      name, 
-      category, 
-      duration, 
-      difficulty, 
-      description, 
-      JSON.stringify(equipment || []), 
-      minPlayers, 
-      maxPlayers, 
-      JSON.stringify(focus || [])
-    );
-    
-    const newDrill = getDrillById(result.lastInsertRowid);
-    res.status(201).json(newDrill);
-  } catch (error) {
-    console.error('Error creating drill:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    // Get the newly created drill
+    getDrillById(this.lastID, (err, drill) => {
+      if (err) {
+        console.error('Error retrieving drill:', err);
+        return res.status(500).json({ error: 'Drill created but failed to retrieve' });
+      }
+      res.status(201).json(drill);
+    });
+  });
 });
 
 app.put('/api/drills/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  const id = parseInt(req.params.id);
+  const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  
+  db.run(`
+    UPDATE drills 
+    SET name = ?, category = ?, duration = ?, difficulty = ?, description = ?, equipment = ?, minPlayers = ?, maxPlayers = ?, focus = ?
+    WHERE id = ?
+  `, [
+    name, 
+    category, 
+    duration, 
+    difficulty, 
+    description, 
+    JSON.stringify(equipment || []), 
+    minPlayers, 
+    maxPlayers, 
+    JSON.stringify(focus || []),
+    id
+  ], function(err) {
+    if (err) {
+      console.error('Error updating drill:', err);
+      return res.status(500).json({ error: 'Failed to update drill' });
+    }
     
-    const updateDrill = db.prepare(`
-      UPDATE drills 
-      SET name = ?, category = ?, duration = ?, difficulty = ?, description = ?, equipment = ?, minPlayers = ?, maxPlayers = ?, focus = ?
-      WHERE id = ?
-    `);
-    updateDrill.run(
-      name, 
-      category, 
-      duration, 
-      difficulty, 
-      description, 
-      JSON.stringify(equipment || []), 
-      minPlayers, 
-      maxPlayers, 
-      JSON.stringify(focus || []),
-      id
-    );
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Drill not found' });
+    }
     
-    const updatedDrill = getDrillById(id);
-    res.json(updatedDrill);
-  } catch (error) {
-    console.error('Error updating drill:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    getDrillById(id, (err, drill) => {
+      if (err) {
+        console.error('Error retrieving updated drill:', err);
+        return res.status(500).json({ error: 'Drill updated but failed to retrieve' });
+      }
+      res.json(drill);
+    });
+  });
 });
 
 app.delete('/api/drills/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    
-    const deleteDrill = db.prepare('DELETE FROM drills WHERE id = ?');
-    const result = deleteDrill.run(id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'Drill deleted successfully' });
-    } else {
-      res.status(404).json({ error: 'Drill not found' });
+  const id = parseInt(req.params.id);
+  
+  db.run('DELETE FROM drills WHERE id = ?', [id], function(err) {
+    if (err) {
+      console.error('Error deleting drill:', err);
+      return res.status(500).json({ error: 'Failed to delete drill' });
     }
-  } catch (error) {
-    console.error('Error deleting drill:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Drill not found' });
+    }
+    
+    res.json({ message: 'Drill deleted successfully' });
+  });
 });
 
 // CRUD operations for videos
 app.post('/api/videos', (req, res) => {
-  try {
-    const { title, category, duration, thumbnail, description } = req.body;
+  const { title, category, duration, thumbnail, description } = req.body;
+  
+  db.run(`
+    INSERT INTO videos (title, category, duration, thumbnail, description) 
+    VALUES (?, ?, ?, ?, ?)
+  `, [title, category, duration, thumbnail, description], function(err) {
+    if (err) {
+      console.error('Error creating video:', err);
+      return res.status(500).json({ error: 'Failed to create video' });
+    }
     
-    const insertVideo = db.prepare(`
-      INSERT INTO videos (title, category, duration, thumbnail, description) 
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    
-    const result = insertVideo.run(title, category, duration, thumbnail, description);
-    
-    const newVideo = db.prepare('SELECT * FROM videos WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(newVideo);
-  } catch (error) {
-    console.error('Error creating video:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    db.get('SELECT * FROM videos WHERE id = ?', [this.lastID], (err, video) => {
+      if (err) {
+        console.error('Error retrieving video:', err);
+        return res.status(500).json({ error: 'Video created but failed to retrieve' });
+      }
+      res.status(201).json(video);
+    });
+  });
 });
 
 app.put('/api/videos/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { title, category, duration, thumbnail, description } = req.body;
+  const id = parseInt(req.params.id);
+  const { title, category, duration, thumbnail, description } = req.body;
+  
+  db.run(`
+    UPDATE videos 
+    SET title = ?, category = ?, duration = ?, thumbnail = ?, description = ?
+    WHERE id = ?
+  `, [title, category, duration, thumbnail, description, id], function(err) {
+    if (err) {
+      console.error('Error updating video:', err);
+      return res.status(500).json({ error: 'Failed to update video' });
+    }
     
-    const updateVideo = db.prepare(`
-      UPDATE videos 
-      SET title = ?, category = ?, duration = ?, thumbnail = ?, description = ?
-      WHERE id = ?
-    `);
-    updateVideo.run(title, category, duration, thumbnail, description, id);
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
     
-    const updatedVideo = db.prepare('SELECT * FROM videos WHERE id = ?').get(id);
-    res.json(updatedVideo);
-  } catch (error) {
-    console.error('Error updating video:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    db.get('SELECT * FROM videos WHERE id = ?', [id], (err, video) => {
+      if (err) {
+        console.error('Error retrieving updated video:', err);
+        return res.status(500).json({ error: 'Video updated but failed to retrieve' });
+      }
+      res.json(video);
+    });
+  });
 });
 
 app.delete('/api/videos/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    
-    const deleteVideo = db.prepare('DELETE FROM videos WHERE id = ?');
-    const result = deleteVideo.run(id);
-    
-    if (result.changes > 0) {
-      res.json({ message: 'Video deleted successfully' });
-    } else {
-      res.status(404).json({ error: 'Video not found' });
+  const id = parseInt(req.params.id);
+  
+  db.run('DELETE FROM videos WHERE id = ?', [id], function(err) {
+    if (err) {
+      console.error('Error deleting video:', err);
+      return res.status(500).json({ error: 'Failed to delete video' });
     }
-  } catch (error) {
-    console.error('Error deleting video:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    res.json({ message: 'Video deleted successfully' });
+  });
 });
 
 // CRUD operations for practices
@@ -1012,8 +1271,8 @@ app.post('/api/practice-sessions', (req, res) => {
       
       // Create practice session
       db.run(`
-        INSERT INTO practice_sessions (practice_id, status) 
-        VALUES (?, 'in_progress')
+        INSERT INTO practice_sessions (practice_id, status, timer_state, phase_elapsed_time, total_elapsed_time) 
+        VALUES (?, 'in_progress', '{}', 0, 0)
       `, [practice_id], function(err) {
         if (err) {
           console.error('Error creating practice session:', err);
@@ -1068,34 +1327,72 @@ app.post('/api/practice-sessions', (req, res) => {
 
 // Complete a practice session
 app.put('/api/practice-sessions/:id/complete', (req, res) => {
-  try {
-    const sessionId = parseInt(req.params.id);
-    const { actual_duration, notes } = req.body;
+  const sessionId = parseInt(req.params.id);
+  const { actual_duration, notes } = req.body;
+  
+  db.run(`
+    UPDATE practice_sessions 
+    SET status = 'completed', completed_at = CURRENT_TIMESTAMP, actual_duration = ?, notes = ?
+    WHERE id = ?
+  `, [actual_duration, notes, sessionId], function(err) {
+    if (err) {
+      console.error('Error completing practice session:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
     
-    const updateSession = db.prepare(`
-      UPDATE practice_sessions 
-      SET status = 'completed', completed_at = CURRENT_TIMESTAMP, actual_duration = ?, notes = ?
-      WHERE id = ?
-    `);
-    
-    const result = updateSession.run(actual_duration, notes, sessionId);
-    
-    if (result.changes > 0) {
-      const session = getSessionById(sessionId);
-      res.json(session);
+    if (this.changes > 0) {
+      // Get the updated session data
+      getSessionByIdAsync(sessionId, (session) => {
+        if (session) {
+          res.json(session);
+        } else {
+          res.json({ message: 'Practice session completed successfully' });
+        }
+      });
     } else {
       res.status(404).json({ error: 'Practice session not found' });
     }
-  } catch (error) {
-    console.error('Error completing practice session:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  });
 });
 
 // Get past practice sessions
 app.get('/api/practice-sessions', (req, res) => {
   getPracticeSessionsAsync((sessions) => {
     res.json(sessions);
+  });
+});
+
+// Get active practice sessions (must be before /:id route)
+app.get('/api/practice-sessions/active', (req, res) => {
+  const query = `
+    SELECT ps.*, p.name as practice_name, p.objective, p.estimated_duration
+    FROM practice_sessions ps
+    JOIN practices p ON ps.practice_id = p.id
+    WHERE ps.status IN ('in_progress', 'paused')
+    ORDER BY ps.last_activity DESC
+    LIMIT 1
+  `;
+  
+  db.get(query, [], (err, session) => {
+    if (err) {
+      console.error('Error fetching active session:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (session) {
+      // Parse timer state if it exists
+      if (session.timer_state) {
+        try {
+          session.timer_state = JSON.parse(session.timer_state);
+        } catch (e) {
+          session.timer_state = null;
+        }
+      }
+      res.json({ session: session, hasActiveSession: true });
+    } else {
+      // Return 200 with null session instead of 404 to avoid console errors
+      res.json({ session: null, hasActiveSession: false });
+    }
   });
 });
 
@@ -1113,41 +1410,191 @@ app.get('/api/practice-sessions/:id', (req, res) => {
 
 // Update attendance for a specific practice session
 app.put('/api/practice-sessions/:id/attendance', (req, res) => {
-  try {
-    const sessionId = parseInt(req.params.id);
-    const { player_id, attended, late_minutes, notes } = req.body;
+  const sessionId = parseInt(req.params.id);
+  const { player_id, attended, late_minutes, notes } = req.body;
+  
+  // Check if session exists
+  db.get('SELECT id FROM practice_sessions WHERE id = ?', [sessionId], (err, session) => {
+    if (err) {
+      console.error('Error checking session:', err);
+      return res.status(500).json({ error: 'Failed to check session' });
+    }
     
-    // Check if session exists
-    const session = db.prepare('SELECT id FROM practice_sessions WHERE id = ?').get(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Practice session not found' });
     }
     
     // Update attendance record
-    const updateAttendance = db.prepare(`
+    db.run(`
       UPDATE practice_attendance 
       SET attended = ?, late_minutes = ?, notes = ?
       WHERE session_id = ? AND player_id = ?
-    `);
-    
-    const result = updateAttendance.run(
+    `, [
       attended ? 1 : 0, 
       late_minutes || 0, 
       notes || null, 
       sessionId, 
       player_id
-    );
-    
-    if (result.changes > 0) {
-      const updatedSession = getSessionById(sessionId);
-      res.json(updatedSession);
-    } else {
-      res.status(404).json({ error: 'Attendance record not found' });
+    ], function(err) {
+      if (err) {
+        console.error('Error updating attendance:', err);
+        return res.status(500).json({ error: 'Failed to update attendance' });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Attendance record not found' });
+      }
+      
+      // Get updated session data
+      getSessionByIdAsync(sessionId, (session) => {
+        if (session) {
+          res.json(session);
+        } else {
+          res.status(500).json({ error: 'Attendance updated but failed to retrieve session' });
+        }
+      });
+    });
+  });
+});
+
+// Update session notes
+app.put('/api/practice-sessions/:id/notes', (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  const { notes } = req.body;
+  
+  db.run(`
+    UPDATE practice_sessions 
+    SET notes = ?, last_activity = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `, [notes, sessionId], function(err) {
+    if (err) {
+      console.error('Error updating session notes:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
-  } catch (error) {
-    console.error('Error updating attendance:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    
+    if (this.changes > 0) {
+      res.json({ message: 'Notes updated successfully' });
+    } else {
+      res.status(404).json({ error: 'Practice session not found' });
+    }
+  });
+});
+
+// Save player notes for a practice session
+app.post('/api/practice-sessions/:id/player-notes', (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  const { playerId, notes, noteType = 'practice' } = req.body;
+  
+  if (!playerId || notes === undefined) {
+    return res.status(400).json({ error: 'Player ID and notes are required' });
   }
+  
+  db.run(`
+    INSERT INTO player_notes (session_id, player_id, notes, note_type, created_at, updated_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `, [sessionId, playerId, notes, noteType], function(err) {
+    if (err) {
+      console.error('Error saving player notes:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    res.json({ 
+      message: 'Player notes saved successfully',
+      noteId: this.lastID 
+    });
+  });
+});
+
+// Get player notes for a specific player
+app.get('/api/players/:playerId/notes', (req, res) => {
+  const playerId = parseInt(req.params.playerId);
+  
+  db.all(`
+    SELECT 
+      pn.*,
+      ps.started_at,
+      ps.completed_at,
+      p.name as practice_name
+    FROM player_notes pn
+    JOIN practice_sessions ps ON pn.session_id = ps.id
+    JOIN practices p ON ps.practice_id = p.id
+    WHERE pn.player_id = ?
+    ORDER BY ps.started_at DESC, pn.created_at DESC
+  `, [playerId], (err, notes) => {
+    if (err) {
+      console.error('Error fetching player notes:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    res.json(notes);
+  });
+});
+
+// Get player notes for a specific practice session
+app.get('/api/practice-sessions/:id/player-notes/:playerId', (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  const playerId = parseInt(req.params.playerId);
+  
+  db.all(`
+    SELECT * FROM player_notes 
+    WHERE session_id = ? AND player_id = ?
+    ORDER BY created_at ASC
+  `, [sessionId, playerId], (err, notes) => {
+    if (err) {
+      console.error('Error fetching session player notes:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    res.json(notes);
+  });
+});
+
+// Update session timer state (for pause/resume functionality)
+app.put('/api/practice-sessions/:id/timer-state', (req, res) => {
+  const sessionId = parseInt(req.params.id);
+  
+  // Handle both JSON and sendBeacon (text/plain) content types
+  let data;
+  if (req.is('application/json')) {
+    data = req.body;
+  } else {
+    // Handle sendBeacon data (text/plain)
+    try {
+      data = JSON.parse(req.body);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid JSON data' });
+    }
+  }
+  
+  const { status, timer_state, current_phase_id, phase_elapsed_time, total_elapsed_time } = data;
+  
+  console.log('Updating session timer state:', {
+    sessionId,
+    status,
+    current_phase_id,
+    phase_elapsed_time,
+    total_elapsed_time
+  });
+  
+  db.run(`
+    UPDATE practice_sessions 
+    SET status = ?, timer_state = ?, current_phase_id = ?, 
+        phase_elapsed_time = ?, total_elapsed_time = ?, 
+        last_activity = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `, [status, JSON.stringify(timer_state), current_phase_id, phase_elapsed_time, total_elapsed_time, sessionId], function(err) {
+    if (err) {
+      console.error('Error updating session timer state:', err);
+      return res.status(500).json({ error: 'Failed to update session state' });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Practice session not found' });
+    }
+    
+    console.log('Session timer state updated successfully for session:', sessionId);
+    res.json({ message: 'Session state updated successfully' });
+  });
 });
 
 // Helper functions for practice sessions
@@ -1334,7 +1781,7 @@ app.get('/api/team/stats', (req, res) => {
             return res.status(500).json({ error: 'Failed to get team statistics' });
           }
           
-          let attendanceRate = "95%"; // Default fallback
+          let attendanceRate = "N/A"; // Default when no data available
           if (attendanceResult && attendanceResult.totalAttendanceRecords > 0) {
             const rate = (attendanceResult.attendedCount / attendanceResult.totalAttendanceRecords * 100).toFixed(0);
             attendanceRate = `${rate}%`;

@@ -274,6 +274,14 @@
                     </div>
                 </div>
 
+                <!-- Coach Notes -->
+                <div class="attendance-section">
+                    <h2>Coach Notes</h2>
+                    <div id="coachNotes">
+                        <!-- Coach notes will be populated here -->
+                    </div>
+                </div>
+
                 <!-- Player Details -->
                 <div class="attendance-section">
                     <h2>Player Information</h2>
@@ -344,10 +352,15 @@
                 const attendanceResponse = await fetch(`/api/players/${playerId}/attendance`);
                 const attendanceData = attendanceResponse.ok ? await attendanceResponse.json() : { history: [], stats: {} };
                 
+                // Fetch player notes data
+                const notesResponse = await fetch(`/api/players/${playerId}/notes`);
+                const notesData = notesResponse.ok ? await notesResponse.json() : [];
+                
                 // Display player information
                 displayPlayerInfo(currentPlayer);
                 displayPlayerStats(attendanceData.stats);
                 displayAttendanceHistory(attendanceData.history);
+                displayCoachNotes(notesData);
                 
                 // Show profile content
                 document.getElementById('loading').style.display = 'none';
@@ -409,6 +422,39 @@
                         <div class="attendance-status ${statusClass}">
                             ${statusText}
                         </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Display coach notes
+        function displayCoachNotes(notes) {
+            const container = document.getElementById('coachNotes');
+            
+            if (!notes || notes.length === 0) {
+                container.innerHTML = '<div class="no-data">No coach notes available</div>';
+                return;
+            }
+            
+            container.innerHTML = notes.map(note => {
+                return `
+                    <div class="glass-card" style="margin-bottom: var(--spacing-md);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm);">
+                            <div style="color: var(--accent-orange); font-weight: 600; font-size: var(--font-size-sm);">
+                                ${note.practice_name || 'Practice Session'}
+                            </div>
+                            <div style="color: var(--text-tertiary); font-size: var(--font-size-xs);">
+                                ${formatDate(note.created_at)}
+                            </div>
+                        </div>
+                        <div style="color: var(--text-primary); line-height: 1.6; white-space: pre-wrap;">
+                            ${note.notes}
+                        </div>
+                        ${note.updated_at !== note.created_at ? 
+                            `<div style="color: var(--text-tertiary); font-size: var(--font-size-xs); margin-top: var(--spacing-sm); font-style: italic;">
+                                Updated: ${formatDate(note.updated_at)}
+                            </div>` : ''
+                        }
                     </div>
                 `;
             }).join('');

@@ -372,6 +372,105 @@
             border-color: var(--accent-orange);
         }
 
+        /* Notes Tabs */
+        .notes-tabs {
+            display: flex;
+            margin-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .notes-tab {
+            background: transparent;
+            border: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        .notes-tab:hover {
+            color: var(--text-primary);
+            background: var(--glass-tertiary);
+        }
+
+        .notes-tab.active {
+            color: var(--accent-orange);
+            border-bottom-color: var(--accent-orange);
+            background: var(--glass-tertiary);
+        }
+
+        .notes-tab-content {
+            display: none;
+        }
+
+        .notes-tab-content.active {
+            display: block;
+        }
+
+        .player-notes-header {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .glass-select {
+            width: 100%;
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+        }
+
+        .glass-select:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+
+        .player-notes-info {
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--glass-tertiary);
+            border-left: 4px solid var(--accent-orange);
+        }
+
+        /* Drill Details Modal */
+        #drillDetailsModal {
+            z-index: 1300;
+        }
+
+        .drill-details-content {
+            color: var(--text-primary);
+        }
+
+        .info-item {
+            padding: var(--spacing-sm);
+            background: var(--glass-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .info-item label {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .clickable-drill:hover {
+            background: rgba(255, 107, 53, 0.1);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+
+        /* Enhanced drill item styling */
+        .drill-item {
+            transition: transform 0.2s ease;
+        }
+
+        .drill-item:hover {
+            transform: translateY(-1px);
+        }
+
         /* Video Clip Modal */
         .clip-modal {
             position: fixed;
@@ -580,6 +679,111 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Historical Notes Styles */
+        .historical-notes {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            background: rgba(255, 255, 255, 0.02);
+            padding: var(--spacing-md);
+        }
+
+        .historical-notes-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: var(--border-radius);
+        }
+
+        .historical-note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .historical-note-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .historical-note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .historical-note-type {
+            background: var(--accent-orange);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .historical-note-text {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .note-type-selector {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+
+        .note-type-selector label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .note-type-selector input[type="radio"] {
+            accent-color: var(--accent-orange);
+        }
+
+        .current-session-notes-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .current-note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .current-note-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .current-note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .current-note-text {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .empty-notes-message {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: var(--spacing-md);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -674,13 +878,67 @@
 
                 <!-- Notes section -->
                 <div class="notes-section">
-                    <h2 class="section-title">
-                        📝 Coach Notes
-                    </h2>
-                    <div class="notes-content">
-                        <textarea class="notes-textarea" id="coachNotes" placeholder="Add notes about this phase... player performance, adjustments needed, etc."></textarea>
-                        <div style="margin-top: var(--spacing-md);">
-                            <button class="glass-button" onclick="saveNotes()">💾 Save Notes</button>
+                    <div class="notes-tabs">
+                        <button class="notes-tab active" onclick="switchNotesTab('general')">
+                            📝 Practice Notes
+                        </button>
+                        <button class="notes-tab" onclick="switchNotesTab('player')">
+                            👤 Player Notes
+                        </button>
+                    </div>
+                    
+                    <!-- General practice notes tab -->
+                    <div id="generalNotesTab" class="notes-tab-content active">
+                        <div class="notes-content">
+                            <textarea class="notes-textarea" id="coachNotes" placeholder="Add notes about this phase... player performance, adjustments needed, etc."></textarea>
+                            <div style="margin-top: var(--spacing-md);">
+                                <button class="glass-button" onclick="saveNotes()">💾 Save Practice Notes</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Player notes tab -->
+                    <div id="playerNotesTab" class="notes-tab-content">
+                        <div class="player-notes-header">
+                            <select id="playerSelect" class="glass-select" onchange="onPlayerSelect()">
+                                <option value="">Select a player...</option>
+                            </select>
+                        </div>
+                        <div id="playerNotesContent" class="notes-content" style="display: none;">
+                            <div class="player-notes-info">
+                                <span id="selectedPlayerName" style="color: var(--accent-orange); font-weight: 600;"></span>
+                                <span style="color: var(--text-secondary); margin-left: 8px;" id="selectedPlayerPosition"></span>
+                            </div>
+                            
+                            <!-- Historical Notes Section -->
+                            <div id="historicalNotesSection" class="historical-notes" style="margin-bottom: var(--spacing-md);">
+                                <h4 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-sm);">📋 Past Practice Notes</h4>
+                                <div id="historicalNotesList" class="historical-notes-list">
+                                    <!-- Historical notes will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Current Session Notes -->
+                            <div class="current-session-notes">
+                                <h4 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-sm);">✍️ Add New Note for This Practice</h4>
+                                <div class="note-type-selector" style="margin-bottom: var(--spacing-sm);">
+                                    <label style="color: var(--text-secondary); font-size: 0.85rem; margin-right: var(--spacing-md);">
+                                        <input type="radio" name="noteType" value="practice" checked style="margin-right: 4px;"> 📝 Practice Note
+                                    </label>
+                                    <label style="color: var(--text-secondary); font-size: 0.85rem;">
+                                        <input type="radio" name="noteType" value="player" style="margin-right: 4px;"> 👤 Player-Specific Note
+                                    </label>
+                                </div>
+                                <textarea class="notes-textarea" id="playerNotesTextarea" placeholder="Add specific notes about this player's performance during practice..."></textarea>
+                                <div style="margin-top: var(--spacing-md);">
+                                    <button class="glass-button" onclick="savePlayerNotes()">💾 Add Note</button>
+                                </div>
+                                
+                                <!-- Current Session Notes List -->
+                                <div id="currentSessionNotes" class="current-session-notes-list" style="margin-top: var(--spacing-md);">
+                                    <!-- Current session notes will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -738,6 +996,67 @@
                 </div>
             </div>
         </div>
+
+        <!-- Drill Details Modal -->
+        <div id="drillDetailsModal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2 id="drillModalTitle" style="color: var(--accent-orange); margin: 0;">🏐 Drill Details</h2>
+                    <button class="modal-close" onclick="closeDrillDetailsModal()">✕</button>
+                </div>
+                
+                <div class="drill-details-content">
+                    <div class="drill-info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Category</label>
+                            <div id="drillModalCategory" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Difficulty</label>
+                            <div id="drillModalDifficulty" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Duration</label>
+                            <div id="drillModalDuration" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Players</label>
+                            <div id="drillModalPlayers" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                    </div>
+                    
+                    <div class="drill-description-section" style="margin-bottom: var(--spacing-lg);">
+                        <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; display: block; margin-bottom: var(--spacing-sm);">Description</label>
+                        <div id="drillModalDescription" style="color: var(--text-primary); line-height: 1.6; background: var(--glass-tertiary); padding: var(--spacing-md); border-left: 4px solid var(--accent-orange);">
+                            --
+                        </div>
+                    </div>
+                    
+                    <div class="drill-equipment-section" style="margin-bottom: var(--spacing-lg);">
+                        <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; display: block; margin-bottom: var(--spacing-sm);">Equipment Needed</label>
+                        <div id="drillModalEquipment" style="color: var(--text-primary);">
+                            --
+                        </div>
+                    </div>
+                    
+                    <div class="drill-focus-section">
+                        <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; display: block; margin-bottom: var(--spacing-sm);">Focus Areas</label>
+                        <div id="drillModalFocus" style="color: var(--text-primary);">
+                            --
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: flex-end; margin-top: var(--spacing-lg);">
+                    <button onclick="closeDrillDetailsModal()" class="glass-button secondary">
+                        Close
+                    </button>
+                    <button id="drillVideoBtn" onclick="playDrillFromModal()" class="glass-button primary" style="display: none;">
+                        🎥 Play Demo Video
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -760,9 +1079,11 @@
 
         // Initialize attendance check
         async function initializeAttendance() {
-            // Get practice ID from URL parameter
+            // Get practice ID and session ID from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const practiceId = urlParams.get('practice');
+            const sessionId = urlParams.get('session');
+            const isResume = urlParams.get('resume') === 'true';
             
             if (!practiceId) {
                 glassModal.error('No practice plan specified!', 'Practice Not Found');
@@ -773,6 +1094,11 @@
             }
             
             practiceState.practiceId = practiceId;
+            
+            // If resuming a session, set the session ID
+            if (isResume && sessionId) {
+                practiceState.sessionId = parseInt(sessionId);
+            }
             
             try {
                 // Load practice and players data
@@ -791,15 +1117,23 @@
                 // Update practice state
                 practiceState.practiceName = practice.name;
                 practiceState.practiceObjective = practice.objective;
+                practiceState.players = players; // Add players to practice state
                 practiceState.phases = practice.phases.map(phase => ({
                     name: phase.name,
                     description: phase.objective || 'Phase objective',
                     duration: phase.duration,
                     drills: phase.drills.map(drill => ({
+                        id: drill.id,
                         name: drill.name,
                         category: drill.category,
                         difficulty: drill.difficulty,
-                        description: drill.description
+                        description: drill.description,
+                        equipment: drill.equipment,
+                        focus: drill.focus,
+                        minPlayers: drill.minPlayers,
+                        maxPlayers: drill.maxPlayers,
+                        duration: drill.duration,
+                        hasVideo: false // You can enhance this later
                     }))
                 }));
                 
@@ -811,8 +1145,13 @@
                     notes: ''
                 }));
                 
-                // Show attendance modal
-                displayAttendanceCheck();
+                // If resuming a session, restore session data
+                if (isResume && sessionId) {
+                    await restoreSessionData(sessionId);
+                } else {
+                    // Show attendance modal for new sessions
+                    displayAttendanceCheck();
+                }
                 
             } catch (error) {
                 console.error('Error loading practice data:', error);
@@ -820,6 +1159,69 @@
                 setTimeout(() => {
                     window.location.href = '/practice.html';
                 }, 2000);
+            }
+        }
+
+        // Restore session data when resuming
+        async function restoreSessionData(sessionId) {
+            try {
+                const response = await fetch(`/api/practice-sessions/${sessionId}`);
+                if (!response.ok) {
+                    throw new Error('Session not found');
+                }
+                
+                const session = await response.json();
+                
+                // Restore notes if they exist
+                if (session.notes) {
+                    const notesTextarea = document.getElementById('coachNotes');
+                    if (notesTextarea) {
+                        notesTextarea.value = session.notes;
+                    }
+                }
+                
+                // Restore timer state if it exists
+                if (session.timer_state) {
+                    try {
+                        const timerState = typeof session.timer_state === 'string' 
+                            ? JSON.parse(session.timer_state) 
+                            : session.timer_state;
+                        
+                        if (timerState.currentPhase !== undefined) {
+                            practiceState.currentPhase = timerState.currentPhase;
+                        }
+                        if (timerState.phaseTimeRemaining !== undefined) {
+                            practiceState.phaseTimeRemaining = timerState.phaseTimeRemaining;
+                        }
+                        if (timerState.totalTimeElapsed !== undefined) {
+                            practiceState.overallTimeElapsed = timerState.totalTimeElapsed;
+                        }
+                        if (timerState.pausedAt) {
+                            practiceState.isPaused = true;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing timer state:', e);
+                    }
+                }
+                
+                // Restore attendance data
+                if (session.attendance) {
+                    attendanceData = session.attendance.map(attendance => ({
+                        player_id: attendance.player_id,
+                        attended: attendance.attended,
+                        late_minutes: attendance.late_minutes || 0,
+                        notes: attendance.notes || ''
+                    }));
+                }
+                
+                // Skip attendance modal and go straight to practice
+                startPracticeWithAttendance();
+                
+            } catch (error) {
+                console.error('Error restoring session data:', error);
+                glassModal.error('Error restoring session. Starting fresh.', 'Restore Failed');
+                // Fall back to normal attendance check
+                displayAttendanceCheck();
             }
         }
 
@@ -861,24 +1263,30 @@
 
         async function startPracticeWithAttendance() {
             try {
-                // Start practice session with attendance
-                const response = await fetch('/api/practice-sessions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        practice_id: practiceState.practiceId,
-                        attendance: attendanceData
-                    })
-                });
+                // Only create a new session if we're not resuming an existing one
+                if (!practiceState.sessionId) {
+                    // Start practice session with attendance
+                    const response = await fetch('/api/practice-sessions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            practice_id: practiceState.practiceId,
+                            attendance: attendanceData
+                        })
+                    });
 
-                if (!response.ok) {
-                    throw new Error('Failed to start practice session');
+                    if (!response.ok) {
+                        throw new Error('Failed to start practice session');
+                    }
+
+                    const session = await response.json();
+                    practiceState.sessionId = session.id;
+                } else {
+                    // Resuming existing session - just log for debugging
+                    console.log('Resuming existing session:', practiceState.sessionId);
                 }
-
-                const session = await response.json();
-                practiceState.sessionId = session.id;
 
                 // Hide attendance modal and show practice
                 document.getElementById('attendanceModal').style.display = 'none';
@@ -896,16 +1304,15 @@
         // Initialize practice mode (after attendance)
         function initializePracticeMode() {
             try {
-                // Safety check: ensure we have phases
-                if (!practiceState.phases || practiceState.phases.length === 0) {
-                    console.error('No phases available to initialize practice mode');
-                    glassModal.error('This practice has no phases defined. Please add phases to the practice plan.', 'No Phases Available');
-                    return;
-                }
+                // Handle practices with or without phases
+                console.log('Initializing practice mode with phases:', practiceState.phases?.length || 0);
                 
-                // Set initial phase time
-                if (practiceState.phases.length > 0) {
+                // Set initial phase time if phases exist
+                if (practiceState.phases && practiceState.phases.length > 0) {
                     practiceState.phaseTimeRemaining = (practiceState.phases[0].duration || 0) * 60;
+                } else {
+                    // For practices without phases, set a default duration
+                    practiceState.phaseTimeRemaining = practiceState.estimatedDuration * 60 || 3600; // Default 1 hour
                 }
                 
                 // Update display
@@ -980,7 +1387,12 @@
         }
 
         async function endPractice() {
-            if (confirm('Are you sure you want to end practice?')) {
+            const confirmed = await glassModal.confirm(
+                'Are you sure you want to end this practice session? This action cannot be undone.',
+                'End Practice Session'
+            );
+            
+            if (confirmed) {
                 clearInterval(timerInterval);
                 
                 try {
@@ -1005,25 +1417,38 @@
 
                         if (!response.ok) {
                             console.error('Failed to complete practice session');
+                            glassModal.error('Failed to save practice session. Please try again.', 'Save Failed');
+                            return;
+                        } else {
+                            glassModal.success('Practice session completed successfully! 🏐', 'Practice Complete');
                         }
                     }
                 } catch (error) {
                     console.error('Error completing practice session:', error);
+                    glassModal.error('Error completing practice session. Please try again.', 'Completion Failed');
+                    return;
                 }
                 
-                // Redirect back to practice list
-                window.location.href = '/practice';
+                // Redirect back to practice list after a short delay
+                setTimeout(() => {
+                    window.location.href = '/practice';
+                }, 1500);
             }
         }
 
         // Phase navigation
         function updatePhaseDisplay() {
-            // Safety check: ensure we have phases and current phase exists
+            // Handle practices with or without phases
             if (!practiceState.phases || practiceState.phases.length === 0) {
-                console.error('No phases available in practice');
-                document.getElementById('phaseTitle').textContent = 'No phases available';
-                document.getElementById('phaseDescription').textContent = 'This practice has no phases defined.';
-                document.getElementById('phaseIndicator').textContent = 'No phases';
+                console.log('Practice has no phases - showing free practice mode');
+                document.getElementById('phaseTitle').textContent = 'Free Practice';
+                document.getElementById('phaseDescription').textContent = 'No structured phases - practice freely';
+                document.getElementById('phaseIndicator').textContent = 'Open Session';
+                
+                // Hide phase navigation for free practice
+                const phaseNav = document.querySelector('.phase-navigation');
+                if (phaseNav) phaseNav.style.display = 'none';
+                
                 return;
             }
             
@@ -1061,19 +1486,25 @@
                 return;
             }
             
-            drillsList.innerHTML = phase.drills.map(drill => `
-                <div class="drill-item">
-                    <div class="drill-name">${drill.name}</div>
+            drillsList.innerHTML = phase.drills.map((drill, index) => `
+                <div class="drill-item clickable-drill-card" onclick="showDrillDetails(${practiceState.currentPhase}, ${index})" style="cursor: pointer; position: relative;">
+                    <div class="drill-name">
+                        ${drill.name}
+                        <span style="color: var(--accent-orange); margin-left: 8px;">🔍</span>
+                    </div>
                     <div class="drill-meta">
                         <span class="drill-category">📋 ${drill.category}</span>
                         <span class="drill-difficulty">⭐ ${drill.difficulty}</span>
                     </div>
                     ${drill.description ? `<div class="drill-description">${drill.description}</div>` : ''}
                     ${drill.hasVideo ? 
-                        `<button class="drill-video-btn" onclick="playDrillClip('${drill.name}')">
+                        `<button class="drill-video-btn" onclick="event.stopPropagation(); playDrillClip('${drill.name}')">
                             🎥 Play Clip
                         </button>` : ''
                     }
+                    <div style="position: absolute; top: 8px; right: 8px; color: var(--text-secondary); font-size: 12px;">
+                        Click for details
+                    </div>
                 </div>
             `).join('');
         }
@@ -1223,14 +1654,357 @@
         }
 
         // Notes saving
-        function saveNotes() {
+        async function saveNotes() {
             const notes = document.getElementById('coachNotes').value;
-            const phase = practiceState.phases[practiceState.currentPhase];
-            glassModal.success(`Notes saved for ${phase.name} phase! 📝`, 'Notes Saved');
+            
+            if (!practiceState.sessionId) {
+                glassModal.error('No active session to save notes to', 'Save Failed');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/notes`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: notes })
+                });
+
+                if (response.ok) {
+                    const phase = practiceState.phases[practiceState.currentPhase];
+                    glassModal.success(`Notes saved for ${phase.name} phase! 📝`, 'Notes Saved');
+                } else {
+                    glassModal.error('Failed to save notes. Please try again.', 'Save Failed');
+                }
+            } catch (error) {
+                console.error('Error saving notes:', error);
+                glassModal.error('Error saving notes. Please try again.', 'Save Failed');
+            }
+        }
+
+        // Notes tab management
+        let selectedPlayerId = null;
+        let playerNotes = {};
+
+        function switchNotesTab(tabType) {
+            // Update tab buttons
+            document.querySelectorAll('.notes-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.notes-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Show selected tab
+            if (tabType === 'general') {
+                document.querySelector('.notes-tab[onclick*="general"]').classList.add('active');
+                document.getElementById('generalNotesTab').classList.add('active');
+            } else if (tabType === 'player') {
+                document.querySelector('.notes-tab[onclick*="player"]').classList.add('active');
+                document.getElementById('playerNotesTab').classList.add('active');
+                populatePlayerSelect();
+            }
+        }
+
+        function populatePlayerSelect() {
+            const select = document.getElementById('playerSelect');
+            select.innerHTML = '<option value="">Select a player...</option>';
+            
+            if (practiceState.players && practiceState.players.length > 0) {
+                practiceState.players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player.id;
+                    option.textContent = `${player.firstName} ${player.lastName} (#${player.jerseyNumber})`;
+                    select.appendChild(option);
+                });
+            }
+        }
+
+        async function onPlayerSelect() {
+            const select = document.getElementById('playerSelect');
+            const playerId = select.value;
+            const playerNotesContent = document.getElementById('playerNotesContent');
+            
+            if (!playerId) {
+                playerNotesContent.style.display = 'none';
+                selectedPlayerId = null;
+                return;
+            }
+
+            selectedPlayerId = playerId;
+            const selectedPlayer = practiceState.players.find(p => p.id == playerId);
+            
+            if (selectedPlayer) {
+                document.getElementById('selectedPlayerName').textContent = `${selectedPlayer.firstName} ${selectedPlayer.lastName}`;
+                document.getElementById('selectedPlayerPosition').textContent = `#${selectedPlayer.jerseyNumber} - ${selectedPlayer.position}`;
+                
+                // Clear the textarea for new notes
+                document.getElementById('playerNotesTextarea').value = '';
+                
+                // Load historical notes for this player
+                await loadHistoricalNotes(playerId);
+                
+                // Load current session notes for this player
+                await loadCurrentSessionNotes(playerId);
+                
+                playerNotesContent.style.display = 'block';
+            }
+        }
+
+        async function loadHistoricalNotes(playerId) {
+            try {
+                const response = await fetch(`/api/players/${playerId}/notes`);
+                if (response.ok) {
+                    const notes = await response.json();
+                    displayHistoricalNotes(notes.filter(note => note.session_id != practiceState.sessionId));
+                } else {
+                    console.error('Failed to load historical notes');
+                    displayHistoricalNotes([]);
+                }
+            } catch (error) {
+                console.error('Error loading historical notes:', error);
+                displayHistoricalNotes([]);
+            }
+        }
+
+        async function loadCurrentSessionNotes(playerId) {
+            if (!practiceState.sessionId) {
+                displayCurrentSessionNotes([]);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/player-notes/${playerId}`);
+                if (response.ok) {
+                    const notes = await response.json();
+                    displayCurrentSessionNotes(notes);
+                } else {
+                    console.error('Failed to load current session notes');
+                    displayCurrentSessionNotes([]);
+                }
+            } catch (error) {
+                console.error('Error loading current session notes:', error);
+                displayCurrentSessionNotes([]);
+            }
+        }
+
+        function displayHistoricalNotes(notes) {
+            const container = document.getElementById('historicalNotesList');
+            
+            if (notes.length === 0) {
+                container.innerHTML = '<div class="empty-notes-message">📝 No previous practice notes for this player</div>';
+                return;
+            }
+
+            const notesHtml = notes.map(note => {
+                const date = new Date(note.started_at).toLocaleDateString();
+                const time = new Date(note.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const noteTypeIcon = note.note_type === 'practice' ? '📝' : '👤';
+                const noteTypeLabel = note.note_type === 'practice' ? 'Practice' : 'Player-Specific';
+                
+                return `
+                    <div class="historical-note-item">
+                        <div class="historical-note-header">
+                            <span>${noteTypeIcon} ${note.practice_name} - ${date}</span>
+                            <span class="historical-note-type">${noteTypeLabel}</span>
+                        </div>
+                        <div class="historical-note-text">${note.notes}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = notesHtml;
+        }
+
+        function displayCurrentSessionNotes(notes) {
+            const container = document.getElementById('currentSessionNotes');
+            
+            if (notes.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const notesHtml = notes.map(note => {
+                const time = new Date(note.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const noteTypeIcon = note.note_type === 'practice' ? '📝' : '👤';
+                const noteTypeLabel = note.note_type === 'practice' ? 'Practice' : 'Player-Specific';
+                
+                return `
+                    <div class="current-note-item">
+                        <div class="current-note-header">
+                            <span>${noteTypeIcon} ${time}</span>
+                            <span class="historical-note-type">${noteTypeLabel}</span>
+                        </div>
+                        <div class="current-note-text">${note.notes}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <h5 style="color: var(--text-secondary); font-size: 0.85rem; margin: var(--spacing-sm) 0;">📋 Notes from This Practice</h5>
+                ${notesHtml}
+            `;
+        }
+
+        async function savePlayerNotes() {
+            if (!selectedPlayerId) {
+                glassModal.error('Please select a player first', 'No Player Selected');
+                return;
+            }
+
+            if (!practiceState.sessionId) {
+                glassModal.error('No active session to save notes to', 'Save Failed');
+                return;
+            }
+
+            const notes = document.getElementById('playerNotesTextarea').value.trim();
+            if (!notes) {
+                glassModal.error('Please enter some notes before saving', 'No Notes Entered');
+                return;
+            }
+
+            const noteType = document.querySelector('input[name="noteType"]:checked').value;
+            const selectedPlayer = practiceState.players.find(p => p.id == selectedPlayerId);
+
+            try {
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/player-notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        playerId: selectedPlayerId, 
+                        notes: notes,
+                        noteType: noteType
+                    })
+                });
+
+                if (response.ok) {
+                    // Clear the textarea
+                    document.getElementById('playerNotesTextarea').value = '';
+                    
+                    // Reload current session notes to show the new note
+                    await loadCurrentSessionNotes(selectedPlayerId);
+                    
+                    const noteTypeLabel = noteType === 'practice' ? 'Practice note' : 'Player-specific note';
+                    glassModal.success(`${noteTypeLabel} added for ${selectedPlayer.firstName} ${selectedPlayer.lastName}! 👤`, 'Note Saved');
+                } else {
+                    glassModal.error('Failed to save player notes. Please try again.', 'Save Failed');
+                }
+            } catch (error) {
+                console.error('Error saving player notes:', error);
+                glassModal.error('Error saving player notes. Please try again.', 'Save Failed');
+            }
+        }
+
+        // Drill Details Modal Functions
+        function showDrillDetails(phaseIndex, drillIndex) {
+            const drill = practiceState.phases[phaseIndex].drills[drillIndex];
+            
+            // Populate modal with drill data
+            document.getElementById('drillModalTitle').textContent = `🏐 ${drill.name}`;
+            document.getElementById('drillModalCategory').textContent = drill.category || 'Not specified';
+            document.getElementById('drillModalDifficulty').textContent = drill.difficulty || 'Not specified';
+            document.getElementById('drillModalDuration').textContent = drill.duration ? `${drill.duration} minutes` : 'Not specified';
+            
+            // Players info
+            const playersInfo = [];
+            if (drill.minPlayers) playersInfo.push(`Min: ${drill.minPlayers}`);
+            if (drill.maxPlayers) playersInfo.push(`Max: ${drill.maxPlayers}`);
+            document.getElementById('drillModalPlayers').textContent = playersInfo.length > 0 ? playersInfo.join(', ') : 'Any number';
+            
+            // Description
+            document.getElementById('drillModalDescription').textContent = drill.description || 'No description available';
+            
+            // Equipment
+            const equipmentContainer = document.getElementById('drillModalEquipment');
+            if (drill.equipment && drill.equipment.length > 0) {
+                equipmentContainer.innerHTML = drill.equipment.map(item => 
+                    `<span style="display: inline-block; background: var(--glass-secondary); padding: var(--spacing-xs) var(--spacing-sm); margin: var(--spacing-xs); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">${item}</span>`
+                ).join('');
+            } else {
+                equipmentContainer.textContent = 'No specific equipment needed';
+            }
+            
+            // Focus areas
+            const focusContainer = document.getElementById('drillModalFocus');
+            if (drill.focus && drill.focus.length > 0) {
+                focusContainer.innerHTML = drill.focus.map(area => 
+                    `<span style="display: inline-block; background: var(--accent-orange); color: white; padding: var(--spacing-xs) var(--spacing-sm); margin: var(--spacing-xs); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">${area}</span>`
+                ).join('');
+            } else {
+                focusContainer.textContent = 'No specific focus areas listed';
+            }
+            
+            // Show/hide video button
+            const videoBtn = document.getElementById('drillVideoBtn');
+            if (drill.hasVideo) {
+                videoBtn.style.display = 'inline-block';
+                videoBtn.onclick = () => {
+                    closeDrillDetailsModal();
+                    playDrillClip(drill.name);
+                };
+            } else {
+                videoBtn.style.display = 'none';
+            }
+            
+            // Show the modal
+            document.getElementById('drillDetailsModal').style.display = 'flex';
+        }
+
+        function closeDrillDetailsModal() {
+            document.getElementById('drillDetailsModal').style.display = 'none';
+        }
+
+        function playDrillFromModal() {
+            const drillName = document.getElementById('drillModalTitle').textContent.replace('🏐 ', '');
+            closeDrillDetailsModal();
+            playDrillClip(drillName);
         }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', initializeAttendance);
+
+        // Save session state when user navigates away or refreshes
+        window.addEventListener('beforeunload', async function(event) {
+            if (practiceState.sessionId && practiceState.isActive) {
+                try {
+                    // Calculate current elapsed times
+                    const currentTime = new Date();
+                    const totalElapsed = Math.floor((currentTime - practiceState.startTime) / 1000);
+                    const phaseElapsed = practiceState.phaseStartTime ? 
+                        Math.floor((currentTime - practiceState.phaseStartTime) / 1000) : 0;
+
+                    // Create timer state object
+                    const timerState = {
+                        currentPhase: practiceState.currentPhase,
+                        phaseTimeRemaining: practiceState.phaseTimeRemaining,
+                        totalTimeElapsed: totalElapsed,
+                        phaseTimeElapsed: phaseElapsed,
+                        isRunning: true,
+                        pausedAt: currentTime.toISOString()
+                    };
+
+                    // Send synchronous request to save state (must be sync for beforeunload)
+                    const data = {
+                        status: 'paused',
+                        timer_state: timerState,
+                        current_phase_id: practiceState.phases?.[practiceState.currentPhase]?.id || null,
+                        phase_elapsed_time: phaseElapsed,
+                        total_elapsed_time: totalElapsed
+                    };
+
+                    // Use sendBeacon for better reliability during page unload
+                    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                    navigator.sendBeacon(`/api/practice-sessions/${practiceState.sessionId}/timer-state`, blob);
+                    
+                    console.log('Session state saved on page unload');
+                } catch (error) {
+                    console.error('Error saving session state on unload:', error);
+                }
+            }
+        });
     </script>
     <script src="/js/modal.js"></script>
 
