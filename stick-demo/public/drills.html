@@ -406,9 +406,14 @@
                     </div>
 
                     <div class="flex-center mt-md">
-                        <button class="glass-button primary" onclick="editDrill(${drill.id})" style="width: 100%;">
-                            ✏️ Edit Drill
-                        </button>
+                        <div style="display: flex; gap: var(--spacing-sm); width: 100%;">
+                            <button class="glass-button primary" onclick="editDrill(${drill.id})" style="flex: 1;">
+                                ✏️ Edit
+                            </button>
+                            <button class="glass-button danger" onclick="deleteDrill(${drill.id}, '${drill.name}')" style="flex: 1;">
+                                🗑️ Delete
+                            </button>
+                        </div>
                     </div>
                 `;
                 
@@ -517,6 +522,32 @@
                     `Error ${editId ? 'updating' : 'creating'} drill`,
                     'Operation Failed'
                 );
+            }
+        }
+
+        async function deleteDrill(drillId, drillName) {
+            const confirmed = await showGlassConfirm(
+                `Are you sure you want to delete "${drillName}"? This action cannot be undone and will remove this drill from any practice plans that use it.`,
+                'Delete Drill'
+            );
+            
+            if (confirmed) {
+                fetch(`/api/drills/${drillId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showGlassError(`Error: ${data.error}`);
+                    } else {
+                        showGlassSuccess('Drill deleted successfully');
+                        loadDrillData(); // Reload the drills list
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting drill:', error);
+                    showGlassError('Error deleting drill');
+                });
             }
         }
 

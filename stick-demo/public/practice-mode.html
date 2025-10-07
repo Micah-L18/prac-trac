@@ -896,9 +896,16 @@
         // Initialize practice mode (after attendance)
         function initializePracticeMode() {
             try {
+                // Safety check: ensure we have phases
+                if (!practiceState.phases || practiceState.phases.length === 0) {
+                    console.error('No phases available to initialize practice mode');
+                    glassModal.error('This practice has no phases defined. Please add phases to the practice plan.', 'No Phases Available');
+                    return;
+                }
+                
                 // Set initial phase time
                 if (practiceState.phases.length > 0) {
-                    practiceState.phaseTimeRemaining = practiceState.phases[0].duration * 60;
+                    practiceState.phaseTimeRemaining = (practiceState.phases[0].duration || 0) * 60;
                 }
                 
                 // Update display
@@ -1011,15 +1018,34 @@
 
         // Phase navigation
         function updatePhaseDisplay() {
+            // Safety check: ensure we have phases and current phase exists
+            if (!practiceState.phases || practiceState.phases.length === 0) {
+                console.error('No phases available in practice');
+                document.getElementById('phaseTitle').textContent = 'No phases available';
+                document.getElementById('phaseDescription').textContent = 'This practice has no phases defined.';
+                document.getElementById('phaseIndicator').textContent = 'No phases';
+                return;
+            }
+            
+            if (practiceState.currentPhase >= practiceState.phases.length) {
+                console.error('Current phase index out of bounds:', practiceState.currentPhase, 'of', practiceState.phases.length);
+                practiceState.currentPhase = 0; // Reset to first phase
+            }
+            
             const phase = practiceState.phases[practiceState.currentPhase];
             
-            document.getElementById('phaseTitle').textContent = phase.name;
-            document.getElementById('phaseDescription').textContent = phase.description;
+            if (!phase) {
+                console.error('Phase is undefined at index:', practiceState.currentPhase);
+                return;
+            }
+            
+            document.getElementById('phaseTitle').textContent = phase.name || 'Unnamed Phase';
+            document.getElementById('phaseDescription').textContent = phase.description || 'No description available';
             document.getElementById('phaseIndicator').textContent = 
-                `Phase ${practiceState.currentPhase + 1}: ${phase.name}`;
+                `Phase ${practiceState.currentPhase + 1}: ${phase.name || 'Unnamed Phase'}`;
                 
             // Set timer for current phase
-            practiceState.phaseTimeRemaining = phase.duration * 60;
+            practiceState.phaseTimeRemaining = (phase.duration || 0) * 60;
             updatePhaseTimerDisplay();
             
             // Update drills list

@@ -72,11 +72,14 @@
                 <div class="phases-section" style="margin-bottom: var(--spacing-lg);">
                     <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-secondary); border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
                         <h3 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">Practice Phases</h3>
-                        <button type="button" class="glass-button" onclick="addPhase()">➕ Add Phase</button>
                     </div>
                     
                     <div id="practicePhases">
                         <!-- Phases will be added here dynamically -->
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; margin-top: var(--spacing-md);">
+                        <button type="button" class="glass-button" onclick="addPhase()">➕ Add Phase</button>
                     </div>
                 </div>
 
@@ -149,11 +152,14 @@
                 <div class="phases-section" style="margin-bottom: var(--spacing-lg);">
                     <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-secondary); border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
                         <h3 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">Practice Phases</h3>
-                        <button type="button" class="glass-button" onclick="addEditPhase()">➕ Add Phase</button>
                     </div>
                     
                     <div id="editPracticePhases">
                         <!-- Phases will be loaded here -->
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; margin-top: var(--spacing-md);">
+                        <button type="button" class="glass-button" onclick="addEditPhase()">➕ Add Phase</button>
                     </div>
                 </div>
 
@@ -199,6 +205,9 @@
                             </button>
                             <button class="glass-button primary" onclick="startPractice(${practice.id})" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
                                 ▶️ Start
+                            </button>
+                            <button class="glass-button danger" onclick="deletePractice(${practice.id}, '${practice.name}')" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
+                                🗑️ Delete
                             </button>
                         </div>
                     </div>
@@ -728,6 +737,32 @@
             window.location.href = `practice-mode.html?practice=${practiceId}`;
         }
 
+        async function deletePractice(practiceId, practiceName) {
+            const confirmed = await showGlassConfirm(
+                `Are you sure you want to delete "${practiceName}"? This action cannot be undone and will remove all related practice sessions and attendance records.`,
+                'Delete Practice Plan'
+            );
+            
+            if (confirmed) {
+                fetch(`/api/practices/${practiceId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showGlassError(`Error: ${data.error}`);
+                    } else {
+                        showGlassSuccess('Practice plan deleted successfully');
+                        loadPractices(); // Reload the practice list
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting practice:', error);
+                    showGlassError('Error deleting practice plan');
+                });
+            }
+        }
+
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             loadPractices();
@@ -756,6 +791,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        
+        /* Higher z-index for drill selector when opened on top of other modals */
+        #drillSelectorModal {
+            z-index: 1100;
         }
 
         .modal-content {

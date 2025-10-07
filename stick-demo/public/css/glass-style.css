@@ -146,6 +146,20 @@ body {
   transform: translateY(-1px);
 }
 
+.glass-button.danger {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border-color: #ef4444;
+  color: white;
+  font-weight: 600;
+}
+
+.glass-button.danger:hover {
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
+  border-color: #dc2626;
+  box-shadow: 0 0 25px rgba(220, 38, 38, 0.4);
+  transform: translateY(-1px);
+}
+
 .glass-input {
   background: var(--glass-tertiary);
   backdrop-filter: blur(10px);

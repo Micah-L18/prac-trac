@@ -499,7 +499,10 @@
                                 ✏️ Edit
                             </button>
                             <button class="glass-button" onclick="viewPlayerProfile(${player.id})" style="flex: 1;">
-                                View Profile
+                                👁️ View
+                            </button>
+                            <button class="glass-button danger" onclick="deletePlayer(${player.id}, '${player.firstName} ${player.lastName}')" style="flex: 1;">
+                                🗑️ Delete
                             </button>
                         </div>
                     `;
@@ -531,8 +534,12 @@
                                 ✏️ Edit
                             </button>
                             <button class="glass-button" onclick="viewPlayerProfile(${player.id})" 
+                                    style="padding: 4px 8px; font-size: 12px; margin-right: 4px;">
+                                👁️ View
+                            </button>
+                            <button class="glass-button danger" onclick="deletePlayer(${player.id}, '${player.firstName} ${player.lastName}')" 
                                     style="padding: 4px 8px; font-size: 12px;">
-                                View
+                                🗑️ Delete
                             </button>
                         </td>
                     `;
@@ -602,6 +609,32 @@
         function viewPlayerProfile(playerId) {
             // In a real app, this would navigate to player profile page
             window.location.href = `player-profile.html?player=${playerId}`;
+        }
+
+        async function deletePlayer(playerId, playerName) {
+            const confirmed = await showGlassConfirm(
+                `Are you sure you want to delete ${playerName}? This action cannot be undone and will remove all attendance records for this player.`,
+                'Delete Player'
+            );
+            
+            if (confirmed) {
+                fetch(`/api/players/${playerId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showGlassError(`Error: ${data.error}`);
+                    } else {
+                        showGlassSuccess('Player deleted successfully');
+                        loadPlayerData(); // Reload the player list
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting player:', error);
+                    showGlassError('Error deleting player');
+                });
+            }
         }
 
         function editPlayer(playerId) {

@@ -134,12 +134,21 @@
         async function loadPastSessions() {
             try {
                 const response = await fetch('/api/practice-sessions');
-                pastSessions = await response.json();
+                const data = await response.json();
+                
+                // Check if response is successful and data is an array
+                if (response.ok && Array.isArray(data)) {
+                    pastSessions = data;
+                } else {
+                    console.error('API returned non-array data:', data);
+                    pastSessions = [];
+                }
                 
                 displaySessions();
                 updateStats();
             } catch (error) {
                 console.error('Error loading past sessions:', error);
+                pastSessions = [];
                 document.getElementById('sessionsList').innerHTML = 
                     '<div class="glass-card p-lg text-center">Error loading practice sessions. Please try again.</div>';
             }
@@ -147,6 +156,12 @@
 
         function displaySessions() {
             const sessionsList = document.getElementById('sessionsList');
+            
+            // Safety check to ensure pastSessions is an array
+            if (!Array.isArray(pastSessions)) {
+                console.error('pastSessions is not an array:', pastSessions);
+                pastSessions = [];
+            }
             
             if (pastSessions.length === 0) {
                 sessionsList.innerHTML = '<div class="glass-card p-lg text-center">No practice sessions found. Start your first practice to see it here!</div>';
@@ -179,6 +194,9 @@
                         <div style="display: flex; gap: var(--spacing-sm); margin-left: var(--spacing-lg);">
                             <button class="glass-button" onclick="viewSessionDetails(${session.id})" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
                                 👁️ View Details
+                            </button>
+                            <button class="glass-button danger" onclick="deletePracticeSession(${session.id}, '${session.practice_name}', '${startDate.toLocaleDateString()}')" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
+                                🗑️ Delete
                             </button>
                         </div>
                     </div>
@@ -348,6 +366,32 @@
 
         function closeSessionDetails() {
             document.getElementById('sessionDetailsModal').style.display = 'none';
+        }
+
+        async function deletePracticeSession(sessionId, practiceName, sessionDate) {
+            const confirmed = await showGlassConfirm(
+                `Are you sure you want to delete the practice session "${practiceName}" from ${sessionDate}? This action cannot be undone and will remove all attendance records for this session.`,
+                'Delete Practice Session'
+            );
+            
+            if (confirmed) {
+                fetch(`/api/practice-sessions/${sessionId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showGlassError(`Error: ${data.error}`);
+                    } else {
+                        showGlassSuccess('Practice session deleted successfully');
+                        loadPastSessions(); // Reload the sessions list
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting practice session:', error);
+                    showGlassError('Error deleting practice session');
+                });
+            }
         }
 
         // Initialize page
