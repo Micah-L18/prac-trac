@@ -1,0 +1,41 @@
+/* Import glass style */
+@import url('../public/css/glass-style.css');
+
+/* App-specific overrides and additions */
+.App {
+  min-height: 100vh;
+}
+
+/* Team card hover effect for profile page */
+.team-card:hover {
+  border-color: var(--accent-orange) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Additional utility classes */
+.full-width {
+  width: 100%;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+/* Custom scrollbar for glass theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--glass-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-orange);
+}

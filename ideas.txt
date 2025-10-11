@@ -1,6 +1,5 @@
 have the total count on click swap between total time and time left for the overall practice
 
-
 video live feed? 
 
 just do team stats individual stats is horse shit difficult 
@@ -8,3 +7,6 @@ just do team stats individual stats is horse shit difficult
 custom scoring for drills? 
 quick scoreboard? 
 Cauldron?
+quick scoreboard during practice
+
+practice delay 

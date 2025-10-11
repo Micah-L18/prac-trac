@@ -1,0 +1,7 @@
+/* Import the glass style as the base */
+@import url('../public/css/glass-style.css');
+
+/* Global overrides for React app */
+#root {
+  min-height: 100vh;
+}
