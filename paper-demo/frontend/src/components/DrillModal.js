@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 
 const DrillModal = ({ drill, onClose, onSave }) => {
   const { token } = useAuth();
@@ -151,8 +152,8 @@ const DrillModal = ({ drill, onClose, onSave }) => {
 
     try {
       const url = drill 
-        ? `http://localhost:3001/api/drills/${drill.id}`
-        : 'http://localhost:3001/api/drills';
+        ? getApiUrl(`/api/drills/${drill.id}`)
+        : getApiUrl('/api/drills');
       
       const method = drill ? 'PUT' : 'POST';
 

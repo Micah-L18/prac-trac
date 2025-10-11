@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 import Navbar from './Navbar';
 
 const Profile = () => {
@@ -31,7 +32,7 @@ const Profile = () => {
 
   const loadTeams = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/teams', {
+      const response = await fetch(getApiUrl('/api/teams'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -59,7 +60,7 @@ const Profile = () => {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/profile', {
+      const response = await fetch(getApiUrl('/api/auth/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import DrillDetailsModal from './DrillDetailsModal';
 import CourtDiagramViewer from './CourtDiagramViewer';
 
@@ -122,7 +123,7 @@ const PracticeMode = () => {
       if (practiceId) {
         // If URL parameters exist, don't load active session practice to avoid conflicts
         console.log('PracticeMode - URL params detected, skipping active session practice loading');
-        const response = await fetch('http://localhost:3001/api/practice-sessions/active', {
+        const response = await fetch(`${API_BASE_URL}/api/practice-sessions/active`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -204,7 +205,7 @@ const PracticeMode = () => {
   const fetchActiveSession = async () => {
     try {
       console.log('PracticeMode - Fetching active session...');
-      const response = await fetch('http://localhost:3001/api/practice-sessions/active', {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/active`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -244,7 +245,7 @@ const PracticeMode = () => {
 
   const fetchPractices = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/practices', {
+      const response = await fetch(`${API_BASE_URL}/api/practices`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -263,7 +264,7 @@ const PracticeMode = () => {
   const fetchPracticeById = async (practiceId) => {
     try {
       console.log('PracticeMode - Fetching practice by ID:', practiceId);
-      const response = await fetch(`http://localhost:3001/api/practices/${practiceId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/practices/${practiceId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -285,7 +286,7 @@ const PracticeMode = () => {
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/players', {
+      const response = await fetch(`${API_BASE_URL}/api/players`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -313,7 +314,7 @@ const PracticeMode = () => {
 
   const fetchDrills = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/drills', {
+      const response = await fetch(`${API_BASE_URL}/api/drills`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -331,7 +332,7 @@ const PracticeMode = () => {
 
   const fetchTeams = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/teams', {
+      const response = await fetch(`${API_BASE_URL}/api/teams`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -349,7 +350,7 @@ const PracticeMode = () => {
 
   const fetchActiveTeam = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/teams/active', {
+      const response = await fetch(`${API_BASE_URL}/api/teams/active`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -369,7 +370,7 @@ const PracticeMode = () => {
 
   const setActiveTeam = async (teamId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/teams/${teamId}/select`, {
+      const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/select`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -441,7 +442,7 @@ const PracticeMode = () => {
   const actuallyStartPracticeSession = async (practiceId) => {
     try {
       console.log('Starting practice session for practice ID:', practiceId);
-      const response = await fetch('http://localhost:3001/api/practice-sessions', {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -533,7 +534,7 @@ const PracticeMode = () => {
     if (!activeSession) return;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/practice-sessions/${activeSession.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${activeSession.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -574,7 +575,7 @@ const PracticeMode = () => {
     
     try {
       for (const record of sessionAttendance) {
-        await fetch(`http://localhost:3001/api/practice-sessions/${activeSession.id}/attendance`, {
+        await fetch(`${API_BASE_URL}/api/practice-sessions/${activeSession.id}/attendance`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -647,7 +648,7 @@ const PracticeMode = () => {
       console.log('Completing practice with data:', requestBody);
       console.log('Timer state:', timer);
 
-      const response = await fetch(`http://localhost:3001/api/practice-sessions/${activeSession.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${activeSession.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

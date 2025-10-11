@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 
 const TeamModal = ({ team, onClose, onSave }) => {
   const { token } = useAuth();
@@ -60,8 +61,8 @@ const TeamModal = ({ team, onClose, onSave }) => {
 
     try {
       const url = team 
-        ? `http://localhost:3001/api/teams/${team.id}`
-        : 'http://localhost:3001/api/teams';
+        ? getApiUrl(`/api/teams/${team.id}`)
+        : getApiUrl('/api/teams');
       
       const method = team ? 'PUT' : 'POST';
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import Navbar from './Navbar';
 
 const Dashboard = () => {
@@ -14,7 +15,7 @@ const Dashboard = () => {
 
   const fetchTeams = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/teams', {
+      const response = await fetch(`${API_BASE_URL}/api/teams`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

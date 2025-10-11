@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 import Navbar from './Navbar';
 import TeamModal from './TeamModal';
 import './Teams.css';
@@ -20,7 +21,7 @@ const Teams = () => {
   const fetchTeams = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/teams', {
+      const response = await fetch(getApiUrl('/api/teams'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -57,7 +58,7 @@ const Teams = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/teams/${teamId}`, {
+      const response = await fetch(getApiUrl(`/api/teams/${teamId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import Navbar from './Navbar';
 import PlayerModal from './PlayerModal';
 import './Teams.css';
@@ -36,7 +37,7 @@ const TeamPlayers = () => {
       setLoading(true);
       
       // First, get team details
-      const teamsResponse = await fetch('http://localhost:3001/api/teams', {
+      const teamsResponse = await fetch(`${API_BASE_URL}/api/teams`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -56,7 +57,7 @@ const TeamPlayers = () => {
         setTeam(currentTeam);
         
         // Set this team as active for player operations
-        const selectResponse = await fetch(`http://localhost:3001/api/teams/${teamId}/select`, {
+        const selectResponse = await fetch(`${API_BASE_URL}/api/teams/${teamId}/select`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -66,7 +67,7 @@ const TeamPlayers = () => {
 
         if (selectResponse.ok) {
           // Now fetch players for this active team
-          const playersResponse = await fetch('http://localhost:3001/api/players', {
+          const playersResponse = await fetch(`${API_BASE_URL}/api/players`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -109,7 +110,7 @@ const TeamPlayers = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/players/${playerId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/players/${playerId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

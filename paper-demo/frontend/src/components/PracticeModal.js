@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 
 const PracticeModal = ({ practice, isOpen, onClose, onSubmit }) => {
   const { token } = useAuth();
@@ -58,7 +59,7 @@ const PracticeModal = ({ practice, isOpen, onClose, onSubmit }) => {
 
   const fetchDrills = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/drills', {
+      const response = await fetch(getApiUrl('/api/drills'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

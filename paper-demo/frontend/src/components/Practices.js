@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 import Navbar from './Navbar';
 import PracticeModal from './PracticeModal';
 import PracticePhaseView from './PracticePhaseView';
@@ -34,7 +35,7 @@ const Practices = () => {
   const fetchPractices = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/practices', {
+      const response = await fetch(getApiUrl('/api/practices'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -57,7 +58,7 @@ const Practices = () => {
 
   const fetchDrills = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/drills', {
+      const response = await fetch(getApiUrl('/api/drills'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -115,7 +116,7 @@ const Practices = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/practices/${practice.id}`, {
+      const response = await fetch(getApiUrl(`/api/practices/${practice.id}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -136,8 +137,8 @@ const Practices = () => {
   const handlePracticeSubmit = async (practiceData) => {
     try {
       const url = editingPractice 
-        ? `http://localhost:3001/api/practices/${editingPractice.id}`
-        : 'http://localhost:3001/api/practices';
+        ? getApiUrl(`/api/practices/${editingPractice.id}`)
+        : getApiUrl('/api/practices');
       
       const method = editingPractice ? 'PUT' : 'POST';
 

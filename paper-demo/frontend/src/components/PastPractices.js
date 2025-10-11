@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 import Navbar from './Navbar';
 
 const PastPractices = () => {
@@ -18,7 +19,7 @@ const PastPractices = () => {
   const fetchPracticeSessions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/practice-sessions', {
+      const response = await fetch(getApiUrl('/api/practice-sessions'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -46,7 +47,7 @@ const PastPractices = () => {
       setLoading(true);
       
       // First, get the original practice details
-      const practiceResponse = await fetch(`http://localhost:3001/api/practices/${session.practiceId}`, {
+      const practiceResponse = await fetch(getApiUrl(`/api/practices/${session.practiceId}`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -70,7 +71,7 @@ const PastPractices = () => {
         phases: originalPractice.phases
       };
 
-      const createResponse = await fetch('http://localhost:3001/api/practices', {
+      const createResponse = await fetch(getApiUrl('/api/practices'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

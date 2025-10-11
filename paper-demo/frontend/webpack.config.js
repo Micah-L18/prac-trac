@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
+require('dotenv').config();
 
 module.exports = {
   entry: [
@@ -35,7 +36,13 @@ module.exports = {
       template: './public/index.html',
       inject: true
     }),
-    new webpack.HotModuleReplacementPlugin()
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.DefinePlugin({
+      'process.env': {
+        'REACT_APP_API_BASE_URL': JSON.stringify(process.env.REACT_APP_API_BASE_URL),
+        'REACT_APP_ENVIRONMENT': JSON.stringify(process.env.REACT_APP_ENVIRONMENT)
+      }
+    })
   ],
   resolve: {
     extensions: ['.js', '.jsx']

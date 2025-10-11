@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 
 const PlayerModal = ({ player, teamId, onClose, onSave }) => {
   const { token } = useAuth();
@@ -105,8 +106,8 @@ const PlayerModal = ({ player, teamId, onClose, onSave }) => {
 
     try {
       const url = player 
-        ? `http://localhost:3001/api/players/${player.id}`
-        : 'http://localhost:3001/api/players';
+        ? getApiUrl(`/api/players/${player.id}`)
+        : getApiUrl('/api/players');
       
       const method = player ? 'PUT' : 'POST';
 

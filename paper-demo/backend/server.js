@@ -12,6 +12,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || 'localhost';
 
 // Initialize database
 const dbPath = path.join(__dirname, process.env.DB_PATH || '../database/practrac.db');
@@ -2869,9 +2870,14 @@ process.on('SIGINT', () => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🏐 PracTrac Enhanced Backend running on http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`🏐 PracTrac Enhanced Backend running on http://${HOST}:${PORT}`);
   console.log(`📊 Multi-Coach Volleyball Practice Management with Authentication`);
   console.log(`🗄️  Database: ${dbPath}`);
   console.log(`🔐 JWT Authentication enabled`);
+  
+  if (HOST === '0.0.0.0') {
+    console.log(`📱 Mobile access: Use your computer's IP address instead of localhost`);
+    console.log(`   Example: http://192.168.1.100:${PORT}`);
+  }
 });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiUrl } from '../config/api';
 import Navbar from './Navbar';
 import DrillModal from './DrillModal';
 import DrillDetailsModal from './DrillDetailsModal';
@@ -48,7 +49,7 @@ const Drills = () => {
   const fetchDrills = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/drills', {
+      const response = await fetch(getApiUrl('/api/drills'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -115,7 +116,7 @@ const Drills = () => {
 
   const handleToggleFavorite = async (drill) => {
     try {
-      const url = `http://localhost:3001/api/drills/${drill.id}/favorite`;
+      const url = getApiUrl(`/api/drills/${drill.id}/favorite`);
       const method = drill.isFavorited ? 'DELETE' : 'POST';
       
       const response = await fetch(url, {
@@ -157,7 +158,7 @@ const Drills = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/drills/${drillId}`, {
+      const response = await fetch(getApiUrl(`/api/drills/${drillId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -222,7 +223,7 @@ const Drills = () => {
 
       console.log('Sending update data:', updateData);
 
-      const response = await fetch(`http://localhost:3001/api/drills/${currentDrillForDiagram.id}`, {
+      const response = await fetch(getApiUrl(`/api/drills/${currentDrillForDiagram.id}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
