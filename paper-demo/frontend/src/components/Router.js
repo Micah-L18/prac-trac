@@ -10,7 +10,6 @@ import TeamPlayers from './TeamPlayers';
 import Drills from './Drills';
 import Practices from './Practices';
 import PracticeMode from './PracticeMode';
-import PastPractices from './PastPractices';
 
 const Router = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -54,8 +53,6 @@ const Router = () => {
       return <Drills />;
     case '/practices':
       return <Practices />;
-    case '/past-practices':
-      return <PastPractices />;
     case '/practice-mode':
       return <PracticeMode />;
     case '/profile':

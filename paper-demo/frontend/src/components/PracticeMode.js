@@ -1,1412 +1,1164 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/api';
-import DrillDetailsModal from './DrillDetailsModal';
-import CourtDiagramViewer from './CourtDiagramViewer';
 
 const PracticeMode = () => {
   const { token } = useAuth();
-  const [activeSession, setActiveSession] = useState(null);
-  const [selectedPractice, setSelectedPractice] = useState(null);
-  const [practices, setPractices] = useState([]);
-  const [players, setPlayers] = useState([]);
-  const [drills, setDrills] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState(null);
-  const [showTeamSelection, setShowTeamSelection] = useState(false);
-  const [timer, setTimer] = useState({
-    totalElapsed: 0,
-    phaseElapsed: 0,
-    isRunning: false,
-    currentPhaseIndex: 0
-  });
-  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedDrill, setSelectedDrill] = useState(null);
-  const [showDrillModal, setShowDrillModal] = useState(false);
-  const [showDiagramViewer, setShowDiagramViewer] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-  const [pendingPracticeId, setPendingPracticeId] = useState(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [phaseNotifications, setPhaseNotifications] = useState(new Set());
   const [showAttendanceManager, setShowAttendanceManager] = useState(false);
-  const [sessionAttendance, setSessionAttendance] = useState([]);
-  const timerRef = useRef(null);
+  const [showDrillDetails, setShowDrillDetails] = useState(false);
+  const [showClipModal, setShowClipModal] = useState(false);
+  const [selectedDrill, setSelectedDrill] = useState(null);
+  const timerInterval = useRef(null);
 
-  // Timer effect
+  // Practice state
+  const [practiceState, setPracticeState] = useState({
+    practiceId: null,
+    sessionId: null,
+    practiceName: '',
+    estimatedDuration: 90,
+    phases: [],
+    players: [],
+    currentPhase: 0,
+    phaseTimeRemaining: 0,
+    overallTimeElapsed: 0,
+    isPaused: false,
+    isActive: false,
+    startTime: null,
+    phaseStartTime: null
+  });
+
+  // Attendance data
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [tempAttendanceData, setTempAttendanceData] = useState([]);
+
+  // Notes state
+  const [currentNotesTab, setCurrentNotesTab] = useState('general');
+  const [selectedPlayerId, setSelectedPlayerId] = useState('');
+  const [practiceNotes, setPracticeNotes] = useState('');
+  const [playerNotes, setPlayerNotes] = useState('');
+  const [noteType, setNoteType] = useState('practice');
+  const [historicalNotes, setHistoricalNotes] = useState([]);
+  const [currentSessionNotes, setCurrentSessionNotes] = useState([]);
+
   useEffect(() => {
-    console.log('Timer effect triggered. isRunning:', timer.isRunning);
-    if (timer.isRunning) {
-      console.log('Starting timer interval');
-      timerRef.current = setInterval(() => {
-        setTimer(prev => {
-          const newPhaseElapsed = prev.phaseElapsed + 1;
-          const currentPhase = getCurrentPhase();
-          
-          // Check if phase duration is exceeded
-          if (currentPhase && currentPhase.duration) {
-            const phaseDurationSeconds = currentPhase.duration * 60;
-            const phaseKey = `${prev.currentPhaseIndex}-${phaseDurationSeconds}`;
-            
-            if (newPhaseElapsed >= phaseDurationSeconds && !phaseNotifications.has(phaseKey)) {
-              setPhaseNotifications(prevNotifications => new Set([...prevNotifications, phaseKey]));
-              
-              // Show notification that phase time is up
-              const notification = document.createElement('div');
-              notification.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: var(--accent-orange);
-                color: white;
-                padding: var(--spacing-lg);
-                border-radius: var(--radius-lg);
-                z-index: 10000;
-                font-size: 1.2rem;
-                font-weight: bold;
-                text-align: center;
-                border: 2px solid #fff;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-              `;
-              notification.innerHTML = `
-                <div>⏰ Phase Time Complete!</div>
-                <div style="font-size: 1rem; margin-top: 8px;">"${currentPhase.name}" - ${currentPhase.duration} minutes</div>
-                <div style="font-size: 0.9rem; margin-top: 8px; opacity: 0.9;">Ready to move to next phase?</div>
-              `;
-              document.body.appendChild(notification);
-              
-              setTimeout(() => {
-                if (document.body.contains(notification)) {
-                  document.body.removeChild(notification);
-                }
-              }, 5000);
-            }
-          }
-          
-          return {
-            ...prev,
-            totalElapsed: prev.totalElapsed + 1,
-            phaseElapsed: newPhaseElapsed
-          };
-        });
-      }, 1000);
-    } else {
-      console.log('Clearing timer interval');
-      clearInterval(timerRef.current);
-    }
-
+    initializeAttendance();
     return () => {
-      console.log('Timer effect cleanup');
-      clearInterval(timerRef.current);
-    };
-  }, [timer.isRunning]);
-
-  // Load initial data
-  useEffect(() => {
-    const loadInitialData = async () => {
-      // Load all basic data first
-      await Promise.all([
-        fetchPractices(),
-        fetchPlayers(),
-        fetchDrills(),
-        fetchTeams(),
-        fetchActiveTeam()
-      ]);
-      
-      // Check if there are URL parameters for practice selection
-      const urlParams = new URLSearchParams(window.location.search);
-      const practiceId = urlParams.get('practiceId') || urlParams.get('practice');
-      
-      if (practiceId) {
-        // If URL parameters exist, don't load active session practice to avoid conflicts
-        console.log('PracticeMode - URL params detected, skipping active session practice loading');
-        const response = await fetch(`${API_BASE_URL}/api/practice-sessions/active`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data) {
-            setActiveSession(data.data);
-            // Set timer state but don't load practice (URL params will handle that)
-            const phaseIndex = 0; // Reset to beginning for new practice
-            setTimer(prev => ({
-              ...prev,
-              totalElapsed: 0,
-              phaseElapsed: 0,
-              isRunning: false,
-              currentPhaseIndex: phaseIndex
-            }));
-          }
-        }
-      } else {
-        // No URL parameters, load active session normally
-        await fetchActiveSession();
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
       }
-      
-      setLoading(false);
     };
-
-    loadInitialData();
   }, []);
 
-  // Auto-select practice from URL parameter after practices are loaded
   useEffect(() => {
-    if (practices.length > 0) {
+    // Save session state before page unload
+    const handleBeforeUnload = async (event) => {
+      if (practiceState.sessionId && practiceState.isActive) {
+        try {
+          const currentTime = new Date();
+          const totalElapsed = Math.floor((currentTime - practiceState.startTime) / 1000);
+          const phaseElapsed = practiceState.phaseStartTime ? 
+            Math.floor((currentTime - practiceState.phaseStartTime) / 1000) : 0;
+
+          const timerState = {
+            currentPhase: practiceState.currentPhase,
+            phaseTimeRemaining: practiceState.phaseTimeRemaining,
+            totalTimeElapsed: totalElapsed,
+            phaseTimeElapsed: phaseElapsed,
+            isRunning: true,
+            pausedAt: currentTime.toISOString()
+          };
+
+          const data = {
+            status: 'paused',
+            timer_state: timerState,
+            current_phase_id: practiceState.phases?.[practiceState.currentPhase]?.id || null,
+            phase_elapsed_time: phaseElapsed,
+            total_elapsed_time: totalElapsed
+          };
+
+          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+          navigator.sendBeacon(`${API_BASE_URL}/api/practice-sessions/${practiceState.sessionId}/timer-state`, blob);
+        } catch (error) {
+          console.error('Error saving session state on unload:', error);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [practiceState.sessionId, practiceState.isActive, practiceState.startTime, practiceState.phaseStartTime, practiceState.currentPhase, practiceState.phaseTimeRemaining]);
+
+  const initializeAttendance = async () => {
+    try {
       const urlParams = new URLSearchParams(window.location.search);
-      const practiceId = urlParams.get('practiceId') || urlParams.get('practice');
-      const autoStart = urlParams.get('autoStart') === 'true';
+      const practiceId = urlParams.get('practiceId');
       
-      console.log('PracticeMode - URL params:', { practiceId, autoStart });
-      console.log('PracticeMode - Available practices:', practices.map(p => ({ id: p.id, name: p.name })));
-      console.log('PracticeMode - Current selectedPractice:', selectedPractice?.id, selectedPractice?.name);
-      console.log('PracticeMode - Current activeSession:', activeSession?.id);
-      
-      // Only process URL parameters if there's actually a practiceId in the URL
-      if (practiceId) {
-        const requestedPracticeId = parseInt(practiceId);
-        const practice = practices.find(p => p.id === requestedPracticeId);
-        console.log('PracticeMode - Found practice:', practice);
-        
-        if (practice) {
-          // Check if this is a different practice than currently selected/active
-          const isDifferentPractice = selectedPractice?.id !== requestedPracticeId && 
-                                     activeSession?.practiceId !== requestedPracticeId;
-          
-          if (isDifferentPractice || !selectedPractice) {
-            console.log('PracticeMode - Setting new practice:', practice.id, practice.name);
-            setSelectedPractice(practice);
-            
-            // If autoStart is true, automatically start the practice
-            if (autoStart) {
-              console.log('PracticeMode - Auto-starting practice:', practice.id);
-              startPracticeSession(practice.id);
-            }
-          } else {
-            console.log('PracticeMode - Practice already selected/active');
-          }
-          
-          // Don't clear URL parameters - let them remain for debugging and consistency
-        } else {
-          console.log('PracticeMode - Practice not found for ID:', practiceId);
-        }
-      } else {
-        console.log('PracticeMode - No practiceId in URL parameters');
+      if (!practiceId) {
+        setError('No practice ID provided');
+        setLoading(false);
+        return;
       }
-    }
-  }, [practices]); // Only depend on practices being loaded
 
-  const fetchActiveSession = async () => {
-    try {
-      console.log('PracticeMode - Fetching active session...');
-      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/active`, {
+      // Check for active session first
+      const activeResponse = await fetch(`${API_BASE_URL}/api/practice-sessions/active`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('PracticeMode - Active session response:', data);
-        if (data.data) {
-          setActiveSession(data.data);
-          console.log('PracticeMode - Active session set:', data.data);
-          
-          // Load the practice for this session
-          console.log('PracticeMode - Loading practice for session:', data.data.practiceId);
-          await fetchPracticeById(data.data.practiceId);
-          
-          // Then set timer state
-          const phaseIndex = data.data.currentPhaseId ? 
-            await findPhaseIndex(data.data.practiceId, data.data.currentPhaseId) : 0;
-          
-          setTimer(prev => ({
-            ...prev,
-            totalElapsed: data.data.totalElapsedTime || 0,
-            phaseElapsed: data.data.phaseElapsedTime || 0,
-            isRunning: data.data.status === 'in_progress',
-            currentPhaseIndex: phaseIndex
-          }));
+      if (activeResponse.ok) {
+        const activeData = await activeResponse.json();
+        if (activeData.data) {
+          // Resume existing session
+          await resumeSession(activeData.data);
+          return;
         }
-      } else {
-        console.log('PracticeMode - No active session found');
       }
+
+      // Load practice and team data for new session
+      const practiceResponse = await fetch(`${API_BASE_URL}/api/practices/${practiceId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!practiceResponse.ok) {
+        throw new Error('Failed to load practice data');
+      }
+
+      const practice = await practiceResponse.json();
+
+      // Get active team first
+      const activeTeamResponse = await fetch(`${API_BASE_URL}/api/teams/active`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!activeTeamResponse.ok) {
+        throw new Error('No active team selected');
+      }
+
+      const activeTeam = await activeTeamResponse.json();
+      const teamId = activeTeam.data.id;
+
+      // Now get players for the active team
+      const playersResponse = await fetch(`${API_BASE_URL}/api/teams/${teamId}/players`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!playersResponse.ok) {
+        throw new Error('Failed to load team players');
+      }
+
+      const players = await playersResponse.json();
+
+      setPracticeState(prev => ({
+        ...prev,
+        practiceId: practice.data.id,
+        practiceName: practice.data.name,
+        estimatedDuration: practice.data.estimatedDuration,
+        phases: practice.data.phases || [],
+        players: players.data || []
+      }));
+
+      // Initialize attendance data
+      const initialAttendance = (players.data || []).map(player => ({
+        player_id: player.id,
+        attended: true,
+        late_minutes: 0,
+        notes: ''
+      }));
+
+      setAttendanceData(initialAttendance);
+      setShowAttendanceModal(true);
+
     } catch (error) {
-      console.error('Error fetching active session:', error);
+      console.error('Error initializing practice:', error);
+      setError('Failed to load practice data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchPractices = async () => {
+  const resumeSession = async (session) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/practices`, {
+      // Load practice data
+      const practiceResponse = await fetch(`${API_BASE_URL}/api/practices/${session.practiceId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setPractices(data.data || []);
+      if (!practiceResponse.ok) {
+        throw new Error('Failed to load practice data');
       }
-    } catch (error) {
-      console.error('Error fetching practices:', error);
-    }
-  };
 
-  const fetchPracticeById = async (practiceId) => {
-    try {
-      console.log('PracticeMode - Fetching practice by ID:', practiceId);
-      const response = await fetch(`${API_BASE_URL}/api/practices/${practiceId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const practice = await practiceResponse.json();
+
+      // Restore practice state
+      const newState = {
+        practiceId: session.practiceId,
+        sessionId: session.id,
+        practiceName: session.practiceName,
+        estimatedDuration: practice.data.estimatedDuration,
+        phases: practice.data.phases || [],
+        players: session.players || [],
+        currentPhase: session.currentPhase || 0,
+        phaseTimeRemaining: 0,
+        overallTimeElapsed: session.totalElapsedTime || 0,
+        isPaused: true,
+        isActive: true,
+        startTime: new Date(session.startTime),
+        phaseStartTime: new Date()
+      };
+
+      // Restore timer state
+      if (session.timerState) {
+        try {
+          const timerState = typeof session.timerState === 'string' 
+            ? JSON.parse(session.timerState) 
+            : session.timerState;
+          
+          newState.currentPhase = timerState.currentPhase || 0;
+          newState.phaseTimeRemaining = timerState.phaseTimeRemaining || 0;
+          newState.overallTimeElapsed = timerState.totalTimeElapsed || 0;
+          newState.isPaused = true;
+        } catch (e) {
+          console.error('Error parsing timer state:', e);
         }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('PracticeMode - Practice by ID response:', data);
-        console.log('PracticeMode - Setting selectedPractice to:', data.data);
-        setSelectedPractice(data.data);
-      } else {
-        console.log('PracticeMode - Failed to fetch practice by ID:', response.status);
       }
-    } catch (error) {
-      console.error('Error fetching practice:', error);
-    }
-  };
 
-  const fetchPlayers = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/players`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const playerList = data.data || [];
-        setPlayers(playerList);
-        
-        // Initialize attendance
-        setAttendance(playerList.map(player => ({
-          playerId: player.id,
-          playerName: player.name,
-          attended: true,
-          lateMinutes: 0,
-          notes: ''
+      // Restore attendance data
+      if (session.attendance) {
+        setAttendanceData(session.attendance.map(attendance => ({
+          player_id: attendance.player_id,
+          attended: attendance.attended,
+          late_minutes: attendance.late_minutes || 0,
+          notes: attendance.notes || ''
         })));
       }
+
+      setPracticeState(newState);
+      startPracticeWithAttendance(true);
+
     } catch (error) {
-      console.error('Error fetching players:', error);
-    }
-  };
-
-  const fetchDrills = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/drills`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDrills(data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching drills:', error);
-    }
-  };
-
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/teams`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTeams(data.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-    }
-  };
-
-  const fetchActiveTeam = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/teams/active`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.data?.activeTeam) {
-          setSelectedTeam(data.data.activeTeam);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching active team:', error);
-    }
-  };
-
-  const setActiveTeam = async (teamId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/select`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const team = teams.find(t => t.id === teamId);
-        setSelectedTeam(team);
-        // Reload players for the selected team
-        await fetchPlayers();
-        return true;
-      }
-    } catch (error) {
-      console.error('Error setting active team:', error);
-    }
-    return false;
-  };
-
-  const findPhaseIndex = async (practiceId, phaseId) => {
-    const practice = selectedPractice || await fetchPracticeById(practiceId);
-    if (practice && practice.phases) {
-      return practice.phases.findIndex(phase => phase.id === phaseId);
-    }
-    return 0;
-  };
-
-  const startPracticeSession = async (practiceId) => {
-    // First check if there are teams available
-    if (teams.length === 0) {
-      setError('No teams available. Please create a team first.');
-      return;
-    }
-    
-    // Check if a team is already selected, if not show team selection
-    if (!selectedTeam) {
-      setPendingPracticeId(practiceId);
-      setShowTeamSelection(true);
-      return;
-    }
-    
-    // Team is selected, proceed to attendance modal
-    setPendingPracticeId(practiceId);
-    setShowAttendanceModal(true);
-  };
-
-  const handleTeamSelection = async (teamId) => {
-    const success = await setActiveTeam(teamId);
-    if (success && pendingPracticeId) {
-      setShowTeamSelection(false);
-      // Initialize attendance with the new team's players
-      const playerList = players.map(player => ({
-        playerId: player.id,
-        playerName: `${player.firstName} ${player.lastName}`,
-        attended: true,
-        lateMinutes: 0
-      }));
-      setAttendance(playerList);
+      console.error('Error restoring session data:', error);
+      setError('Error restoring session. Starting fresh.');
       setShowAttendanceModal(true);
     }
   };
 
-  const cancelTeamSelection = () => {
-    setShowTeamSelection(false);
-    setPendingPracticeId(null);
-  };
-
-  const actuallyStartPracticeSession = async (practiceId) => {
-    try {
-      console.log('Starting practice session for practice ID:', practiceId);
-      const response = await fetch(`${API_BASE_URL}/api/practice-sessions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          practiceId,
-          attendance: attendance.filter(a => a.attended)
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Practice session created:', data);
-        setActiveSession(data.data);
-        // Reset timer and start it for new practice session
-        const newTimerState = {
-          totalElapsed: 0,
-          phaseElapsed: 0,
-          isRunning: true,
-          currentPhaseIndex: 0
-        };
-        console.log('Setting timer state to:', newTimerState);
-        setTimer(newTimerState);
-        await fetchPracticeById(practiceId);
-      } else {
-        throw new Error('Failed to start practice session');
-      }
-    } catch (error) {
-      console.error('Error starting practice session:', error);
-      setError('Failed to start practice session');
-    }
-  };
-
-  const confirmAttendanceAndStart = async () => {
-    if (pendingPracticeId) {
-      setShowAttendanceModal(false);
-      await actuallyStartPracticeSession(pendingPracticeId);
-      setPendingPracticeId(null);
-    }
-  };
-
-  const toggleFullscreen = () => {
-    if (!isFullscreen) {
-      // Enter fullscreen
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      } else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen();
-      } else if (document.documentElement.msRequestFullscreen) {
-        document.documentElement.msRequestFullscreen();
-      }
-    } else {
-      // Exit fullscreen
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
-      }
-    }
-  };
-
-  // Listen for fullscreen changes
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.msFullscreenElement ||
-        false
-      );
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('msfullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-
-  // Attendance Manager Functions
-  const openAttendanceManager = async () => {
-    if (!activeSession) return;
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${activeSession.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const session = await response.json();
-        // Transform attendance data to include player details
-        const attendanceWithDetails = session.data.attendance?.map(record => {
-          const player = players.find(p => p.id === record.playerId || p.id === record.player_id);
-          return {
-            ...record,
-            playerId: record.playerId || record.player_id,
-            playerName: player ? `${player.firstName} ${player.lastName}` : 'Unknown Player',
-            jerseyNumber: player?.jerseyNumber || '?',
-            position: player?.position || 'Unknown'
-          };
-        }) || [];
-        
-        setSessionAttendance(attendanceWithDetails);
-        setShowAttendanceManager(true);
-      }
-    } catch (error) {
-      console.error('Error loading attendance:', error);
-      setError('Failed to load attendance data');
-    }
-  };
-
-  const updateSessionAttendance = (playerId, field, value) => {
-    setSessionAttendance(prev => prev.map(record => 
-      record.playerId === playerId ? { ...record, [field]: value } : record
+  const togglePlayerAttendance = (playerId, attended) => {
+    setAttendanceData(prev => prev.map(record => 
+      record.player_id === playerId 
+        ? { ...record, attended }
+        : record
     ));
   };
 
-  const saveAttendanceChanges = async () => {
-    if (!activeSession) return;
-    
+  const startPracticeWithAttendance = async (isResuming = false) => {
     try {
-      for (const record of sessionAttendance) {
-        await fetch(`${API_BASE_URL}/api/practice-sessions/${activeSession.id}/attendance`, {
-          method: 'PUT',
+      // Only create a new session if we're not resuming an existing one
+      if (!practiceState.sessionId && !isResuming) {
+        const response = await fetch(`${API_BASE_URL}/api/practice-sessions`, {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            playerId: record.playerId,
-            attended: record.attended,
-            lateMinutes: record.lateMinutes || 0,
-            notes: record.notes || ''
+            practice_id: practiceState.practiceId,
+            attendance: attendanceData
           })
         });
+
+        if (!response.ok) {
+          throw new Error('Failed to start practice session');
+        }
+
+        const session = await response.json();
+        
+        setPracticeState(prev => ({
+          ...prev,
+          sessionId: session.id,
+          isActive: true,
+          startTime: new Date(),
+          phaseStartTime: new Date()
+        }));
       }
-      
-      setShowAttendanceManager(false);
-      setError('');
-      console.log('Attendance updated successfully');
+
+      setShowAttendanceModal(false);
+      initializePracticeMode();
+
     } catch (error) {
-      console.error('Error saving attendance:', error);
-      setError('Failed to save attendance changes');
+      console.error('Error starting practice:', error);
+      setError('Error starting practice session. Please try again.');
     }
   };
 
-  const toggleTimer = () => {
-    console.log('Toggling timer. Current state:', timer.isRunning);
-    setTimer(prev => {
-      const newState = { ...prev, isRunning: !prev.isRunning };
-      console.log('New timer state:', newState);
-      return newState;
-    });
+  const initializePracticeMode = () => {
+    try {
+      setPracticeState(prev => {
+        const newState = { ...prev };
+        
+        // Handle practices with or without phases
+        if (newState.phases && newState.phases.length > 0) {
+          newState.phaseTimeRemaining = (newState.phases[0].duration || 0) * 60;
+        } else {
+          newState.phaseTimeRemaining = newState.estimatedDuration * 60 || 3600;
+        }
+        
+        newState.isActive = true;
+        return newState;
+      });
+
+      startTimer();
+    } catch (error) {
+      console.error('Error initializing practice mode:', error);
+      setError('Error initializing practice. Please try again.');
+    }
+  };
+
+  const startTimer = () => {
+    if (timerInterval.current) clearInterval(timerInterval.current);
+    
+    timerInterval.current = setInterval(() => {
+      setPracticeState(prev => {
+        if (prev.isPaused) return prev;
+        
+        const newState = { ...prev };
+        
+        // Update phase timer (countdown)
+        if (newState.phaseTimeRemaining > 0) {
+          newState.phaseTimeRemaining--;
+          
+          // Auto-advance to next phase when time is up
+          if (newState.phaseTimeRemaining === 0) {
+            if (newState.currentPhase < newState.phases.length - 1) {
+              newState.currentPhase++;
+              newState.phaseTimeRemaining = (newState.phases[newState.currentPhase].duration || 0) * 60;
+              newState.phaseStartTime = new Date();
+            } else {
+              // Practice is complete
+              endPractice();
+            }
+          }
+        }
+        
+        // Update overall timer (count up)
+        newState.overallTimeElapsed++;
+        
+        return newState;
+      });
+    }, 1000);
+  };
+
+  const togglePause = () => {
+    setPracticeState(prev => ({ ...prev, isPaused: !prev.isPaused }));
+  };
+
+  const previousPhase = () => {
+    if (practiceState.currentPhase > 0) {
+      setPracticeState(prev => ({
+        ...prev,
+        currentPhase: prev.currentPhase - 1,
+        phaseTimeRemaining: (prev.phases[prev.currentPhase - 1].duration || 0) * 60,
+        phaseStartTime: new Date()
+      }));
+    }
   };
 
   const nextPhase = () => {
-    if (selectedPractice && timer.currentPhaseIndex < selectedPractice.phases.length - 1) {
-      setTimer(prev => ({
+    if (practiceState.currentPhase < practiceState.phases.length - 1) {
+      setPracticeState(prev => ({
         ...prev,
-        currentPhaseIndex: prev.currentPhaseIndex + 1,
-        phaseElapsed: 0
+        currentPhase: prev.currentPhase + 1,
+        phaseTimeRemaining: (prev.phases[prev.currentPhase + 1].duration || 0) * 60,
+        phaseStartTime: new Date()
       }));
     }
   };
 
-  const prevPhase = () => {
-    if (timer.currentPhaseIndex > 0) {
-      setTimer(prev => ({
-        ...prev,
-        currentPhaseIndex: prev.currentPhaseIndex - 1,
-        phaseElapsed: 0
-      }));
-    }
-  };
-
-  const [isCompletingPractice, setIsCompletingPractice] = useState(false);
-
-  const completePractice = async () => {
-    if (!activeSession || isCompletingPractice) return;
-
-    try {
-      setIsCompletingPractice(true);
-      const totalElapsed = timer.totalElapsed || 0;
-      const actualDuration = Math.max(0, Math.floor(totalElapsed / 60)); // Ensure it's a positive integer
-      const practiceNotes = notes || ''; // Ensure it's a string, not null
+  const endPractice = async () => {
+    const confirmed = window.confirm('Are you sure you want to end this practice session? This action cannot be undone.');
+    
+    if (confirmed) {
+      clearInterval(timerInterval.current);
       
-      const requestBody = {
-        status: 'completed',
-        actualDuration: actualDuration,
-        notes: practiceNotes
-      };
-
-      console.log('Completing practice with data:', requestBody);
-      console.log('Timer state:', timer);
-
-      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${activeSession.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        setActiveSession(null);
-        setSelectedPractice(null);
-        setTimer({ totalElapsed: 0, phaseElapsed: 0, isRunning: false, currentPhaseIndex: 0 });
-        setNotes('');
+      try {
+        const actualDurationMinutes = Math.round(practiceState.overallTimeElapsed / 60);
         
-        // Navigate to past practices page
-        window.location.href = '/past-practices';
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to complete practice:', response.status, errorData);
-        setError(`Failed to complete practice: ${errorData.error || 'Unknown error'}`);
+        if (practiceState.sessionId) {
+          const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${practiceState.sessionId}/complete`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              actual_duration: actualDurationMinutes,
+              notes: practiceNotes
+            })
+          });
+
+          if (!response.ok) {
+            console.error('Failed to complete practice session');
+            setError('Failed to save practice session. Please try again.');
+            return;
+          }
+        }
+        
+        // Redirect back to practice list
+        setTimeout(() => {
+          window.location.href = '/practices';
+        }, 1500);
+        
+      } catch (error) {
+        console.error('Error completing practice session:', error);
+        setError('Error completing practice session. Please try again.');
       }
-    } catch (error) {
-      console.error('Error completing practice:', error);
-      setError('Failed to complete practice');
-    } finally {
-      setIsCompletingPractice(false);
     }
   };
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
+    const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getCurrentPhase = () => {
-    if (!selectedPractice || !selectedPractice.phases || timer.currentPhaseIndex >= selectedPractice.phases.length) {
-      return null;
+  const formatOverallTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const saveNotes = async () => {
+    if (!practiceState.sessionId) {
+      setError('No active session to save notes to');
+      return;
     }
-    return selectedPractice.phases[timer.currentPhaseIndex];
-  };
 
-  const updateAttendance = (playerId, field, value) => {
-    setAttendance(prev => prev.map(a => 
-      a.playerId === playerId ? { ...a, [field]: value } : a
-    ));
-  };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${practiceState.sessionId}/notes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notes: practiceNotes })
+      });
 
-  const openDrillModal = (drillId) => {
-    console.log('Opening drill modal for drillId:', drillId);
-    const drill = drills.find(d => d.id === drillId);
-    console.log('Found drill:', drill);
-    console.log('Available drills:', drills.map(d => ({ id: d.id, name: d.name })));
-    if (drill) {
-      console.log('Setting selectedDrill to:', drill);
-      setSelectedDrill(drill);
-      console.log('Setting showDrillModal to true');
-      setShowDrillModal(true);
-      console.log('Drill modal should be open now');
-      
-      // Add a timeout to check the state after setting
-      setTimeout(() => {
-        console.log('State check after 100ms:', {
-          showDrillModal,
-          selectedDrill: selectedDrill?.name
-        });
-      }, 100);
-    } else {
-      console.log('Drill not found for ID:', drillId);
+      if (response.ok) {
+        alert('Practice notes saved successfully!');
+      } else {
+        setError('Failed to save practice notes');
+      }
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      setError('Error saving notes');
     }
   };
 
-  const closeDrillModal = () => {
-    setSelectedDrill(null);
-    setShowDrillModal(false);
+  const savePlayerNotes = async () => {
+    if (!selectedPlayerId) {
+      setError('Please select a player first');
+      return;
+    }
+
+    if (!practiceState.sessionId) {
+      setError('No active session to save notes to');
+      return;
+    }
+
+    if (!playerNotes.trim()) {
+      setError('Please enter some notes before saving');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${practiceState.sessionId}/player-notes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          playerId: selectedPlayerId, 
+          notes: playerNotes,
+          noteType: noteType
+        })
+      });
+
+      if (response.ok) {
+        setPlayerNotes('');
+        loadCurrentSessionNotes(selectedPlayerId);
+        alert('Player note saved successfully!');
+      } else {
+        setError('Failed to save player notes');
+      }
+    } catch (error) {
+      console.error('Error saving player notes:', error);
+      setError('Error saving player notes');
+    }
   };
 
-  const openDiagramViewer = (drill) => {
-    console.log('Opening diagram viewer for drill:', drill?.name);
-    console.log('Drill has diagram:', drill?.courtDiagram ? 'YES' : 'NO');
+  const loadCurrentSessionNotes = async (playerId) => {
+    if (!practiceState.sessionId) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/${practiceState.sessionId}/player-notes/${playerId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentSessionNotes(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading current session notes:', error);
+    }
+  };
+
+  const onPlayerSelect = async (playerId) => {
+    setSelectedPlayerId(playerId);
+    if (playerId) {
+      await loadCurrentSessionNotes(playerId);
+      // Could also load historical notes here
+    }
+  };
+
+  const showDrillDetailsModal = (drill) => {
     setSelectedDrill(drill);
-    setShowDiagramViewer(true);
-    console.log('Diagram viewer should be open now');
+    setShowDrillDetails(true);
   };
 
-  const closeDiagramViewer = () => {
-    console.log('Closing diagram viewer');
-    setShowDiagramViewer(false);
+  const updateAttendanceManager = () => {
+    setTempAttendanceData([...attendanceData]);
+    setShowAttendanceManager(true);
+  };
+
+  const saveAttendanceChanges = async () => {
+    setAttendanceData([...tempAttendanceData]);
+    setShowAttendanceManager(false);
+    
+    // Save to backend if session is active
+    if (practiceState.sessionId) {
+      try {
+        await fetch(`${API_BASE_URL}/api/practice-sessions/${practiceState.sessionId}/attendance`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ attendance: tempAttendanceData })
+        });
+      } catch (error) {
+        console.error('Error saving attendance changes:', error);
+      }
+    }
   };
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 50%, #0f0f0f 100%)',
-        color: 'var(--text-primary)'
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh', 
+        background: '#000000',
+        color: 'white'
       }}>
-        <div className="loading">
-          <div className="spinner"></div>
-          Loading Practice Mode...
-        </div>
+        <p>Loading practice...</p>
       </div>
     );
   }
 
-  // No active session - show practice selection
-  if (!activeSession) {
+  if (error) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 50%, #0f0f0f 100%)',
-        padding: 'var(--spacing-xl)',
-        position: 'relative'
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh', 
+        background: '#000000',
+        color: 'white',
+        padding: '2rem'
       }}>
-        {/* Background overlay with glass effect */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'radial-gradient(circle at 20% 80%, rgba(255, 107, 53, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(53, 162, 235, 0.1) 0%, transparent 50%)',
-          pointerEvents: 'none'
-        }} />
-        
-        <div style={{
-          maxWidth: '1000px',
-          margin: '0 auto',
-          position: 'relative',
-          zIndex: 1
-        }}>
-          {/* Header Section */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 'var(--radius-xl)',
-            padding: 'var(--spacing-xl)',
-            textAlign: 'center',
-            marginBottom: 'var(--spacing-xl)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-          }}>
-            <h1 style={{ 
-              fontSize: '2.5rem',
-              fontWeight: '700',
-              background: 'linear-gradient(135deg, var(--accent-orange) 0%, #ff8a65 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: 'var(--spacing-md)'
-            }}>
-              🏐 Practice Mode
-            </h1>
-            <p style={{ 
-              color: 'var(--text-secondary)',
-              fontSize: '1.1rem',
-              margin: 0
-            }}>
-              Select a practice plan and team to begin your session
-            </p>
-          </div>
-
-          {error && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--spacing-md)',
-              marginBottom: 'var(--spacing-lg)',
-              color: '#fca5a5'
-            }}>
-              {error}
-            </div>
-          )}
-
-          {/* Practice Selection Section */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 'var(--radius-xl)',
-            padding: 'var(--spacing-xl)',
-            marginBottom: 'var(--spacing-xl)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-          }}>
-            <h3 style={{ 
-              color: 'var(--accent-orange)',
-              fontSize: '1.5rem',
-              marginBottom: 'var(--spacing-lg)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-sm)'
-            }}>
-              📋 Select Practice Plan
-            </h3>
-            
-            <div style={{ 
-              display: 'grid', 
-              gap: 'var(--spacing-lg)',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))'
-            }}>
-              {practices.map(practice => (
-                <div
-                  key={practice.id}
-                  style={{
-                    background: selectedPractice?.id === practice.id 
-                      ? 'rgba(255, 107, 53, 0.1)' 
-                      : 'rgba(255, 255, 255, 0.03)',
-                    backdropFilter: 'blur(15px)',
-                    border: selectedPractice?.id === practice.id 
-                      ? '2px solid var(--accent-orange)' 
-                      : '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: 'var(--spacing-lg)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    transform: selectedPractice?.id === practice.id ? 'translateY(-2px)' : 'translateY(0)',
-                    boxShadow: selectedPractice?.id === practice.id 
-                      ? '0 12px 40px rgba(255, 107, 53, 0.2)' 
-                      : '0 4px 20px rgba(0, 0, 0, 0.1)'
-                  }}
-                  onClick={() => setSelectedPractice(practice)}
-                  onMouseEnter={(e) => {
-                    if (selectedPractice?.id !== practice.id) {
-                      e.target.style.transform = 'translateY(-1px)';
-                      e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (selectedPractice?.id !== practice.id) {
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.background = 'rgba(255, 255, 255, 0.03)';
-                    }
-                  }}
-                >
-                  <h4 style={{ 
-                    color: 'var(--text-primary)',
-                    fontSize: '1.3rem',
-                    fontWeight: '600',
-                    marginBottom: 'var(--spacing-md)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)'
-                  }}>
-                    {selectedPractice?.id === practice.id && '✓'} {practice.name}
-                  </h4>
-                  
-                  <div style={{ 
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: 'var(--spacing-sm)',
-                    marginBottom: 'var(--spacing-md)'
-                  }}>
-                    <div style={{ 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.9rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-xs)'
-                    }}>
-                      📅 {new Date(practice.date).toLocaleDateString()}
-                    </div>
-                    <div style={{ 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.9rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-xs)'
-                    }}>
-                      ⏱️ {practice.duration} minutes
-                    </div>
-                    <div style={{ 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.9rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-xs)'
-                    }}>
-                      🎯 {practice.phases?.length || 0} phases
-                    </div>
-                    <div style={{ 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.9rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-xs)'
-                    }}>
-                      📈 {practice.focusAreas?.join(', ') || 'General'}
-                    </div>
-                  </div>
-                  
-                  {practice.objective && (
-                    <p style={{ 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.9rem',
-                      fontStyle: 'italic',
-                      margin: 0,
-                      lineHeight: 1.4
-                    }}>
-                      "{practice.objective}"
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Start Practice Button */}
-          {selectedPractice && (
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: 'var(--radius-xl)',
-              padding: 'var(--spacing-xl)',
-              textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-            }}>
-              <button
-                onClick={() => startPracticeSession(selectedPractice.id)}
-                style={{
-                  background: 'linear-gradient(135deg, var(--accent-orange) 0%, #ff8a65 100%)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-lg)',
-                  color: 'white',
-                  fontSize: '1.3rem',
-                  fontWeight: '700',
-                  padding: 'var(--spacing-lg) var(--spacing-xl)',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 8px 25px rgba(255, 107, 53, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-sm)',
-                  margin: '0 auto'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 12px 35px rgba(255, 107, 53, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 8px 25px rgba(255, 107, 53, 0.3)';
-                }}
-              >
-                🏐 Start Practice Session
-              </button>
-            </div>
-          )}
-        </div>
+        <p style={{ color: '#e74c3c', fontSize: '1.2rem', marginBottom: '1rem' }}>{error}</p>
+        <button 
+          onClick={() => window.location.href = '/practices'}
+          style={{
+            background: 'var(--glass-primary)',
+            border: '1px solid var(--glass-border)',
+            color: 'white',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          ← Back to Practices
+        </button>
       </div>
     );
   }
 
-  // Active session - show practice mode interface
-  const currentPhase = getCurrentPhase();
+  const currentPhase = practiceState.phases[practiceState.currentPhase];
 
   return (
     <div style={{
-      height: isFullscreen ? '100vh' : '100vh',
-      width: isFullscreen ? '100vw' : '100vw',
-      background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 50%, #0f0f0f 100%)',
+      margin: 0,
+      padding: 0,
+      overflow: 'hidden',
+      background: '#000000',
+      minHeight: '100vh',
+      height: '100vh',
+      width: '100vw',
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden',
-      position: isFullscreen ? 'fixed' : 'relative',
-      top: isFullscreen ? 0 : 'auto',
-      left: isFullscreen ? 0 : 'auto',
-      zIndex: isFullscreen ? 9999 : 'auto'
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0
     }}>
-      {/* Top navigation bar with phase info */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 'var(--spacing-md)',
-        background: 'rgba(0, 0, 0, 0.8)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid var(--glass-border)',
-        zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-          <button
-            className="glass-button secondary"
-            onClick={prevPhase}
-            disabled={timer.currentPhaseIndex === 0}
-            style={{ padding: '0.5rem' }}
-          >
-            ◀
-          </button>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-              {currentPhase ? currentPhase.name : 'Practice Complete'}
-            </div>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              Phase {timer.currentPhaseIndex + 1} of {selectedPractice?.phases?.length || 0}
-            </div>
-          </div>
-          <button
-            className="glass-button secondary"
-            onClick={nextPhase}
-            disabled={!selectedPractice || timer.currentPhaseIndex >= selectedPractice.phases.length - 1}
-            style={{ padding: '0.5rem' }}
-          >
-            ▶
-          </button>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
-            {formatTime(timer.totalElapsed)}
-          </div>
-          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Phase: {formatTime(timer.phaseElapsed)}
-            {currentPhase?.duration && (
-              <span style={{
-                color: timer.phaseElapsed >= (currentPhase.duration * 60) ? 'var(--accent-orange)' : 'var(--text-secondary)',
-                marginLeft: '8px'
-              }}>
-                / {formatTime(currentPhase.duration * 60)}
-                {timer.phaseElapsed >= (currentPhase.duration * 60) && ' ⏰'}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-          <button
-            className={`glass-button ${timer.isRunning ? 'danger' : 'primary'}`}
-            onClick={toggleTimer}
-          >
-            {timer.isRunning ? '⏸️ Pause' : '▶️ Resume'}
-          </button>
-          <button
-            className="glass-button secondary"
-            onClick={openAttendanceManager}
-            title="Manage Attendance"
-          >
-            👥 Attendance
-          </button>
-          <button
-            className="glass-button secondary"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-          >
-            {isFullscreen ? '🗗' : '⛶'}
-          </button>
-          <button
-            className="glass-button secondary"
-            onClick={completePractice}
-            disabled={isCompletingPractice}
-          >
-            {isCompletingPractice ? '⏳ Completing...' : '✅ Complete'}
-          </button>
-        </div>
-      </div>
-
-      {/* Main content area */}
-      <div style={{
-        flex: 1,
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 'var(--spacing-lg)',
-        padding: 'var(--spacing-lg)',
-        overflow: 'auto'
-      }}>
-        {/* Left panel - Current phase details */}
-        <div className="glass-card" style={{ height: 'fit-content' }}>
-          <h2>Current Phase</h2>
-          {currentPhase ? (
-            <>
-              <div style={{ marginBottom: 'var(--spacing-md)' }}>
-                <h3>{currentPhase.name}</h3>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-sm)' }}>
-                  <span>Duration: {currentPhase.duration} minutes</span>
-                  <span>Type: {currentPhase.type}</span>
-                </div>
-                {currentPhase.objective && (
-                  <p style={{ color: 'var(--text-secondary)' }}>{currentPhase.objective}</p>
-                )}
-              </div>
-
-              {currentPhase.drills && currentPhase.drills.length > 0 && (
-                <div>
-                  <h4>Drills for this Phase</h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
-                    {[...new Set(currentPhase.drills)].map(drillId => {
-                      const drill = drills.find(d => d.id === drillId);
-                      console.log('Rendering drill:', drillId, drill?.name);
-                      return (
-                        <span
-                          key={drillId}
-                          onClick={() => {
-                            console.log('Drill clicked:', drillId);
-                            openDrillModal(drillId);
-                          }}
-                          style={{
-                            background: 'var(--accent-blue)',
-                            color: 'white',
-                            padding: '6px 12px',
-                            borderRadius: '12px',
-                            fontSize: '0.9rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            border: '1px solid transparent'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.background = 'var(--accent-blue-hover)';
-                            e.target.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.background = 'var(--accent-blue)';
-                            e.target.style.transform = 'scale(1)';
-                          }}
-                        >
-                          {drill ? drill.name : `Drill ${drillId}`}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-              Practice complete! All phases finished.
-            </p>
-          )}
-        </div>
-
-        {/* Right panel - Notes and controls */}
-        <div className="glass-card" style={{ height: 'fit-content' }}>
-          <h2>Practice Notes</h2>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="glass-input"
-            placeholder="Add notes about this practice session..."
-            rows={10}
-            style={{ width: '100%', marginBottom: 'var(--spacing-md)' }}
-          />
-
-          <div>
-            <h3>Practice Overview</h3>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              <div>Practice: {selectedPractice?.name}</div>
-              <div>Total Phases: {selectedPractice?.phases?.length || 0}</div>
-              <div>Expected Duration: {selectedPractice?.duration} minutes</div>
-              <div>Actual Duration: {Math.floor(timer.totalElapsed / 60)} minutes</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Drill Details Modal */}
-      {showDrillModal && selectedDrill && (
-        <DrillDetailsModal
-          drill={selectedDrill}
-          isOpen={showDrillModal}
-          onClose={closeDrillModal}
-          practiceMode={true}
-          onDiagramView={openDiagramViewer}
-        />
-      )}
-
-      {/* Court Diagram Viewer Modal */}
-      {(() => {
-        console.log('Diagram viewer render check:', {
-          showDiagramViewer,
-          selectedDrill: selectedDrill?.name,
-          hasDiagram: !!selectedDrill?.courtDiagram
-        });
-        return showDiagramViewer && selectedDrill ? (
-          <CourtDiagramViewer
-            drill={selectedDrill}
-            isOpen={showDiagramViewer}
-            onClose={closeDiagramViewer}
-            positionTop={true}
-          />
-        ) : null;
-      })()}
-
       {/* Attendance Modal */}
       {showAttendanceModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowAttendanceModal(false);
-              setPendingPracticeId(null);
-            }
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--glass-bg)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--spacing-lg)',
-              width: '90%',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: 'var(--spacing-lg)'
-            }}>
-              <h2 style={{ 
-                color: 'var(--accent-orange)', 
-                margin: 0,
-                fontSize: '1.5rem'
-              }}>
-                Take Attendance
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '80vh', overflow: 'auto' }}>
+            <div className="modal-header" style={{ textAlign: 'center' }}>
+              <h2 style={{ margin: 0, color: 'var(--accent-orange)', fontSize: '1.5rem' }}>
+                🏐 {practiceState.practiceName}
               </h2>
-              <button
-                onClick={() => {
-                  setShowAttendanceModal(false);
-                  setPendingPracticeId(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-              <p style={{ 
-                color: 'var(--text-secondary)', 
-                margin: '0 0 var(--spacing-md) 0' 
-              }}>
-                Mark which players are present for today's practice:
+              <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>
+                Mark attendance before starting practice
               </p>
-              
-              <div style={{ 
-                maxHeight: '400px', 
-                overflow: 'auto',
-                border: '1px solid var(--glass-border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: 'var(--spacing-md)'
-              }}>
-                {attendance.map(playerAttendance => (
-                  <div key={playerAttendance.playerId} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 'var(--spacing-sm)',
-                    marginBottom: 'var(--spacing-sm)',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--glass-border)'
+            </div>
+            
+            <div style={{ maxHeight: '400px', overflow: 'auto', marginBottom: '2rem' }}>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                {practiceState.players.map(player => (
+                  <div key={player.id} className="glass-card" style={{ 
+                    padding: '1rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between' 
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={playerAttendance.attended}
-                        onChange={(e) => updateAttendance(playerAttendance.playerId, 'attended', e.target.checked)}
-                        style={{ marginRight: 'var(--spacing-sm)' }}
-                      />
-                      <span style={{ 
-                        color: 'var(--text-primary)',
-                        fontSize: '1rem',
-                        fontWeight: playerAttendance.attended ? '600' : '400'
-                      }}>
-                        {playerAttendance.playerName}
-                      </span>
-                    </div>
-                    {playerAttendance.attended && (
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <label style={{ 
-                          color: 'var(--text-secondary)', 
-                          marginRight: 'var(--spacing-xs)',
-                          fontSize: '0.9rem'
-                        }}>
-                          Late (min):
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={playerAttendance.lateMinutes}
-                          onChange={(e) => updateAttendance(playerAttendance.playerId, 'lateMinutes', parseInt(e.target.value) || 0)}
-                          style={{
-                            width: '60px',
-                            padding: 'var(--spacing-xs)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: 'var(--radius-sm)',
-                            background: 'var(--glass-bg)',
-                            color: 'var(--text-primary)'
-                          }}
-                        />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: '600' }}>#{player.jerseyNumber}</div>
+                      <div>
+                        <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                          {player.firstName} {player.lastName}
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                          {player.position}
+                        </div>
                       </div>
-                    )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <label style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        cursor: 'pointer', 
+                        color: 'var(--text-primary)' 
+                      }}>
+                        <input 
+                          type="checkbox" 
+                          checked={attendanceData.find(a => a.player_id === player.id)?.attended || false}
+                          onChange={(e) => togglePlayerAttendance(player.id, e.target.checked)}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        Present
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              gap: 'var(--spacing-md)'
-            }}>
-              <button
-                onClick={() => {
-                  setShowAttendanceModal(false);
-                  setPendingPracticeId(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: 'var(--spacing-md)',
-                  background: 'transparent',
-                  border: '1px solid var(--glass-border)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer'
-                }}
+            <div className="modal-actions">
+              <button 
+                type="button" 
+                className="glass-button" 
+                onClick={() => window.location.href = '/practices'}
+                style={{ padding: '0.75rem 1.5rem' }}
               >
-                Cancel
+                ← Back to Practices
               </button>
-              <button
-                onClick={() => confirmAttendanceAndStart()}
-                style={{
-                  flex: 2,
-                  padding: 'var(--spacing-md)',
-                  background: 'var(--accent-orange)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
+              <button 
+                type="button" 
+                className="glass-button primary" 
+                onClick={() => startPracticeWithAttendance()}
+                style={{ padding: '0.75rem 1.5rem' }}
               >
-                Start Practice ({attendance.filter(a => a.attended).length} present)
+                🏐 Start Practice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Practice Mode Container */}
+      {!showAttendanceModal && (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', position: 'relative', overflow: 'hidden' }}>
+          {/* Top phase navigation with timer */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            padding: '1rem',
+            background: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid var(--glass-border)',
+            zIndex: 100
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifySelf: 'start' }}>
+              <div style={{
+                background: 'var(--glass-primary)',
+                border: '1px solid var(--accent-orange)',
+                borderRadius: '0.5rem',
+                padding: '0.5rem 1rem',
+                color: 'var(--accent-orange)',
+                fontWeight: '600',
+                fontSize: '1.1rem'
+              }}>
+                {currentPhase ? `Phase ${practiceState.currentPhase + 1}: ${currentPhase.name}` : 'Open Session'}
+              </div>
+              <div style={{
+                background: 'var(--glass-primary)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '0.75rem',
+                padding: '0.5rem 1rem',
+                fontSize: '1.25rem',
+                fontWeight: '700',
+                color: 'var(--accent-orange)',
+                textAlign: 'center',
+                minWidth: '120px'
+              }}>
+                {formatTime(practiceState.phaseTimeRemaining)}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', justifySelf: 'center' }}>
+              <button 
+                className="glass-button"
+                onClick={previousPhase}
+                disabled={practiceState.currentPhase === 0}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                ← Prev
+              </button>
+              <button 
+                className="glass-button"
+                onClick={togglePause}
+                style={{ padding: '0.5rem', width: '40px', height: '40px' }}
+                title={practiceState.isPaused ? 'Resume' : 'Pause'}
+              >
+                {practiceState.isPaused ? '▶️' : '⏸️'}
+              </button>
+              <button 
+                className="glass-button"
+                onClick={updateAttendanceManager}
+                style={{ padding: '0.5rem 1rem' }}
+                title="Manage Attendance"
+              >
+                👥 Attendance
+              </button>
+              <button 
+                className="glass-button"
+                onClick={nextPhase}
+                disabled={practiceState.currentPhase >= practiceState.phases.length - 1}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                Next →
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifySelf: 'end' }}>
+              <div style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                Total: {formatOverallTime(practiceState.overallTimeElapsed)}
+              </div>
+              <button 
+                className="glass-button danger"
+                onClick={endPractice}
+                style={{ padding: '0.5rem', width: '40px', height: '40px' }}
+                title="End Practice"
+              >
+                ⏹️
+              </button>
+            </div>
+          </div>
+
+          {/* Main practice content */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '2rem',
+            paddingTop: 'calc(2rem + 80px)',
+            height: 'calc(100vh - 80px)',
+            overflowY: 'auto'
+          }}>
+            {/* Phase header */}
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <h1 style={{
+                fontSize: '2.5rem',
+                fontWeight: '700',
+                color: 'var(--text-primary)',
+                marginBottom: '0.5rem'
+              }}>
+                {currentPhase ? currentPhase.name : 'Free Practice'}
+              </h1>
+              <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                {currentPhase ? currentPhase.objective : 'No structured phases - practice freely'}
+              </p>
+            </div>
+
+            {/* Phase content */}
+            <div style={{
+              flex: 1,
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '2rem',
+              maxWidth: 'none',
+              margin: 0,
+              width: '100%',
+              height: '100%',
+              minHeight: 0
+            }}>
+              {/* Drills section */}
+              <div className="glass-card" style={{
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+                overflow: 'hidden'
+              }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  color: 'var(--accent-orange)',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  🏐 Phase Drills
+                </h2>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {currentPhase && currentPhase.drills && currentPhase.drills.length > 0 ? (
+                    currentPhase.drills.map((drill, index) => (
+                      <div 
+                        key={index}
+                        className="glass-card"
+                        onClick={() => showDrillDetailsModal(drill)}
+                        style={{
+                          padding: '1rem',
+                          marginBottom: '1rem',
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s ease',
+                          background: 'var(--glass-secondary)'
+                        }}
+                        onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
+                        onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                      >
+                        <div style={{
+                          fontWeight: '600',
+                          color: 'var(--text-primary)',
+                          marginBottom: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          {drill.name}
+                          <span style={{ color: 'var(--accent-orange)' }}>🔍</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
+                          <span style={{
+                            color: 'var(--accent-orange)',
+                            fontSize: '0.9rem',
+                            fontWeight: '500'
+                          }}>
+                            📋 {drill.category}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            ⭐ {drill.difficulty}
+                          </span>
+                        </div>
+                        {drill.description && (
+                          <div style={{
+                            color: 'var(--text-tertiary)',
+                            fontSize: '0.9rem',
+                            marginBottom: '0.5rem',
+                            lineHeight: 1.4
+                          }}>
+                            {drill.description}
+                          </div>
+                        )}
+                        <div style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
+                          {drill.duration} minutes
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="glass-card" style={{ padding: '1rem' }}>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
+                        No drills assigned to this phase
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes section */}
+              <div className="glass-card" style={{
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0
+              }}>
+                <div style={{ display: 'flex', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
+                  <button 
+                    className={`notes-tab ${currentNotesTab === 'general' ? 'active' : ''}`}
+                    onClick={() => setCurrentNotesTab('general')}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '1rem 1.5rem',
+                      color: currentNotesTab === 'general' ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      borderBottom: currentNotesTab === 'general' ? '2px solid var(--accent-orange)' : '2px solid transparent',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    📝 Practice Notes
+                  </button>
+                  <button 
+                    className={`notes-tab ${currentNotesTab === 'player' ? 'active' : ''}`}
+                    onClick={() => setCurrentNotesTab('player')}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '1rem 1.5rem',
+                      color: currentNotesTab === 'player' ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      borderBottom: currentNotesTab === 'player' ? '2px solid var(--accent-orange)' : '2px solid transparent',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    👤 Player Notes
+                  </button>
+                </div>
+                
+                {/* General practice notes tab */}
+                {currentNotesTab === 'general' && (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <textarea
+                      className="glass-input"
+                      placeholder="Add notes about this phase... player performance, adjustments needed, etc."
+                      value={practiceNotes}
+                      onChange={(e) => setPracticeNotes(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minHeight: '150px',
+                        resize: 'none',
+                        marginBottom: '1rem'
+                      }}
+                    />
+                    <button className="glass-button" onClick={saveNotes}>
+                      💾 Save Practice Notes
+                    </button>
+                  </div>
+                )}
+                
+                {/* Player notes tab */}
+                {currentNotesTab === 'player' && (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <select 
+                        className="glass-input"
+                        value={selectedPlayerId}
+                        onChange={(e) => onPlayerSelect(e.target.value)}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="">Select a player...</option>
+                        {practiceState.players.map(player => (
+                          <option key={player.id} value={player.id}>
+                            #{player.jerseyNumber} {player.firstName} {player.lastName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {selectedPlayerId && (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{
+                          marginBottom: '1rem',
+                          padding: '0.5rem 1rem',
+                          background: 'var(--glass-tertiary)',
+                          borderLeft: '4px solid var(--accent-orange)'
+                        }}>
+                          <span style={{ color: 'var(--accent-orange)', fontWeight: '600' }}>
+                            {practiceState.players.find(p => p.id == selectedPlayerId)?.firstName} {practiceState.players.find(p => p.id == selectedPlayerId)?.lastName}
+                          </span>
+                          <span style={{ color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                            {practiceState.players.find(p => p.id == selectedPlayerId)?.position}
+                          </span>
+                        </div>
+                        
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: '1rem' }}>
+                            <input 
+                              type="radio" 
+                              name="noteType" 
+                              value="practice" 
+                              checked={noteType === 'practice'}
+                              onChange={(e) => setNoteType(e.target.value)}
+                              style={{ marginRight: '4px' }}
+                            /> 
+                            📝 Practice Note
+                          </label>
+                          <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                            <input 
+                              type="radio" 
+                              name="noteType" 
+                              value="player" 
+                              checked={noteType === 'player'}
+                              onChange={(e) => setNoteType(e.target.value)}
+                              style={{ marginRight: '4px' }}
+                            /> 
+                            👤 Player-Specific Note
+                          </label>
+                        </div>
+                        
+                        <textarea
+                          className="glass-input"
+                          placeholder="Add specific notes about this player's performance during practice..."
+                          value={playerNotes}
+                          onChange={(e) => setPlayerNotes(e.target.value)}
+                          style={{
+                            flex: 1,
+                            minHeight: '100px',
+                            resize: 'none',
+                            marginBottom: '1rem'
+                          }}
+                        />
+                        <button className="glass-button" onClick={savePlayerNotes}>
+                          💾 Add Note
+                        </button>
+                        
+                        {/* Current Session Notes List */}
+                        {currentSessionNotes.length > 0 && (
+                          <div style={{ marginTop: '1rem' }}>
+                            <h5 style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.5rem 0' }}>
+                              📋 Notes from This Practice
+                            </h5>
+                            {currentSessionNotes.map((note, index) => (
+                              <div key={index} style={{
+                                background: 'var(--glass-secondary)',
+                                padding: '0.5rem',
+                                marginBottom: '0.5rem',
+                                borderRadius: '0.25rem',
+                                fontSize: '0.9rem'
+                              }}>
+                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                  {note.note_type === 'practice' ? '📝' : '👤'} {new Date(note.created_at).toLocaleTimeString()}
+                                </div>
+                                <div style={{ color: 'var(--text-primary)' }}>{note.notes}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Drill Details Modal */}
+      {showDrillDetails && selectedDrill && (
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="modal-header">
+              <h2 style={{ color: 'var(--accent-orange)', margin: 0 }}>🏐 {selectedDrill.name}</h2>
+              <button className="modal-close" onClick={() => setShowDrillDetails(false)}>✕</button>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div className="info-item">
+                <label style={{ 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.5px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontWeight: '600'
+                }}>
+                  Category
+                </label>
+                <div style={{ color: 'var(--text-primary)' }}>{selectedDrill.category || 'Not specified'}</div>
+              </div>
+              
+              <div className="info-item">
+                <label style={{ 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.5px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontWeight: '600'
+                }}>
+                  Duration
+                </label>
+                <div style={{ color: 'var(--text-primary)' }}>
+                  {selectedDrill.duration ? `${selectedDrill.duration} minutes` : 'Not specified'}
+                </div>
+              </div>
+              
+              <div className="info-item">
+                <label style={{ 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.5px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontWeight: '600'
+                }}>
+                  Description
+                </label>
+                <div style={{ color: 'var(--text-primary)' }}>
+                  {selectedDrill.description || 'No description available'}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="glass-button" onClick={() => setShowDrillDetails(false)}>
+                Close
               </button>
             </div>
           </div>
@@ -1415,355 +1167,76 @@ const PracticeMode = () => {
 
       {/* Attendance Manager Modal */}
       {showAttendanceManager && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowAttendanceManager(false);
-            }
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--glass-bg)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--spacing-lg)',
-              width: '90%',
-              maxWidth: '800px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: 'var(--spacing-lg)'
-            }}>
-              <h2 style={{ 
-                color: 'var(--accent-orange)', 
-                margin: 0,
-                fontSize: '1.5rem'
-              }}>
-                Manage Attendance
-              </h2>
-              <button
-                onClick={() => setShowAttendanceManager(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                ×
-              </button>
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxWidth: '700px', width: '90%', maxHeight: '80vh', overflow: 'auto' }}>
+            <div className="modal-header" style={{ textAlign: 'center' }}>
+              <h2 style={{ margin: 0, color: 'var(--accent-orange)', fontSize: '1.25rem' }}>👥 Manage Attendance</h2>
+              <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>Update attendance during practice</p>
             </div>
-
-            <div style={{ 
-              maxHeight: '500px', 
-              overflow: 'auto',
-              marginBottom: 'var(--spacing-lg)'
-            }}>
-              {sessionAttendance.map(record => (
-                <div key={record.playerId} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 'var(--spacing-md)',
-                  marginBottom: 'var(--spacing-sm)',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--glass-border)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-                    <div style={{ 
-                      fontSize: '1.2rem', 
-                      fontWeight: '600',
-                      color: 'var(--accent-orange)',
-                      minWidth: '40px'
-                    }}>
-                      #{record.jerseyNumber}
-                    </div>
-                    <div>
-                      <div style={{ 
-                        fontWeight: '600',
-                        color: 'var(--text-primary)',
-                        fontSize: '1rem'
-                      }}>
-                        {record.playerName}
-                      </div>
-                      <div style={{ 
-                        color: 'var(--text-secondary)', 
-                        fontSize: '0.9rem' 
-                      }}>
-                        {record.position}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 'var(--spacing-md)',
-                    flexWrap: 'wrap'
-                  }}>
-                    <label style={{ 
+            
+            <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                {tempAttendanceData.map((attendance, index) => {
+                  const player = practiceState.players.find(p => p.id === attendance.player_id);
+                  return (
+                    <div key={attendance.player_id} className="glass-card" style={{ 
+                      padding: '1rem', 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: 'var(--spacing-xs)',
-                      cursor: 'pointer',
-                      color: 'var(--text-primary)'
+                      justifyContent: 'space-between' 
                     }}>
-                      <input
-                        type="checkbox"
-                        checked={record.attended}
-                        onChange={(e) => updateSessionAttendance(record.playerId, 'attended', e.target.checked)}
-                        style={{ width: '18px', height: '18px' }}
-                      />
-                      Present
-                    </label>
-                    
-                    <input
-                      type="number"
-                      placeholder="Late (min)"
-                      min="0"
-                      max="120"
-                      value={record.lateMinutes || ''}
-                      onChange={(e) => updateSessionAttendance(record.playerId, 'lateMinutes', parseInt(e.target.value) || 0)}
-                      style={{
-                        width: '80px',
-                        padding: 'var(--spacing-xs)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--glass-bg)',
-                        color: 'var(--text-primary)'
-                      }}
-                    />
-                    
-                    <input
-                      type="text"
-                      placeholder="Notes"
-                      value={record.notes || ''}
-                      onChange={(e) => updateSessionAttendance(record.playerId, 'notes', e.target.value)}
-                      style={{
-                        width: '120px',
-                        padding: 'var(--spacing-xs)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: 'var(--radius-sm)',
-                        background: 'var(--glass-bg)',
-                        color: 'var(--text-primary)'
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              gap: 'var(--spacing-md)'
-            }}>
-              <button
-                onClick={() => setShowAttendanceManager(false)}
-                style={{
-                  flex: 1,
-                  padding: 'var(--spacing-md)',
-                  background: 'transparent',
-                  border: '1px solid var(--glass-border)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveAttendanceChanges}
-                style={{
-                  flex: 2,
-                  padding: 'var(--spacing-md)',
-                  background: 'var(--accent-orange)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Team Selection Modal */}
-      {showTeamSelection && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              cancelTeamSelection();
-            }
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--glass-bg)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--spacing-lg)',
-              width: '90%',
-              maxWidth: '600px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: 'var(--spacing-lg)'
-            }}>
-              <h2 style={{ 
-                color: 'var(--accent-orange)', 
-                margin: 0,
-                fontSize: '1.5rem'
-              }}>
-                Select Team for Practice
-              </h2>
-              <button
-                onClick={cancelTeamSelection}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-              <p style={{ 
-                color: 'var(--text-secondary)', 
-                margin: '0 0 var(--spacing-md) 0' 
-              }}>
-                Choose which team you want to use for this practice session:
-              </p>
-              
-              <div style={{ 
-                display: 'grid',
-                gap: 'var(--spacing-md)'
-              }}>
-                {teams.map(team => (
-                  <div
-                    key={team.id}
-                    onClick={() => handleTeamSelection(team.id)}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid var(--glass-border)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: 'var(--spacing-md)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'rgba(255, 107, 53, 0.1)';
-                      e.target.style.borderColor = 'var(--accent-orange)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-                      e.target.style.borderColor = 'var(--glass-border)';
-                    }}
-                  >
-                    <div>
-                      <div style={{ 
-                        color: 'var(--text-primary)',
-                        fontSize: '1.1rem',
-                        fontWeight: '600',
-                        marginBottom: '4px'
-                      }}>
-                        {team.name}
-                      </div>
-                      <div style={{ 
-                        color: 'var(--text-secondary)', 
-                        fontSize: '0.9rem' 
-                      }}>
-                        {team.season} {team.division && `• ${team.division}`}
-                      </div>
-                      {team.description && (
-                        <div style={{ 
-                          color: 'var(--text-secondary)', 
-                          fontSize: '0.8rem',
-                          marginTop: '4px'
-                        }}>
-                          {team.description}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '600' }}>#{player?.jerseyNumber}</div>
+                        <div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                            {player?.firstName} {player?.lastName}
+                          </div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            {player?.position}
+                          </div>
                         </div>
-                      )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <label style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.5rem', 
+                          cursor: 'pointer', 
+                          color: 'var(--text-primary)' 
+                        }}>
+                          <input 
+                            type="checkbox" 
+                            checked={attendance.attended}
+                            onChange={(e) => {
+                              const newData = [...tempAttendanceData];
+                              newData[index].attended = e.target.checked;
+                              setTempAttendanceData(newData);
+                            }}
+                            style={{ width: '18px', height: '18px' }}
+                          />
+                          Present
+                        </label>
+                      </div>
                     </div>
-                    <div style={{
-                      color: 'var(--accent-orange)',
-                      fontSize: '1.2rem'
-                    }}>
-                      →
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center'
-            }}>
-              <button
-                onClick={cancelTeamSelection}
-                style={{
-                  padding: 'var(--spacing-md) var(--spacing-lg)',
-                  background: 'transparent',
-                  border: '1px solid var(--glass-border)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer'
-                }}
+            <div className="modal-actions">
+              <button 
+                type="button" 
+                className="glass-button" 
+                onClick={() => setShowAttendanceManager(false)}
               >
                 Cancel
+              </button>
+              <button 
+                type="button" 
+                className="glass-button primary" 
+                onClick={saveAttendanceChanges}
+              >
+                💾 Save Changes
               </button>
             </div>
           </div>

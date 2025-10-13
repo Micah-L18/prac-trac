@@ -165,15 +165,6 @@ db.serialize(() => {
     )
   `);
 
-  // Add team_id column to practices table if it doesn't exist
-  db.run(`
-    ALTER TABLE practices ADD COLUMN team_id INTEGER
-  `, (err) => {
-    if (err && !err.message.includes('duplicate column name')) {
-      console.error('Error adding team_id column:', err);
-    }
-  });
-
   // Practice phases table - stores individual phases within a practice
   db.run(`
     CREATE TABLE IF NOT EXISTS practice_phases (
@@ -543,20 +534,6 @@ app.post('/api/teams/:id/activate', authenticateToken, (req, res) => {
   });
 });
 
-// Select active team (alternative endpoint name for frontend compatibility)
-app.post('/api/teams/:id/select', authenticateToken, (req, res) => {
-  const teamId = parseInt(req.params.id);
-
-  setActiveTeam(req.user.id, teamId, (err) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
-    }
-
-    res.json({ success: true, message: 'Team selected successfully' });
-  });
-});
-
 // Create a new team
 app.post('/api/teams', authenticateToken, (req, res) => {
   const schema = Joi.object({
@@ -593,15 +570,7 @@ app.post('/api/teams', authenticateToken, (req, res) => {
         return res.status(500).json({ success: false, error: 'Internal server error' });
       }
 
-      // Automatically set the new team as active
-      setActiveTeam(req.user.id, teamId, (err) => {
-        if (err) {
-          console.error('Error setting team as active:', err);
-          // Still return success for team creation, but log the error
-        }
-        
-        res.status(201).json({ success: true, data: team });
-      });
+      res.status(201).json({ success: true, data: team });
     });
   });
 });
@@ -804,6 +773,22 @@ app.post('/api/drills', authenticateToken, (req, res) => {
   });
 });
 
+// ===================
+// ERROR HANDLING
+// ===================
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ success: false, error: 'Endpoint not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ success: false, error: 'Internal server error' });
+});
+
+// Start server
 // =============================================================================
 // PRACTICE MANAGEMENT ENDPOINTS
 // =============================================================================
@@ -928,10 +913,9 @@ app.get('/api/practices', authenticateToken, (req, res) => {
   const coachId = req.user.id;
   
   db.all(`
-    SELECT p.*, COUNT(ps.id) as session_count, t.name as team_name, t.season as team_season
+    SELECT p.*, COUNT(ps.id) as session_count
     FROM practices p
     LEFT JOIN practice_sessions ps ON p.id = ps.practice_id
-    LEFT JOIN teams t ON p.team_id = t.id
     WHERE p.coach_id = ?
     GROUP BY p.id
     ORDER BY p.date DESC, p.created_at DESC
@@ -990,76 +974,14 @@ app.get('/api/practices/:id', authenticateToken, (req, res) => {
   });
 });
 
-// Get practices for active team
-app.get('/api/practices/active-team', authenticateToken, (req, res) => {
-  const coachId = req.user.id;
-  
-  // First get the active team
-  db.get(`
-    SELECT team_id 
-    FROM coach_active_team 
-    WHERE coach_id = ?
-  `, [coachId], (err, activeTeam) => {
-    if (err) {
-      console.error('Error fetching active team:', err);
-      return res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-    
-    if (!activeTeam) {
-      return res.status(404).json({ success: false, error: 'No active team selected' });
-    }
-    
-    // Get practices for the active team
-    db.all(`
-      SELECT p.*, COUNT(ps.id) as session_count, t.name as team_name, t.season as team_season
-      FROM practices p
-      LEFT JOIN practice_sessions ps ON p.id = ps.practice_id
-      LEFT JOIN teams t ON p.team_id = t.id
-      WHERE p.coach_id = ? AND p.team_id = ?
-      GROUP BY p.id
-      ORDER BY p.date DESC, p.created_at DESC
-    `, [coachId, activeTeam.team_id], (err, practices) => {
-      if (err) {
-        console.error('Error fetching practices:', err);
-        return res.status(500).json({ success: false, error: 'Internal server error' });
-      }
-      
-      // For each practice, get phases count
-      let completed = 0;
-      const total = practices.length;
-      
-      if (total === 0) {
-        return res.json({ success: true, data: [] });
-      }
-      
-      practices.forEach((practice, index) => {
-        db.get('SELECT COUNT(*) as phase_count FROM practice_phases WHERE practice_id = ?', [practice.id], (err, result) => {
-          if (!err && result) {
-            practice.phase_count = result.phase_count;
-          }
-          
-          completed++;
-          if (completed === total) {
-            res.json({ success: true, data: practices });
-          }
-        });
-      });
-    });
-  });
-});
-
 // Create new practice
 app.post('/api/practices', authenticateToken, (req, res) => {
-  const { name, objective, estimatedDuration, phases, date, team_id } = req.body;
+  const { name, objective, estimatedDuration, phases, date } = req.body;
   const coachId = req.user.id;
   
   // Validation
   if (!name || !date) {
     return res.status(400).json({ success: false, error: 'Name and date are required' });
-  }
-
-  if (!team_id) {
-    return res.status(400).json({ success: false, error: 'Team selection is required' });
   }
   
   const practiceDate = date || new Date().toISOString().split('T')[0];
@@ -1067,9 +989,9 @@ app.post('/api/practices', authenticateToken, (req, res) => {
   
   // Insert practice
   db.run(`
-    INSERT INTO practices (coach_id, team_id, name, objective, estimated_duration, date) 
-    VALUES (?, ?, ?, ?, ?, ?)
-  `, [coachId, team_id, name, objective, duration, practiceDate], function(err) {
+    INSERT INTO practices (coach_id, name, objective, estimated_duration, date) 
+    VALUES (?, ?, ?, ?, ?)
+  `, [coachId, name, objective, duration, practiceDate], function(err) {
     if (err) {
       console.error('Error creating practice:', err);
       return res.status(500).json({ success: false, error: 'Failed to create practice' });
@@ -1769,22 +1691,6 @@ app.delete('/api/practice-sessions/:id', authenticateToken, (req, res) => {
     });
   });
 });
-// ===================
-// ERROR HANDLING
-// ===================
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ success: false, error: 'Endpoint not found' });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ success: false, error: 'Internal server error' });
-});
-
-// Start server
 
 // Start server
 const server = app.listen(PORT, HOST, () => {

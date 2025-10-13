@@ -1,56 +1,93 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getApiUrl } from '../config/api';
+import { API_BASE_URL } from '../config/api';
 import Navbar from './Navbar';
-import PracticeModal from './PracticeModal';
-import PracticePhaseView from './PracticePhaseView';
-import './Teams.css';
 
 const Practices = () => {
   const { token } = useAuth();
   const [practices, setPractices] = useState([]);
   const [drills, setDrills] = useState([]);
+  const [activeTeam, setActiveTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDrillSelector, setShowDrillSelector] = useState(false);
   const [editingPractice, setEditingPractice] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredPractices, setFilteredPractices] = useState([]);
-  const [expandedPractice, setExpandedPractice] = useState(null);
+  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(null);
+  const [selectedDrills, setSelectedDrills] = useState([]);
+  const [drillSearchTerm, setDrillSearchTerm] = useState('');
+  const [activeSession, setActiveSession] = useState(null);
 
-  const categories = ['All', 'Upcoming', 'In Progress'];
+  // Form state for creating practice
+  const [practiceForm, setPracticeForm] = useState({
+    name: '',
+    date: new Date().toISOString().split('T')[0], // Initialize with today's date in YYYY-MM-DD format
+    estimatedDuration: 90,
+    objective: '',
+    phases: []
+  });
 
-  // Fetch practices on component mount
+  // Form state for editing practice
+  const [editForm, setEditForm] = useState({
+    name: '',
+    date: '',
+    estimatedDuration: 90,
+    objective: '',
+    phases: []
+  });
+
   useEffect(() => {
+    fetchActiveTeam();
     fetchPractices();
     fetchDrills();
+    checkActiveSession();
   }, []);
 
-  // Filter practices when category or search term changes
-  useEffect(() => {
-    filterPractices();
-  }, [practices, selectedCategory, searchTerm]);
-
-  const fetchPractices = async () => {
+  const fetchActiveTeam = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(getApiUrl('/api/practices'), {
+      const response = await fetch(`${API_BASE_URL}/api/teams/active`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch practices');
+      if (response.ok) {
+        const data = await response.json();
+        setActiveTeam(data.data);
+      } else {
+        setActiveTeam(null);
+        setError('Please select an active team before creating practices.');
       }
+    } catch (error) {
+      console.error('Error fetching active team:', error);
+      setActiveTeam(null);
+      setError('Please select an active team before creating practices.');
+    }
+  };
 
-      const data = await response.json();
-      setPractices(data.data || []);
+  const fetchPractices = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practices/active-team`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPractices(data.data || []);
+      } else if (response.status === 404) {
+        setPractices([]);
+        setError('Please select an active team to view practices.');
+      } else {
+        setError('Failed to fetch practices');
+      }
     } catch (error) {
       console.error('Error fetching practices:', error);
-      setError('Failed to load practices');
+      setError('Failed to fetch practices');
     } finally {
       setLoading(false);
     }
@@ -58,7 +95,7 @@ const Practices = () => {
 
   const fetchDrills = async () => {
     try {
-      const response = await fetch(getApiUrl('/api/drills'), {
+      const response = await fetch(`${API_BASE_URL}/api/drills`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -74,76 +111,134 @@ const Practices = () => {
     }
   };
 
-  const filterPractices = () => {
-    let filtered = practices;
+  const checkActiveSession = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practice-sessions/active`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    // Always exclude completed practices from the main practice plans view
-    filtered = filtered.filter(practice => !practice.hasCompletedSession);
-
-    // Filter by category
-    if (selectedCategory === 'Upcoming') {
-      const today = new Date().toISOString().split('T')[0];
-      filtered = filtered.filter(practice => practice.date >= today);
-    } else if (selectedCategory === 'In Progress') {
-      // Filter for practices that have active sessions
-      filtered = filtered.filter(practice => practice.sessionStatus === 'in_progress' || practice.sessionStatus === 'paused');
+      if (response.ok) {
+        const data = await response.json();
+        setActiveSession(data.data);
+      }
+    } catch (error) {
+      console.error('Error checking active session:', error);
     }
+  };
 
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(practice =>
-        practice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        practice.objective?.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleFormChange = (e, isEdit = false) => {
+    const { name, value } = e.target;
+    const form = isEdit ? editForm : practiceForm;
+    const setForm = isEdit ? setEditForm : setPracticeForm;
+    
+    setForm({
+      ...form,
+      [name]: value
+    });
+  };
+
+  const addPhase = (isEdit = false) => {
+    const form = isEdit ? editForm : practiceForm;
+    const setForm = isEdit ? setEditForm : setPracticeForm;
+    
+    const newPhase = {
+      id: Date.now(),
+      name: '',
+      duration: 15,
+      objective: '',
+      drills: []
+    };
+
+    setForm({
+      ...form,
+      phases: [...form.phases, newPhase]
+    });
+  };
+
+  const updatePhase = (phaseId, field, value, isEdit = false) => {
+    const form = isEdit ? editForm : practiceForm;
+    const setForm = isEdit ? setEditForm : setPracticeForm;
+    
+    const updatedPhases = form.phases.map(phase =>
+      phase.id === phaseId ? { ...phase, [field]: value } : phase
+    );
+
+    setForm({
+      ...form,
+      phases: updatedPhases
+    });
+  };
+
+  const removePhase = (phaseId, isEdit = false) => {
+    const form = isEdit ? editForm : practiceForm;
+    const setForm = isEdit ? setEditForm : setPracticeForm;
+    
+    const updatedPhases = form.phases.filter(phase => phase.id !== phaseId);
+    setForm({
+      ...form,
+      phases: updatedPhases
+    });
+  };
+
+  const openDrillSelector = (phaseIndex, isEdit = false) => {
+    setCurrentPhaseIndex(phaseIndex);
+    const form = isEdit ? editForm : practiceForm;
+    const currentPhase = form.phases[phaseIndex];
+    setSelectedDrills(currentPhase.drills || []);
+    setShowDrillSelector(true);
+  };
+
+  const toggleDrillSelection = (drill) => {
+    const isSelected = selectedDrills.some(d => d.id === drill.id);
+    if (isSelected) {
+      setSelectedDrills(selectedDrills.filter(d => d.id !== drill.id));
+    } else {
+      setSelectedDrills([...selectedDrills, drill]);
+    }
+  };
+
+  const closeDrillSelector = (isEdit = false) => {
+    if (currentPhaseIndex !== null) {
+      const form = isEdit ? editForm : practiceForm;
+      const setForm = isEdit ? setEditForm : setPracticeForm;
+      
+      const updatedPhases = form.phases.map((phase, index) =>
+        index === currentPhaseIndex ? { ...phase, drills: selectedDrills } : phase
       );
+
+      setForm({
+        ...form,
+        phases: updatedPhases
+      });
     }
 
-    setFilteredPractices(filtered);
+    setShowDrillSelector(false);
+    setCurrentPhaseIndex(null);
+    setSelectedDrills([]);
+    setDrillSearchTerm('');
   };
 
-  const handleCreatePractice = () => {
-    setEditingPractice(null);
-    setShowModal(true);
-  };
+  const submitPractice = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-  const handleEditPractice = (practice) => {
-    setEditingPractice(practice);
-    setShowModal(true);
-  };
-
-  const handleDeletePractice = async (practice) => {
-    if (!window.confirm(`Are you sure you want to delete "${practice.name}"?`)) {
+    if (!activeTeam) {
+      setError('Please select an active team before creating practices.');
+      setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch(getApiUrl(`/api/practices/${practice.id}`), {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const practiceData = {
+        ...practiceForm,
+        team_id: activeTeam.id
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to delete practice');
-      }
-
-      setPractices(practices.filter(p => p.id !== practice.id));
-    } catch (error) {
-      console.error('Error deleting practice:', error);
-      setError('Failed to delete practice');
-    }
-  };
-
-  const handlePracticeSubmit = async (practiceData) => {
-    try {
-      const url = editingPractice 
-        ? getApiUrl(`/api/practices/${editingPractice.id}`)
-        : getApiUrl('/api/practices');
-      
-      const method = editingPractice ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
+      const response = await fetch(`${API_BASE_URL}/api/practices`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -151,68 +246,115 @@ const Practices = () => {
         body: JSON.stringify(practiceData)
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save practice');
+      if (response.ok) {
+        await fetchPractices();
+        setShowCreateModal(false);
+        setPracticeForm({
+          name: '',
+          date: '',
+          estimatedDuration: 90,
+          objective: '',
+          phases: []
+        });
+        setError('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to create practice');
       }
-
-      await fetchPractices();
-      setShowModal(false);
-      setEditingPractice(null);
     } catch (error) {
-      console.error('Error saving practice:', error);
-      setError('Failed to save practice');
+      console.error('Error creating practice:', error);
+      setError('Failed to create practice');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+  const editPractice = (practice) => {
+    setEditingPractice(practice);
+    setEditForm({
+      name: practice.name,
+      date: practice.date,
+      estimatedDuration: practice.estimatedDuration,
+      objective: practice.objective,
+      phases: practice.phases || []
     });
+    setShowEditModal(true);
   };
 
-  const formatDuration = (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
+  const updatePractice = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practices/${editingPractice.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editForm)
+      });
+
+      if (response.ok) {
+        await fetchPractices();
+        setShowEditModal(false);
+        setEditingPractice(null);
+        setError('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to update practice');
+      }
+    } catch (error) {
+      console.error('Error updating practice:', error);
+      setError('Failed to update practice');
+    } finally {
+      setLoading(false);
     }
-    return `${mins}m`;
   };
 
-  const getStatusColor = (practice) => {
-    const today = new Date().toISOString().split('T')[0];
-    if (practice.hasActiveSession) return 'var(--accent-blue)';
-    if (practice.date > today) return 'var(--accent-green)';
-    return 'var(--text-secondary)';
+  const deletePractice = async (practiceId) => {
+    if (!window.confirm('Are you sure you want to delete this practice?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/practices/${practiceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        await fetchPractices();
+        setError('');
+      } else {
+        setError('Failed to delete practice');
+      }
+    } catch (error) {
+      console.error('Error deleting practice:', error);
+      setError('Failed to delete practice');
+    }
   };
 
-  const getStatusText = (practice) => {
-    const today = new Date().toISOString().split('T')[0];
-    if (practice.hasActiveSession) return 'In Progress';
-    if (practice.date > today) return 'Upcoming';
-    return 'Completed';
+  const startPractice = (practice) => {
+    // Navigate to practice mode with this practice
+    window.location.href = `/practice-mode?practiceId=${practice.id}`;
   };
+
+  const filteredDrills = drills.filter(drill =>
+    drill.name.toLowerCase().includes(drillSearchTerm.toLowerCase()) ||
+    drill.category?.toLowerCase().includes(drillSearchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
       <>
         <Navbar />
         <div className="main-container">
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            height: '50vh',
-            color: 'var(--text-primary)'
-          }}>
-            <div className="loading">
-              <div className="spinner"></div>
-              Loading practices...
-            </div>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>Loading practices...</p>
           </div>
         </div>
       </>
@@ -222,209 +364,413 @@ const Practices = () => {
   return (
     <>
       <Navbar />
-      <div className="main-container">
-        <div className="page-header">
-          <div>
-            <h1>Practice Plans</h1>
-            <p>Create and manage your volleyball practice sessions</p>
+      
+      {/* Active Session Banner */}
+      {activeSession && (
+        <div style={{
+          background: 'linear-gradient(135deg, var(--accent-orange) 0%, #ff8a65 100%)',
+          color: 'white',
+          padding: 'var(--spacing-md)',
+          textAlign: 'center',
+          borderBottom: '1px solid var(--glass-border)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🏐 Active Practice Session</h3>
+              <p style={{ margin: '4px 0 0 0', opacity: 0.9 }}>
+                {activeSession.practiceName} • Started: {new Date(activeSession.startTime).toLocaleTimeString()}
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.href = '/practice-mode'}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Resume Session
+            </button>
           </div>
-          <button 
+        </div>
+      )}
+
+      <div className="main-container">
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+          <div>
+            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+              Practice Plans
+            </h1>
+            <p style={{ color: 'var(--text-secondary)' }}>
+              Plan and manage your volleyball practice sessions
+            </p>
+          </div>
+          <button
             className="glass-button primary"
-            onClick={handleCreatePractice}
+            onClick={() => setShowCreateModal(true)}
           >
-            + Create New Practice
+            ➕ Create Practice Plan
           </button>
         </div>
 
-        {/* Filters Section */}
-        <div className="drill-filters" style={{ marginBottom: '2rem' }}>
-          <div className="glass-card" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', alignItems: 'end' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ color: 'var(--text-primary)', fontWeight: 500, marginBottom: '0.5rem' }}>
-                  Filter
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="glass-input"
-                >
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label style={{ color: 'var(--text-primary)', fontWeight: 500, marginBottom: '0.5rem' }}>
-                  Search Practices
-                </label>
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name or objective..."
-                  className="glass-input"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
+        {/* Error Message */}
         {error && (
-          <div className="error-message" style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <div style={{
+            background: 'rgba(231, 76, 60, 0.1)',
+            border: '1px solid rgba(231, 76, 60, 0.3)',
+            color: '#e74c3c',
+            padding: 'var(--spacing-md)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--spacing-lg)'
+          }}>
             {error}
           </div>
         )}
 
-        {/* Results Summary */}
-        <div style={{ 
-          marginBottom: 'var(--spacing-lg)', 
-          color: 'var(--text-secondary)',
-          fontSize: '0.9rem'
-        }}>
-          Showing {filteredPractices.length} of {practices.length} practices
-        </div>
-
         {/* Practices List */}
-        {filteredPractices.length === 0 ? (
-          <div className="glass-card" style={{ 
-            padding: '3rem', 
-            textAlign: 'center',
-            color: 'var(--text-secondary)'
-          }}>
-            <h3 style={{ marginBottom: '1rem' }}>No practices found</h3>
-            <p>
-              {practices.length === 0 
-                ? "Get started by creating your first practice plan."
-                : "Try adjusting your filters or search term."
-              }
-            </p>
-            {practices.length === 0 && (
-              <button 
+        <div style={{ display: 'grid', gap: 'var(--spacing-lg)' }}>
+          {practices.length === 0 ? (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '3rem' }}>
+              <h3 style={{ color: 'var(--text-primary)', marginBottom: '1rem' }}>No practice plans yet</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                Create your first practice plan to get started!
+              </p>
+              <button
                 className="glass-button primary"
-                onClick={handleCreatePractice}
-                style={{ marginTop: '1rem' }}
+                onClick={() => setShowCreateModal(true)}
               >
-                Create First Practice
+                ➕ Create First Practice Plan
               </button>
-            )}
-          </div>
-        ) : (
-          <div className="teams-grid">
-            {filteredPractices.map(practice => (
-              <div 
-                key={practice.id} 
-                className="team-card"
-                style={{ cursor: 'pointer' }}
-              >
-                <div 
-                  className="team-header"
-                  onClick={() => setExpandedPractice(expandedPractice === practice.id ? null : practice.id)}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                    <h3>{practice.name}</h3>
-                    <span 
-                      style={{ 
-                        background: getStatusColor(practice), 
-                        color: 'white', 
-                        padding: '2px 8px', 
-                        borderRadius: '12px', 
-                        fontSize: '0.7rem', 
-                        fontWeight: '600' 
-                      }}
-                    >
-                      {getStatusText(practice)}
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: '1.2rem' }}>
-                      {expandedPractice === practice.id ? '▼' : '▶'}
-                    </span>
+            </div>
+          ) : (
+            practices.map(practice => (
+              <div key={practice.id} className="glass-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-md)' }}>
+                  <div>
+                    <h3 style={{ color: 'var(--text-primary)', margin: '0 0 8px 0', fontSize: '1.25rem' }}>
+                      {practice.name}
+                    </h3>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-md)', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                      <span>📅 {new Date(practice.date).toLocaleDateString()}</span>
+                      <span>⏱️ {practice.estimatedDuration} min</span>
+                      <span>🎯 {practice.phases?.length || 0} phases</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log('Starting practice:', practice.id, practice.name);
-                        window.location.href = `/practice-mode?practice=${practice.id}&autoStart=true`;
-                      }}
                       className="glass-button primary"
-                      style={{ padding: '0.5rem' }}
-                      title="Start Practice Session"
+                      onClick={() => startPractice(practice)}
                     >
-                      ▶️
+                      ▶️ Start
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditPractice(practice);
-                      }}
-                      className="glass-button secondary"
-                      style={{ padding: '0.5rem' }}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeletePractice(practice);
-                      }}
                       className="glass-button"
-                      style={{ 
-                        padding: '0.5rem',
-                        background: 'var(--danger-red)',
-                        color: 'white'
-                      }}
+                      onClick={() => editPractice(practice)}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      className="glass-button danger"
+                      onClick={() => deletePractice(practice.id)}
                     >
                       🗑️
                     </button>
                   </div>
                 </div>
                 
-                <div style={{ marginTop: 'var(--spacing-sm)' }}>
-                  <div className="detail-row">
-                    <label>Date</label>
-                    <span>{formatDate(practice.date)}</span>
-                  </div>
-                  <div className="detail-row">
-                    <label>Duration</label>
-                    <span>{formatDuration(practice.duration)}</span>
-                  </div>
-                  {practice.objective && (
-                    <div className="detail-row">
-                      <label>Objective</label>
-                      <span>{practice.objective}</span>
-                    </div>
-                  )}
-                  <div className="detail-row">
-                    <label>Phases</label>
-                    <span>{practice.phases?.length || 0} phases</span>
-                  </div>
-                </div>
+                {practice.objective && (
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)' }}>
+                    {practice.objective}
+                  </p>
+                )}
 
-                {/* Expanded Practice Details */}
-                {expandedPractice === practice.id && (
-                  <div style={{ marginTop: 'var(--spacing-md)', borderTop: '1px solid var(--glass-border)', paddingTop: 'var(--spacing-md)' }}>
-                    <h4 style={{ marginBottom: 'var(--spacing-sm)', color: 'var(--text-secondary)' }}>Practice Phases</h4>
-                    <PracticePhaseView phases={practice.phases} drills={drills} />
+                {practice.phases && practice.phases.length > 0 && (
+                  <div style={{ background: 'var(--glass-secondary)', padding: 'var(--spacing-md)', borderRadius: 'var(--radius-md)' }}>
+                    <h4 style={{ color: 'var(--text-primary)', margin: '0 0 12px 0', fontSize: '1rem' }}>Practice Phases</h4>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      {practice.phases.map((phase, index) => (
+                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: 'var(--text-primary)' }}>{phase.name}</span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                            {phase.duration} min • {phase.drills?.length || 0} drills
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-
-        {showModal && (
-          <PracticeModal
-            practice={editingPractice}
-            isOpen={showModal}
-            onClose={() => {
-              setShowModal(false);
-              setEditingPractice(null);
-            }}
-            onSubmit={handlePracticeSubmit}
-          />
-        )}
+            ))
+          )}
+        </div>
       </div>
+
+      {/* Create Practice Modal */}
+      {showCreateModal && (
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div className="modal-header">
+              <h2 style={{ color: 'var(--accent-orange)', margin: 0 }}>🏐 Create Practice Plan</h2>
+              <button className="modal-close" onClick={() => setShowCreateModal(false)}>✕</button>
+            </div>
+            
+            <form onSubmit={submitPractice}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+                <div className="form-group">
+                  <label>Practice Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    className="glass-input"
+                    placeholder="e.g., Game Prep vs Eagles"
+                    value={practiceForm.name}
+                    onChange={handleFormChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Practice Date</label>
+                  <input
+                    type="date"
+                    name="date"
+                    className="glass-input"
+                    value={practiceForm.date}
+                    onChange={handleFormChange}
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: 'var(--spacing-md)' }}>
+                <label>Estimated Duration (minutes)</label>
+                <input
+                  type="number"
+                  name="estimatedDuration"
+                  className="glass-input"
+                  placeholder="90"
+                  min="15"
+                  max="300"
+                  value={practiceForm.estimatedDuration}
+                  onChange={handleFormChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: 'var(--spacing-lg)' }}>
+                <label>Practice Objective</label>
+                <textarea
+                  name="objective"
+                  className="glass-input"
+                  placeholder="What do you want to accomplish in this practice?"
+                  rows="3"
+                  value={practiceForm.objective}
+                  onChange={handleFormChange}
+                />
+              </div>
+
+              {/* Phases Section */}
+              <div style={{ marginBottom: 'var(--spacing-lg)' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 'var(--spacing-md)',
+                  padding: 'var(--spacing-md)',
+                  background: 'var(--glass-secondary)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--glass-border)'
+                }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Practice Phases</h3>
+                </div>
+                
+                <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+                  {practiceForm.phases.map((phase, index) => (
+                    <PracticePhaseForm
+                      key={phase.id}
+                      phase={phase}
+                      index={index}
+                      onUpdate={(field, value) => updatePhase(phase.id, field, value)}
+                      onRemove={() => removePhase(phase.id)}
+                      onSelectDrills={() => openDrillSelector(index)}
+                    />
+                  ))}
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--spacing-md)' }}>
+                  <button type="button" className="glass-button" onClick={() => addPhase()}>
+                    ➕ Add Phase
+                  </button>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="glass-button" onClick={() => setShowCreateModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="glass-button primary">
+                  Create Practice Plan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Drill Selector Modal */}
+      {showDrillSelector && (
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div className="modal-header">
+              <h2 style={{ color: 'var(--accent-orange)', margin: 0 }}>🏐 Select Drills for Phase</h2>
+              <button className="modal-close" onClick={() => closeDrillSelector()}>✕</button>
+            </div>
+            
+            <div style={{ marginBottom: 'var(--spacing-md)' }}>
+              <input
+                type="text"
+                className="glass-input"
+                placeholder="🔍 Search drills..."
+                value={drillSearchTerm}
+                onChange={(e) => setDrillSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: 'var(--spacing-md)',
+              maxHeight: '400px',
+              overflow: 'auto'
+            }}>
+              {filteredDrills.map(drill => (
+                <div
+                  key={drill.id}
+                  className={`drill-card ${selectedDrills.some(d => d.id === drill.id) ? 'selected' : ''}`}
+                  onClick={() => toggleDrillSelection(drill)}
+                  style={{
+                    padding: 'var(--spacing-md)',
+                    background: selectedDrills.some(d => d.id === drill.id) 
+                      ? 'rgba(255, 107, 53, 0.1)' 
+                      : 'var(--glass-bg)',
+                    border: `1px solid ${selectedDrills.some(d => d.id === drill.id) 
+                      ? 'var(--accent-orange)' 
+                      : 'var(--glass-border)'}`,
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>{drill.name}</h4>
+                  <p style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    {drill.description}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <span>{drill.category}</span>
+                    <span>•</span>
+                    <span>{drill.duration} min</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-actions" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: 'var(--spacing-lg)'
+            }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                {selectedDrills.length} drill{selectedDrills.length !== 1 ? 's' : ''} selected
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
+                <button type="button" className="glass-button" onClick={() => closeDrillSelector()}>
+                  Cancel
+                </button>
+                <button type="button" className="glass-button primary" onClick={() => closeDrillSelector()}>
+                  ✅ Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
+  );
+};
+
+// Phase Form Component
+const PracticePhaseForm = ({ phase, index, onUpdate, onRemove, onSelectDrills }) => {
+  return (
+    <div style={{
+      padding: 'var(--spacing-md)',
+      background: 'var(--glass-bg)',
+      border: '1px solid var(--glass-border)',
+      borderRadius: 'var(--radius-md)'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-sm)' }}>
+        <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Phase {index + 1}</h4>
+        <button
+          type="button"
+          onClick={onRemove}
+          style={{
+            background: 'rgba(231, 76, 60, 0.1)',
+            border: '1px solid rgba(231, 76, 60, 0.3)',
+            color: '#e74c3c',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Remove
+        </button>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
+        <input
+          type="text"
+          className="glass-input"
+          placeholder="Phase name (e.g., Warm-up, Serving Practice)"
+          value={phase.name}
+          onChange={(e) => onUpdate('name', e.target.value)}
+        />
+        <input
+          type="number"
+          className="glass-input"
+          placeholder="Duration (min)"
+          min="1"
+          max="120"
+          value={phase.duration}
+          onChange={(e) => onUpdate('duration', parseInt(e.target.value) || 0)}
+        />
+      </div>
+      
+      <textarea
+        className="glass-input"
+        placeholder="Phase objective..."
+        rows="2"
+        value={phase.objective}
+        onChange={(e) => onUpdate('objective', e.target.value)}
+        style={{ marginBottom: 'var(--spacing-sm)' }}
+      />
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          {phase.drills?.length || 0} drill{(phase.drills?.length || 0) !== 1 ? 's' : ''} selected
+        </div>
+        <button
+          type="button"
+          className="glass-button"
+          onClick={onSelectDrills}
+        >
+          Select Drills
+        </button>
+      </div>
+    </div>
   );
 };
 
