@@ -835,6 +835,15 @@
                 <button class="nav-btn" onclick="showAttendanceManager()" title="Manage Attendance">
                     👥 Attendance
                 </button>
+                <button class="nav-btn" onclick="showScoreboard()" title="Quick Scoreboard">
+                    🏆 Score
+                </button>
+                <button class="nav-btn" onclick="startWaterBreak()" title="Water Break">
+                    💧 Break
+                </button>
+                <button class="nav-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+                    ⛶ Full
+                </button>
                 <button class="nav-btn" id="nextBtn" onclick="nextPhase()">
                     Next →
                 </button>
@@ -2005,6 +2014,132 @@
                 }
             }
         });
+
+        // Scoreboard functionality
+        let scoreboardState = {
+            teamAScore: 0,
+            teamBScore: 0,
+            gameTime: 0,
+            gameTimerInterval: null,
+            isGameTimerRunning: false
+        };
+
+        function showScoreboard() {
+            const modal = document.getElementById('scoreboardModal');
+            modal.classList.add('active');
+            updateScoreDisplay();
+        }
+
+        function closeScoreboard() {
+            const modal = document.getElementById('scoreboardModal');
+            modal.classList.remove('active');
+        }
+
+        function changeScore(team, change) {
+            if (team === 'A') {
+                scoreboardState.teamAScore = Math.max(0, scoreboardState.teamAScore + change);
+            } else {
+                scoreboardState.teamBScore = Math.max(0, scoreboardState.teamBScore + change);
+            }
+            updateScoreDisplay();
+        }
+
+        function resetScores() {
+            scoreboardState.teamAScore = 0;
+            scoreboardState.teamBScore = 0;
+            scoreboardState.gameTime = 0;
+            updateScoreDisplay();
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('teamAScore').textContent = scoreboardState.teamAScore;
+            document.getElementById('teamBScore').textContent = scoreboardState.teamBScore;
+            
+            const minutes = Math.floor(scoreboardState.gameTime / 60);
+            const seconds = scoreboardState.gameTime % 60;
+            document.getElementById('gameTimer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function toggleGameTimer() {
+            if (scoreboardState.isGameTimerRunning) {
+                clearInterval(scoreboardState.gameTimerInterval);
+                scoreboardState.isGameTimerRunning = false;
+            } else {
+                scoreboardState.gameTimerInterval = setInterval(() => {
+                    scoreboardState.gameTime++;
+                    updateScoreDisplay();
+                }, 1000);
+                scoreboardState.isGameTimerRunning = true;
+            }
+        }
+
+        // Water break functionality
+        let waterBreakState = {
+            duration: 120, // 2 minutes default
+            timeLeft: 120,
+            interval: null,
+            isActive: false
+        };
+
+        function startWaterBreak() {
+            waterBreakState.timeLeft = waterBreakState.duration;
+            waterBreakState.isActive = true;
+            
+            const modal = document.getElementById('waterBreakModal');
+            modal.classList.add('active');
+            
+            updateWaterBreakDisplay();
+            
+            waterBreakState.interval = setInterval(() => {
+                waterBreakState.timeLeft--;
+                updateWaterBreakDisplay();
+                
+                if (waterBreakState.timeLeft <= 0) {
+                    endWaterBreak();
+                }
+            }, 1000);
+        }
+
+        function endWaterBreak() {
+            if (waterBreakState.interval) {
+                clearInterval(waterBreakState.interval);
+            }
+            
+            waterBreakState.isActive = false;
+            const modal = document.getElementById('waterBreakModal');
+            modal.classList.remove('active');
+        }
+
+        function updateWaterBreakDisplay() {
+            const minutes = Math.floor(waterBreakState.timeLeft / 60);
+            const seconds = waterBreakState.timeLeft % 60;
+            document.getElementById('waterBreakTimer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                if (document.getElementById('scoreboardModal').classList.contains('active')) {
+                    closeScoreboard();
+                }
+                if (document.getElementById('waterBreakModal').classList.contains('active')) {
+                    endWaterBreak();
+                }
+            }
+        });
     </script>
     <script src="/js/modal.js"></script>
 
@@ -2060,6 +2195,225 @@
             justify-content: center;
             margin-top: var(--spacing-lg);
         }
+
+        /* Scoreboard Modal Styles */
+        .scoreboard-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .scoreboard-modal.active {
+            display: flex;
+        }
+
+        .scoreboard-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .scoreboard-title {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0;
+            color: var(--accent-orange);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .game-timer {
+            font-size: 2rem;
+            margin: 1rem 0;
+            color: #fff;
+        }
+
+        .score-container {
+            display: flex;
+            gap: 4rem;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .team-score {
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .team-name {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--accent-orange);
+        }
+
+        .team-points {
+            font-size: 8rem;
+            font-weight: bold;
+            line-height: 1;
+            margin: 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        .vs-divider {
+            font-size: 4rem;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .score-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .score-btn {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            min-width: 60px;
+        }
+
+        .score-btn:hover {
+            background: var(--accent-orange);
+        }
+
+        .scoreboard-actions {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .scoreboard-close-btn {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .scoreboard-close-btn:hover {
+            background: var(--accent-orange);
+        }
+
+        /* Water Break Modal Styles */
+        .water-break-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 150, 255, 0.9);
+            z-index: 9998;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .water-break-modal.active {
+            display: flex;
+        }
+
+        .water-break-content {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .water-break-title {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .water-break-timer {
+            font-size: 6rem;
+            font-weight: bold;
+            margin: 2rem 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        .water-break-message {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .water-break-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+    </style>
+
+    <!-- Scoreboard Modal -->
+    <div id="scoreboardModal" class="scoreboard-modal">
+        <div class="scoreboard-actions">
+            <button class="scoreboard-close-btn" onclick="closeScoreboard()">✕ Close</button>
+        </div>
+        
+        <div class="scoreboard-header">
+            <h1 class="scoreboard-title">🏐 SCOREBOARD</h1>
+            <div class="game-timer" id="gameTimer">00:00</div>
+        </div>
+        
+        <div class="score-container">
+            <div class="team-score">
+                <div class="team-name" id="teamAName">Home</div>
+                <div class="team-points" id="teamAScore">0</div>
+                <div class="score-controls">
+                    <button class="score-btn" onclick="changeScore('A', -1)">-</button>
+                    <button class="score-btn" onclick="changeScore('A', 1)">+</button>
+                </div>
+            </div>
+            
+            <div class="vs-divider">VS</div>
+            
+            <div class="team-score">
+                <div class="team-name" id="teamBName">Away</div>
+                <div class="team-points" id="teamBScore">0</div>
+                <div class="score-controls">
+                    <button class="score-btn" onclick="changeScore('B', -1)">-</button>
+                    <button class="score-btn" onclick="changeScore('B', 1)">+</button>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <button class="score-btn" onclick="resetScores()" style="background: #666; margin-right: 1rem;">Reset Scores</button>
+            <button class="score-btn" onclick="toggleGameTimer()">Start/Stop Timer</button>
+        </div>
+    </div>
+
+    <!-- Water Break Modal -->
+    <div id="waterBreakModal" class="water-break-modal">
+        <div class="water-break-content">
+            <div class="water-break-title">💧 WATER BREAK</div>
+            <div class="water-break-timer" id="waterBreakTimer">2:00</div>
+            <div class="water-break-message">Stay hydrated! Break ends automatically.</div>
+            <div class="water-break-controls">
+                <button class="scoreboard-close-btn" onclick="endWaterBreak()">End Break Now</button>
+            </div>
+        </div>
+    </div>
     </style>
 </body>
 </html>
