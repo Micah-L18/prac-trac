@@ -313,12 +313,39 @@ const getDrills = (callback) => {
   db.all('SELECT * FROM drills ORDER BY category, name', [], (err, drills) => {
     if (err) return callback(err);
     
-    // Parse JSON fields
-    const processedDrills = drills.map(drill => ({
-      ...drill,
-      equipment: JSON.parse(drill.equipment || '[]'),
-      focus: JSON.parse(drill.focus || '[]')
-    }));
+    // Parse JSON fields with error handling
+    const processedDrills = drills.map(drill => {
+      let equipment = [];
+      let focus = [];
+      
+      try {
+        equipment = JSON.parse(drill.equipment || '[]');
+        if (!Array.isArray(equipment)) {
+          // Handle case where equipment is a string instead of array
+          equipment = drill.equipment ? [drill.equipment] : [];
+        }
+      } catch (e) {
+        console.warn(`Invalid equipment JSON for drill ${drill.id}:`, drill.equipment);
+        equipment = drill.equipment ? [drill.equipment] : [];
+      }
+      
+      try {
+        focus = JSON.parse(drill.focus || '[]');
+        if (!Array.isArray(focus)) {
+          // Handle case where focus is a string instead of array
+          focus = drill.focus ? [drill.focus] : [];
+        }
+      } catch (e) {
+        console.warn(`Invalid focus JSON for drill ${drill.id}:`, drill.focus);
+        focus = drill.focus ? [drill.focus] : [];
+      }
+      
+      return {
+        ...drill,
+        equipment,
+        focus
+      };
+    });
     
     callback(null, processedDrills);
   });
@@ -457,10 +484,33 @@ const getDrillById = (id, callback) => {
     if (err) return callback(err);
     if (!drill) return callback(null, null);
     
+    let equipment = [];
+    let focus = [];
+    
+    try {
+      equipment = JSON.parse(drill.equipment || '[]');
+      if (!Array.isArray(equipment)) {
+        equipment = drill.equipment ? [drill.equipment] : [];
+      }
+    } catch (e) {
+      console.warn(`Invalid equipment JSON for drill ${drill.id}:`, drill.equipment);
+      equipment = drill.equipment ? [drill.equipment] : [];
+    }
+    
+    try {
+      focus = JSON.parse(drill.focus || '[]');
+      if (!Array.isArray(focus)) {
+        focus = drill.focus ? [drill.focus] : [];
+      }
+    } catch (e) {
+      console.warn(`Invalid focus JSON for drill ${drill.id}:`, drill.focus);
+      focus = drill.focus ? [drill.focus] : [];
+    }
+    
     const processedDrill = {
       ...drill,
-      equipment: JSON.parse(drill.equipment || '[]'),
-      focus: JSON.parse(drill.focus || '[]')
+      equipment,
+      focus
     };
     
     callback(null, processedDrill);
@@ -893,23 +943,6 @@ app.put('/api/drills/:id', (req, res) => {
       }
       res.json(drill);
     });
-  });
-});
-
-app.delete('/api/drills/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  db.run('DELETE FROM drills WHERE id = ?', [id], function(err) {
-    if (err) {
-      console.error('Error deleting drill:', err);
-      return res.status(500).json({ error: 'Failed to delete drill' });
-    }
-    
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Drill not found' });
-    }
-    
-    res.json({ message: 'Drill deleted successfully' });
   });
 });
 
@@ -1805,25 +1838,43 @@ app.get('/api/team/stats', (req, res) => {
 app.delete('/api/players/:id', (req, res) => {
   const playerId = req.params.id;
   
-  // First, delete all related attendance records
-  db.run('DELETE FROM practice_attendance WHERE player_id = ?', [playerId], function(err) {
+  // Delete all related records in sequence (some tables don't have CASCADE)
+  
+  // 1. Delete player stats
+  db.run('DELETE FROM player_stats WHERE player_id = ?', [playerId], function(err) {
     if (err) {
-      console.error('Error deleting player attendance:', err);
-      return res.status(500).json({ error: 'Failed to delete player attendance' });
+      console.error('Error deleting player stats:', err);
+      return res.status(500).json({ error: 'Failed to delete player stats' });
     }
     
-    // Then delete the player
-    db.run('DELETE FROM players WHERE id = ?', [playerId], function(err) {
+    // 2. Delete practice attendance (this should cascade but being explicit)
+    db.run('DELETE FROM practice_attendance WHERE player_id = ?', [playerId], function(err) {
       if (err) {
-        console.error('Error deleting player:', err);
-        return res.status(500).json({ error: 'Failed to delete player' });
+        console.error('Error deleting player attendance:', err);
+        return res.status(500).json({ error: 'Failed to delete player attendance' });
       }
       
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Player not found' });
-      }
-      
-      res.json({ message: 'Player deleted successfully' });
+      // 3. Delete player notes (this should cascade but being explicit)
+      db.run('DELETE FROM player_notes WHERE player_id = ?', [playerId], function(err) {
+        if (err) {
+          console.error('Error deleting player notes:', err);
+          return res.status(500).json({ error: 'Failed to delete player notes' });
+        }
+        
+        // 4. Finally delete the player
+        db.run('DELETE FROM players WHERE id = ?', [playerId], function(err) {
+          if (err) {
+            console.error('Error deleting player:', err);
+            return res.status(500).json({ error: 'Failed to delete player' });
+          }
+          
+          if (this.changes === 0) {
+            return res.status(404).json({ error: 'Player not found' });
+          }
+          
+          res.json({ message: 'Player deleted successfully' });
+        });
+      });
     });
   });
 });
@@ -1908,7 +1959,7 @@ app.delete('/api/practice-sessions/:id', (req, res) => {
 
 // Delete drill
 app.delete('/api/drills/:id', (req, res) => {
-  const drillId = req.params.id;
+  const drillId = parseInt(req.params.id);
   
   // First, delete drill from practice phases
   db.run('DELETE FROM practice_phase_drills WHERE drill_id = ?', [drillId], function(err) {

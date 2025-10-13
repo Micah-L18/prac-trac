@@ -355,9 +355,21 @@
                             ${attendanceGrid}
                         </div>
                     </div>
+                    
+                    <div id="playerNotesSection" style="margin-top: var(--spacing-lg);">
+                        <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--text-primary);">Player Notes</h3>
+                        <div id="playerNotesContent">
+                            <div style="text-align: center; padding: var(--spacing-lg); color: var(--text-secondary);">
+                                Loading player notes...
+                            </div>
+                        </div>
+                    </div>
                 `;
                 
                 document.getElementById('sessionDetailsModal').style.display = 'flex';
+                
+                // Load player notes after displaying the modal
+                loadPlayerNotesForSession(sessionId);
             } catch (error) {
                 console.error('Error loading session details:', error);
                 glassModal.error('Error loading session details. Please try again.', 'Loading Failed');
@@ -391,6 +403,121 @@
                     console.error('Error deleting practice session:', error);
                     showGlassError('Error deleting practice session');
                 });
+            }
+        }
+
+        async function loadPlayerNotesForSession(sessionId) {
+            try {
+                const playerNotesContent = document.getElementById('playerNotesContent');
+                
+                // First fetch all players who attended this session
+                const sessionResponse = await fetch(`/api/practice-sessions/${sessionId}`);
+                const session = await sessionResponse.json();
+                
+                if (!session.attendance || session.attendance.length === 0) {
+                    playerNotesContent.innerHTML = `
+                        <div style="text-align: center; padding: var(--spacing-lg); color: var(--text-secondary);">
+                            No attendance records found for this session.
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Fetch player notes for each player in the session
+                const playerNotesPromises = session.attendance.map(async (record) => {
+                    try {
+                        // Use player_id (snake_case) from the database record
+                        const response = await fetch(`/api/practice-sessions/${sessionId}/player-notes/${record.player_id}`);
+                        if (response.ok) {
+                            const notes = await response.json();
+                            return {
+                                player: record,
+                                notes: notes
+                            };
+                        }
+                        return {
+                            player: record,
+                            notes: []
+                        };
+                    } catch (error) {
+                        console.error(`Error loading notes for player ${record.player_id}:`, error);
+                        return {
+                            player: record,
+                            notes: []
+                        };
+                    }
+                });
+
+                const playerNotesResults = await Promise.all(playerNotesPromises);
+                
+                // Filter to only show players who have notes
+                const playersWithNotes = playerNotesResults.filter(result => result.notes && result.notes.length > 0);
+                
+                if (playersWithNotes.length === 0) {
+                    playerNotesContent.innerHTML = `
+                        <div style="text-align: center; padding: var(--spacing-lg); color: var(--text-secondary);">
+                            No player notes were recorded for this practice session.
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Generate the player notes HTML
+                const playerNotesHtml = playersWithNotes.map(result => {
+                    const { player, notes } = result;
+                    
+                    const notesHtml = notes.map(note => {
+                        const noteDate = new Date(note.created_at);
+                        const noteTypeIcon = note.note_type === 'practice' ? '📝' : '👤';
+                        const noteTypeLabel = note.note_type === 'practice' ? 'Practice Note' : 'Player Note';
+                        
+                        return `
+                            <div class="glass-card" style="padding: var(--spacing-md); margin-bottom: var(--spacing-sm); background: var(--glass-secondary);">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
+                                    <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                                        <span style="font-size: var(--font-size-lg);">${noteTypeIcon}</span>
+                                        <span style="color: var(--accent-orange); font-weight: 600; font-size: var(--font-size-sm);">${noteTypeLabel}</span>
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: var(--font-size-xs);">
+                                        ${noteDate.toLocaleDateString()} ${noteDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </div>
+                                </div>
+                                <div style="line-height: 1.5; color: var(--text-primary);">
+                                    ${note.notes}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    return `
+                        <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-md);">
+                            <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 1px solid var(--glass-border);">
+                                <div style="font-size: var(--font-size-lg);">#${player.jerseyNumber}</div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); font-size: var(--font-size-lg);">
+                                        ${player.firstName} ${player.lastName}
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">
+                                        ${player.position}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                ${notesHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                playerNotesContent.innerHTML = playerNotesHtml;
+                
+            } catch (error) {
+                console.error('Error loading player notes:', error);
+                document.getElementById('playerNotesContent').innerHTML = `
+                    <div style="text-align: center; padding: var(--spacing-lg); color: var(--text-error);">
+                        Error loading player notes. Please try again.
+                    </div>
+                `;
             }
         }
 

@@ -107,6 +107,52 @@
             color: var(--text-tertiary);
             font-size: 11px;
         }
+        
+        /* Multi-select option styles */
+        .option-tag {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            color: var(--text-primary);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            font-size: var(--font-size-sm);
+        }
+        
+        .option-tag:hover {
+            background: var(--glass-primary);
+            border-color: var(--accent-orange);
+        }
+        
+        .option-tag.selected {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: white;
+        }
+        
+        .option-tag.selected:hover {
+            background: #ff7a35;
+        }
+        
+        .option-tag.custom {
+            border-left: 3px solid #4CAF50;
+            position: relative;
+        }
+        
+        .option-tag.custom::after {
+            content: "★";
+            position: absolute;
+            top: -2px;
+            right: 2px;
+            font-size: 8px;
+            color: #4CAF50;
+        }
+        
+        .option-tag.custom.selected::after {
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -262,14 +308,36 @@
                             </select>
                         </div>
                         <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Equipment (comma-separated)</label>
-                            <input type="text" id="drillEquipment" name="equipment" class="glass-input" placeholder="Volleyballs, Net, Cones">
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Equipment</label>
+                            <div id="equipmentSelector" style="background: var(--glass-primary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: var(--spacing-sm); max-height: 120px; overflow-y: auto;">
+                                <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                                    <!-- Equipment options will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: var(--spacing-xs); margin-top: var(--spacing-xs);">
+                                <input type="text" id="newEquipmentInput" placeholder="Add new equipment..." style="flex: 1; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary); font-size: var(--font-size-sm);">
+                                <button type="button" onclick="addCustomEquipment()" style="padding: var(--spacing-xs) var(--spacing-sm); background: var(--accent-orange); color: white; border: none; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer;">Add</button>
+                            </div>
+                            <input type="hidden" id="drillEquipment" name="equipment">
                         </div>
                     </div>
 
                     <div class="mb-lg">
-                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Focus Areas (comma-separated)</label>
-                        <input type="text" id="drillFocus" name="focus" class="glass-input" placeholder="Passing, Setting, Communication">
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Focus Areas</label>
+                        <div id="focusSelector" style="background: var(--glass-primary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: var(--spacing-sm); max-height: 120px; overflow-y: auto;">
+                            <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                                <!-- Focus options will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-xs); margin-top: var(--spacing-xs);">
+                            <input type="text" id="newFocusInput" placeholder="Add new focus area..." style="flex: 1; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary); font-size: var(--font-size-sm);">
+                            <button type="button" onclick="addCustomFocus()" style="padding: var(--spacing-xs) var(--spacing-sm); background: var(--accent-orange); color: white; border: none; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer;">Add</button>
+                        </div>
+                        <input type="hidden" id="drillFocus" name="focus">
+                    </div>
+
+                    <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); text-align: center; margin-bottom: var(--spacing-md); padding: var(--spacing-sm); background: var(--glass-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
+                        💡 Click tags to select • Type and press "Add" to create custom options • <span style="color: #4CAF50;">★ Custom options</span> are saved for future use
                     </div>
 
                     <div class="modal-actions">
@@ -285,6 +353,43 @@
         let allDrills = [];
         let filteredDrills = [];
         let favoriteDrills = JSON.parse(localStorage.getItem('favoriteDrills')) || [];
+        
+        // Base equipment and focus options
+        let equipmentOptions = [
+            'Balls', 'Net', 'Cones', 'Agility Ladders', 'Resistance Bands', 
+            'Medicine Balls', 'Antenna', 'Tape/Lines', 'Whistle', 'Scoreboard',
+            'Volleyball Cart', 'Floor Markers', 'Blocking Pads', 'Jump Boxes',
+            'Elastic Bands', 'Water Bottles', 'Towels', 'First Aid Kit'
+        ];
+        
+        let focusOptions = [
+            'Serving', 'Passing', 'Setting', 'Attacking', 'Blocking', 'Digging',
+            'Communication', 'Footwork', 'Timing', 'Coordination', 'Conditioning',
+            'Team Play', 'Defense', 'Offense', 'Rotation', 'Strategy',
+            'Mental Toughness', 'Leadership', 'Ball Control', 'Court Awareness'
+        ];
+        
+        let selectedEquipment = [];
+        let selectedFocus = [];
+
+        // Load custom options from localStorage
+        function loadCustomOptions() {
+            const customEquipment = JSON.parse(localStorage.getItem('customEquipment')) || [];
+            const customFocus = JSON.parse(localStorage.getItem('customFocus')) || [];
+            
+            // Add custom options to the arrays if they don't already exist
+            customEquipment.forEach(option => {
+                if (!equipmentOptions.includes(option)) {
+                    equipmentOptions.push(option);
+                }
+            });
+            
+            customFocus.forEach(option => {
+                if (!focusOptions.includes(option)) {
+                    focusOptions.push(option);
+                }
+            });
+        }
 
         // Load drill data
         async function loadDrillData() {
@@ -292,6 +397,17 @@
                 const response = await fetch('/api/drills');
                 allDrills = await response.json();
                 filteredDrills = [...allDrills];
+                
+                // Clean up favorites - remove any drill IDs that no longer exist
+                const existingDrillIds = allDrills.map(drill => drill.id);
+                const originalFavoritesLength = favoriteDrills.length;
+                favoriteDrills = favoriteDrills.filter(id => existingDrillIds.includes(id));
+                
+                // Update localStorage if favorites were cleaned up
+                if (favoriteDrills.length !== originalFavoritesLength) {
+                    localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
+                }
+                
                 updateStatistics();
                 renderDrills();
             } catch (error) {
@@ -303,6 +419,191 @@
             document.getElementById('totalDrills').textContent = allDrills.length;
             document.getElementById('favoriteDrills').textContent = favoriteDrills.length;
         }
+
+        // Multi-select functionality
+        function initializeSelectors() {
+            initializeEquipmentSelector();
+            initializeFocusSelector();
+        }
+
+        function initializeEquipmentSelector() {
+            const container = document.querySelector('#equipmentSelector > div');
+            const customEquipment = JSON.parse(localStorage.getItem('customEquipment')) || [];
+            
+            container.innerHTML = equipmentOptions.map(option => {
+                const isCustom = customEquipment.includes(option);
+                return `<span class="option-tag ${isCustom ? 'custom' : ''}" onclick="toggleEquipment('${option}')" data-option="${option}">
+                    ${option}
+                </span>`;
+            }).join('');
+        }
+
+        function initializeFocusSelector() {
+            const container = document.querySelector('#focusSelector > div');
+            const customFocus = JSON.parse(localStorage.getItem('customFocus')) || [];
+            
+            container.innerHTML = focusOptions.map(option => {
+                const isCustom = customFocus.includes(option);
+                return `<span class="option-tag ${isCustom ? 'custom' : ''}" onclick="toggleFocus('${option}')" data-option="${option}">
+                    ${option}
+                </span>`;
+            }).join('');
+        }
+
+        function toggleEquipment(option) {
+            const index = selectedEquipment.indexOf(option);
+            if (index === -1) {
+                selectedEquipment.push(option);
+            } else {
+                selectedEquipment.splice(index, 1);
+            }
+            updateEquipmentDisplay();
+            updateEquipmentInput();
+        }
+
+        function toggleFocus(option) {
+            const index = selectedFocus.indexOf(option);
+            if (index === -1) {
+                selectedFocus.push(option);
+            } else {
+                selectedFocus.splice(index, 1);
+            }
+            updateFocusDisplay();
+            updateFocusInput();
+        }
+
+        function updateEquipmentDisplay() {
+            const tags = document.querySelectorAll('#equipmentSelector .option-tag');
+            tags.forEach(tag => {
+                const option = tag.getAttribute('data-option');
+                if (selectedEquipment.includes(option)) {
+                    tag.classList.add('selected');
+                } else {
+                    tag.classList.remove('selected');
+                }
+            });
+        }
+
+        function updateFocusDisplay() {
+            const tags = document.querySelectorAll('#focusSelector .option-tag');
+            tags.forEach(tag => {
+                const option = tag.getAttribute('data-option');
+                if (selectedFocus.includes(option)) {
+                    tag.classList.add('selected');
+                } else {
+                    tag.classList.remove('selected');
+                }
+            });
+        }
+
+        function updateEquipmentInput() {
+            document.getElementById('drillEquipment').value = selectedEquipment.join(', ');
+        }
+
+        function updateFocusInput() {
+            document.getElementById('drillFocus').value = selectedFocus.join(', ');
+        }
+
+        function resetSelectors() {
+            // Default equipment (balls and net are always available)
+            selectedEquipment = ['Balls', 'Net'];
+            selectedFocus = [];
+            updateEquipmentDisplay();
+            updateFocusDisplay();
+            updateEquipmentInput();
+            updateFocusInput();
+        }
+
+        // Custom option management
+        function addCustomEquipment() {
+            const input = document.getElementById('newEquipmentInput');
+            const newOption = input.value.trim();
+            
+            if (!newOption) {
+                alert('Please enter an equipment name');
+                return;
+            }
+            
+            if (equipmentOptions.includes(newOption)) {
+                alert('This equipment option already exists');
+                input.value = '';
+                return;
+            }
+            
+            // Add to options array
+            equipmentOptions.push(newOption);
+            
+            // Save to localStorage
+            const customEquipment = JSON.parse(localStorage.getItem('customEquipment')) || [];
+            if (!customEquipment.includes(newOption)) {
+                customEquipment.push(newOption);
+                localStorage.setItem('customEquipment', JSON.stringify(customEquipment));
+            }
+            
+            // Clear input
+            input.value = '';
+            
+            // Reinitialize selector with new option
+            initializeEquipmentSelector();
+            updateEquipmentDisplay();
+            
+            // Auto-select the new option
+            selectedEquipment.push(newOption);
+            updateEquipmentDisplay();
+            updateEquipmentInput();
+        }
+
+        function addCustomFocus() {
+            const input = document.getElementById('newFocusInput');
+            const newOption = input.value.trim();
+            
+            if (!newOption) {
+                alert('Please enter a focus area name');
+                return;
+            }
+            
+            if (focusOptions.includes(newOption)) {
+                alert('This focus area already exists');
+                input.value = '';
+                return;
+            }
+            
+            // Add to options array
+            focusOptions.push(newOption);
+            
+            // Save to localStorage
+            const customFocus = JSON.parse(localStorage.getItem('customFocus')) || [];
+            if (!customFocus.includes(newOption)) {
+                customFocus.push(newOption);
+                localStorage.setItem('customFocus', JSON.stringify(customFocus));
+            }
+            
+            // Clear input
+            input.value = '';
+            
+            // Reinitialize selector with new option
+            initializeFocusSelector();
+            updateFocusDisplay();
+            
+            // Auto-select the new option
+            selectedFocus.push(newOption);
+            updateFocusDisplay();
+            updateFocusInput();
+        }
+
+        // Allow Enter key to add options
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.id === 'newEquipmentInput') {
+                    event.preventDefault();
+                    addCustomEquipment();
+                } else if (activeElement && activeElement.id === 'newFocusInput') {
+                    event.preventDefault();
+                    addCustomFocus();
+                }
+            }
+        });
 
         function toggleFavorite(drillId) {
             const index = favoriteDrills.indexOf(drillId);
@@ -322,6 +623,9 @@
                 // Update modal title for editing
                 document.querySelector('#customDrillModal h2').textContent = '✏️ Edit Drill';
                 
+                // Initialize selectors first
+                initializeSelectors();
+                
                 // Populate edit form with drill data
                 document.getElementById('drillName').value = drill.name;
                 document.getElementById('drillCategory').value = drill.category;
@@ -330,8 +634,16 @@
                 document.getElementById('drillMinPlayers').value = drill.minPlayers;
                 document.getElementById('drillMaxPlayers').value = drill.maxPlayers;
                 document.getElementById('drillDifficulty').value = drill.difficulty;
-                document.getElementById('drillEquipment').value = drill.equipment.join(', ');
-                document.getElementById('drillFocus').value = drill.focus.join(', ');
+                
+                // Set selected equipment and focus
+                selectedEquipment = Array.isArray(drill.equipment) ? drill.equipment : (drill.equipment ? [drill.equipment] : []);
+                selectedFocus = Array.isArray(drill.focus) ? drill.focus : (drill.focus ? [drill.focus] : []);
+                
+                // Update displays and inputs
+                updateEquipmentDisplay();
+                updateFocusDisplay();
+                updateEquipmentInput();
+                updateFocusInput();
                 
                 // Show modal
                 document.getElementById('customDrillModal').style.display = 'flex';
@@ -391,7 +703,7 @@
                     <div style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-md);">
                         <div><strong>Duration:</strong> ${drill.duration} minutes</div>
                         <div><strong>Players:</strong> ${drill.minPlayers}-${drill.maxPlayers}</div>
-                        <div><strong>Equipment:</strong> ${drill.equipment.join(', ')}</div>
+                        <div><strong>Equipment:</strong> ${Array.isArray(drill.equipment) ? drill.equipment.join(', ') : (drill.equipment || 'None specified')}</div>
                     </div>
                     
                     <div style="background: var(--glass-tertiary); border-radius: var(--radius-sm); padding: var(--spacing-sm); margin-bottom: var(--spacing-md);">
@@ -399,9 +711,9 @@
                             <strong>Focus Areas:</strong>
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
-                            ${drill.focus.map(skill => 
+                            ${Array.isArray(drill.focus) ? drill.focus.map(skill => 
                                 `<span style="background: var(--glass-primary); color: var(--accent-orange); padding: 2px 6px; border-radius: 0px; font-size: 10px;">${skill}</span>`
-                            ).join('')}
+                            ).join('') : (drill.focus ? `<span style="background: var(--glass-primary); color: var(--accent-orange); padding: 2px 6px; border-radius: 0px; font-size: 10px;">${drill.focus}</span>` : '')}
                         </div>
                     </div>
 
@@ -428,7 +740,8 @@
             filteredDrills = allDrills.filter(drill => {
                 const matchesSearch = drill.name.toLowerCase().includes(searchTerm) ||
                                     drill.description.toLowerCase().includes(searchTerm) ||
-                                    drill.focus.some(skill => skill.toLowerCase().includes(searchTerm));
+                                    (Array.isArray(drill.focus) ? drill.focus.some(skill => skill.toLowerCase().includes(searchTerm)) : 
+                                     drill.focus && drill.focus.toLowerCase().includes(searchTerm));
                 
                 const matchesDifficulty = !difficultyFilter || drill.difficulty.toString() === difficultyFilter;
                 
@@ -450,7 +763,6 @@
             } else {
                 filteredDrills = allDrills.filter(drill => drill.category === category);
             }
-            
             renderDrills();
         }
 
@@ -461,12 +773,18 @@
             // Reset form for new drill
             document.getElementById('customDrillForm').reset();
             document.getElementById('customDrillForm').removeAttribute('data-edit-id');
+            
+            // Initialize selectors and reset selections
+            initializeSelectors();
+            resetSelectors();
+            
             document.getElementById('customDrillModal').style.display = 'flex';
         }
 
         function closeCustomDrillModal() {
             document.getElementById('customDrillModal').style.display = 'none';
             document.getElementById('customDrillForm').reset();
+            resetSelectors();
         }
 
         async function saveCustomDrill(event) {
@@ -526,6 +844,9 @@
         }
 
         async function deleteDrill(drillId, drillName) {
+            // Ensure drillId is an integer for proper comparison
+            drillId = parseInt(drillId);
+            
             const confirmed = await showGlassConfirm(
                 `Are you sure you want to delete "${drillName}"? This action cannot be undone and will remove this drill from any practice plans that use it.`,
                 'Delete Drill'
@@ -540,6 +861,13 @@
                     if (data.error) {
                         showGlassError(`Error: ${data.error}`);
                     } else {
+                        // Remove drill from favorites if it was favorited
+                        const favoriteIndex = favoriteDrills.indexOf(drillId);
+                        if (favoriteIndex !== -1) {
+                            favoriteDrills.splice(favoriteIndex, 1);
+                            localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
+                        }
+                        
                         showGlassSuccess('Drill deleted successfully');
                         loadDrillData(); // Reload the drills list
                     }
@@ -553,6 +881,7 @@
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
+            loadCustomOptions();
             loadDrillData();
         });
     </script>
