@@ -295,6 +295,199 @@ db.serialize(() => {
         });
       }
       
+      // Phase 1 Multi-team Schema Migrations
+      console.log('🔄 Running Phase 1 multi-team schema migrations...');
+      
+      // Migration 1: Add is_active to teams table if it doesn't exist
+      db.all("PRAGMA table_info(teams)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking teams table schema:', err);
+          return;
+        }
+        
+        const hasIsActive = columns.some(col => col.name === 'is_active');
+        
+        if (!hasIsActive) {
+          console.log('🔄 Adding is_active column to teams table...');
+          db.run("ALTER TABLE teams ADD COLUMN is_active BOOLEAN DEFAULT 1", (err) => {
+            if (err) {
+              console.error('Error adding is_active to teams:', err);
+            } else {
+              console.log('✅ Added is_active column to teams table');
+            }
+          });
+        }
+      });
+      
+      // Migration 2: Add current_team_id to users table if it doesn't exist
+      db.all("PRAGMA table_info(users)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking users table schema:', err);
+          return;
+        }
+        
+        const hasCurrentTeamId = columns.some(col => col.name === 'current_team_id');
+        
+        if (!hasCurrentTeamId) {
+          console.log('🔄 Adding current_team_id column to users table...');
+          db.run("ALTER TABLE users ADD COLUMN current_team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL", (err) => {
+            if (err) {
+              console.error('Error adding current_team_id to users:', err);
+            } else {
+              console.log('✅ Added current_team_id column to users table');
+            }
+          });
+        }
+      });
+      
+      // Migration 3: Add is_public to drills table if it doesn't exist
+      db.all("PRAGMA table_info(drills)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking drills table schema:', err);
+          return;
+        }
+        
+        const hasIsPublic = columns.some(col => col.name === 'is_public');
+        const hasUserId = columns.some(col => col.name === 'user_id');
+        
+        if (!hasIsPublic) {
+          console.log('🔄 Adding is_public column to drills table...');
+          db.run("ALTER TABLE drills ADD COLUMN is_public BOOLEAN DEFAULT 0", (err) => {
+            if (err) {
+              console.error('Error adding is_public to drills:', err);
+            } else {
+              console.log('✅ Added is_public column to drills table');
+            }
+          });
+        }
+        
+        if (!hasUserId) {
+          console.log('🔄 Adding user_id column to drills table...');
+          db.run("ALTER TABLE drills ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL", (err) => {
+            if (err) {
+              console.error('Error adding user_id to drills:', err);
+            } else {
+              console.log('✅ Added user_id column to drills table');
+            }
+          });
+        }
+      });
+      
+      // Migration 4: Add user_id to teams table if it doesn't exist
+      db.all("PRAGMA table_info(teams)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking teams table schema:', err);
+          return;
+        }
+        
+        const hasUserId = columns.some(col => col.name === 'user_id');
+        
+        if (!hasUserId) {
+          console.log('🔄 Adding user_id column to teams table...');
+          db.run("ALTER TABLE teams ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL", (err) => {
+            if (err) {
+              console.error('Error adding user_id to teams:', err);
+            } else {
+              console.log('✅ Added user_id column to teams table');
+            }
+          });
+        }
+      });
+      
+      // Migration 5: Add user_id to practices table if it doesn't exist
+      db.all("PRAGMA table_info(practices)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking practices table schema:', err);
+          return;
+        }
+        
+        const hasUserId = columns.some(col => col.name === 'user_id');
+        
+        if (!hasUserId) {
+          console.log('🔄 Adding user_id column to practices table...');
+          db.run("ALTER TABLE practices ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL", (err) => {
+            if (err) {
+              console.error('Error adding user_id to practices:', err);
+            } else {
+              console.log('✅ Added user_id column to practices table');
+            }
+          });
+        }
+      });
+      
+      // Migration 6: Ensure existing data has proper user associations
+      // Use a timeout to allow the ALTER TABLE operations to complete first
+      setTimeout(() => {
+        db.get("SELECT COUNT(*) as count FROM users", [], (err, result) => {
+          if (err) {
+            console.error('Error checking user count:', err);
+            return;
+          }
+          
+          if (result.count > 0) {
+            // Get the first user to assign existing data to
+            db.get("SELECT id FROM users ORDER BY id ASC LIMIT 1", [], (err, firstUser) => {
+              if (err) {
+                console.error('Error getting first user:', err);
+                return;
+              }
+              
+              if (firstUser) {
+                // Update teams without user_id to belong to first user
+                db.run("UPDATE teams SET user_id = ? WHERE user_id IS NULL", [firstUser.id], (err) => {
+                  if (err) {
+                    console.error('Error updating teams user_id:', err);
+                  } else {
+                    console.log('✅ Assigned existing teams to first user');
+                  }
+                });
+                
+                // Update drills without user_id to belong to first user
+                db.run("UPDATE drills SET user_id = ? WHERE user_id IS NULL", [firstUser.id], (err) => {
+                  if (err) {
+                    console.error('Error updating drills user_id:', err);
+                  } else {
+                    console.log('✅ Assigned existing drills to first user');
+                  }
+                });
+                
+                // Update practices without user_id to belong to first user
+                db.run("UPDATE practices SET user_id = ? WHERE user_id IS NULL", [firstUser.id], (err) => {
+                  if (err) {
+                    console.error('Error updating practices user_id:', err);
+                  } else {
+                    console.log('✅ Assigned existing practices to first user');
+                  }
+                });
+                
+                // Set the first user's current team to their first team
+                db.get("SELECT id FROM teams WHERE user_id = ? ORDER BY id ASC LIMIT 1", [firstUser.id], (err, firstTeam) => {
+                  if (err) {
+                    console.error('Error getting first team:', err);
+                    return;
+                  }
+                  
+                  if (firstTeam) {
+                    db.run("UPDATE users SET current_team_id = ? WHERE id = ? AND current_team_id IS NULL", [firstTeam.id, firstUser.id], (err) => {
+                      if (err) {
+                        console.error('Error setting current team:', err);
+                      } else {
+                        console.log('✅ Set current team for first user');
+                        console.log('🎉 Phase 1 multi-team migration completed successfully!');
+                      }
+                    });
+                  } else {
+                    console.log('🎉 Phase 1 multi-team migration completed successfully!');
+                  }
+                });
+              }
+            });
+          } else {
+            console.log('🎉 Phase 1 multi-team migration completed successfully!');
+          }
+        });
+      }, 500); // Wait 500ms for ALTER TABLE operations to complete
+      
       console.log('✅ All database tables initialized');
     }
   });
@@ -779,13 +972,75 @@ app.put('/api/user/password', (req, res) => {
   });
 });
 
+// Team Management Routes
 app.get('/api/teams', optionalAuth, (req, res) => {
-  getTeams((err, teams) => {
+  if (!req.session.userId) {
+    // For non-authenticated users, return empty array
+    return res.json([]);
+  }
+  
+  // Get teams for the authenticated user only
+  db.all('SELECT * FROM teams WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC', [req.session.userId], (err, teams) => {
     if (err) {
-      console.error('Error fetching teams:', err);
+      console.error('Error fetching user teams:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
     res.json(teams);
+  });
+});
+
+// Get user's current team
+app.get('/api/user/current-team', requireAuth, (req, res) => {
+  db.get('SELECT current_team_id FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+    if (err) {
+      console.error('Error fetching current team:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (!user || !user.current_team_id) {
+      return res.json({ currentTeam: null });
+    }
+    
+    // Get the current team details
+    db.get('SELECT * FROM teams WHERE id = ? AND user_id = ?', [user.current_team_id, req.session.userId], (err, team) => {
+      if (err) {
+        console.error('Error fetching current team details:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      
+      res.json({ currentTeam: team });
+    });
+  });
+});
+
+// Switch current team
+app.put('/api/user/current-team', requireAuth, (req, res) => {
+  const { teamId } = req.body;
+  
+  if (!teamId) {
+    return res.status(400).json({ error: 'Team ID is required' });
+  }
+  
+  // Verify the team belongs to the user
+  db.get('SELECT id FROM teams WHERE id = ? AND user_id = ?', [teamId, req.session.userId], (err, team) => {
+    if (err) {
+      console.error('Error verifying team ownership:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (!team) {
+      return res.status(403).json({ error: 'Team not found or access denied' });
+    }
+    
+    // Update user's current team
+    db.run('UPDATE users SET current_team_id = ? WHERE id = ?', [teamId, req.session.userId], (err) => {
+      if (err) {
+        console.error('Error updating current team:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      
+      res.json({ message: 'Current team updated successfully', teamId });
+    });
   });
 });
 
@@ -1065,13 +1320,17 @@ app.get('/api/players/:id/attendance', (req, res) => {
 });
 
 // CRUD operations for teams
-app.post('/api/teams', (req, res) => {
+app.post('/api/teams', requireAuth, (req, res) => {
   const { name, season, division, coach } = req.body;
   
+  if (!name || !season || !division || !coach) {
+    return res.status(400).json({ error: 'All fields are required: name, season, division, coach' });
+  }
+  
   db.run(`
-    INSERT INTO teams (name, season, division, coach) 
-    VALUES (?, ?, ?, ?)
-  `, [name, season, division, coach], function(err) {
+    INSERT INTO teams (name, season, division, coach, user_id) 
+    VALUES (?, ?, ?, ?, ?)
+  `, [name, season, division, coach, req.session.userId], function(err) {
     if (err) {
       console.error('Error creating team:', err);
       return res.status(500).json({ error: 'Failed to create team' });
@@ -1083,54 +1342,124 @@ app.post('/api/teams', (req, res) => {
         console.error('Error retrieving team:', err);
         return res.status(500).json({ error: 'Team created but failed to retrieve' });
       }
-      res.status(201).json(team);
+      
+      // If this is the user's first team, set it as current
+      db.get('SELECT current_team_id FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+        if (err) {
+          console.error('Error checking user current team:', err);
+          return res.status(201).json(team);
+        }
+        
+        if (!user.current_team_id) {
+          db.run('UPDATE users SET current_team_id = ? WHERE id = ?', [this.lastID, req.session.userId], (err) => {
+            if (err) {
+              console.error('Error setting current team:', err);
+            }
+            res.status(201).json(team);
+          });
+        } else {
+          res.status(201).json(team);
+        }
+      });
     });
   });
 });
 
-app.put('/api/teams/:id', (req, res) => {
+app.put('/api/teams/:id', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, season, division, coach } = req.body;
+  const { name, season, division, coach, is_active } = req.body;
   
-  db.run(`
-    UPDATE teams 
-    SET name = ?, season = ?, division = ?, coach = ?
-    WHERE id = ?
-  `, [name, season, division, coach, id], function(err) {
+  // Verify team ownership
+  db.get('SELECT id FROM teams WHERE id = ? AND user_id = ?', [id, req.session.userId], (err, team) => {
     if (err) {
-      console.error('Error updating team:', err);
-      return res.status(500).json({ error: 'Failed to update team' });
+      console.error('Error verifying team ownership:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
     
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Team not found' });
+    if (!team) {
+      return res.status(403).json({ error: 'Team not found or access denied' });
     }
     
-    // Get the updated team
-    db.get('SELECT * FROM teams WHERE id = ?', [id], (err, team) => {
+    db.run(`
+      UPDATE teams 
+      SET name = ?, season = ?, division = ?, coach = ?, is_active = ?
+      WHERE id = ? AND user_id = ?
+    `, [name, season, division, coach, is_active !== undefined ? is_active : 1, id, req.session.userId], function(err) {
       if (err) {
-        console.error('Error retrieving updated team:', err);
-        return res.status(500).json({ error: 'Team updated but failed to retrieve' });
+        console.error('Error updating team:', err);
+        return res.status(500).json({ error: 'Failed to update team' });
       }
-      res.json(team);
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+      
+      // Get the updated team
+      db.get('SELECT * FROM teams WHERE id = ?', [id], (err, team) => {
+        if (err) {
+          console.error('Error retrieving updated team:', err);
+          return res.status(500).json({ error: 'Team updated but failed to retrieve' });
+        }
+        res.json(team);
+      });
     });
   });
 });
 
-app.delete('/api/teams/:id', (req, res) => {
+app.delete('/api/teams/:id', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
   
-  db.run('DELETE FROM teams WHERE id = ?', [id], function(err) {
+  // Verify team ownership
+  db.get('SELECT id FROM teams WHERE id = ? AND user_id = ?', [id, req.session.userId], (err, team) => {
     if (err) {
-      console.error('Error deleting team:', err);
-      return res.status(500).json({ error: 'Failed to delete team' });
+      console.error('Error verifying team ownership:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
     
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Team not found' });
+    if (!team) {
+      return res.status(403).json({ error: 'Team not found or access denied' });
     }
     
-    res.json({ message: 'Team deleted successfully' });
+    // Check if this is the user's current team
+    db.get('SELECT current_team_id FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+      if (err) {
+        console.error('Error checking current team:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      
+      // Soft delete the team
+      db.run('UPDATE teams SET is_active = 0 WHERE id = ? AND user_id = ?', [id, req.session.userId], function(err) {
+        if (err) {
+          console.error('Error deleting team:', err);
+          return res.status(500).json({ error: 'Failed to delete team' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Team not found' });
+        }
+        
+        // If this was the current team, set current team to null or another team
+        if (user.current_team_id === id) {
+          // Try to find another active team for the user
+          db.get('SELECT id FROM teams WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1', [req.session.userId], (err, nextTeam) => {
+            if (err) {
+              console.error('Error finding next team:', err);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+            
+            const newCurrentTeamId = nextTeam ? nextTeam.id : null;
+            db.run('UPDATE users SET current_team_id = ? WHERE id = ?', [newCurrentTeamId, req.session.userId], (err) => {
+              if (err) {
+                console.error('Error updating current team after deletion:', err);
+              }
+              res.json({ message: 'Team deleted successfully' });
+            });
+          });
+        } else {
+          res.json({ message: 'Team deleted successfully' });
+        }
+      });
+    });
   });
 });
 

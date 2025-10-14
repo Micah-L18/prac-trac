@@ -48,16 +48,19 @@ class PracTracDemo {
 
         // Show logout buttons, hide login/register links
         const loginLinks = document.querySelectorAll('.login-link');
-        const logoutButtons = document.querySelectorAll('.logout-btn');
+        const logoutBtns = document.querySelectorAll('.logout-btn');
         
         loginLinks.forEach(link => link.style.display = 'none');
-        logoutButtons.forEach(button => {
-            button.style.display = 'inline-block';
-            button.addEventListener('click', this.logout.bind(this));
+        logoutBtns.forEach(btn => {
+            btn.style.display = 'block';
+            btn.onclick = () => this.logout();
         });
 
-        // Show all navigation links for authenticated users
+        // Update navigation for authenticated users
         this.updateNavigationForAuthenticated();
+        
+        // Initialize team selector
+        this.initializeTeamSelector();
     }
 
     updateUIForLoggedOutUser() {
@@ -395,6 +398,197 @@ class PracTracDemo {
         setTimeout(() => {
             this.showNotification('Report generated and ready for download!', 'success');
         }, 1500);
+    }
+
+    // Team Management Functions
+    async loadUserTeams() {
+        try {
+            const response = await fetch('/api/teams');
+            if (response.ok) {
+                const teams = await response.json();
+                return teams;
+            } else {
+                console.error('Error loading teams:', response.statusText);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error loading teams:', error);
+            return [];
+        }
+    }
+
+    async getCurrentTeam() {
+        try {
+            const response = await fetch('/api/user/current-team');
+            if (response.ok) {
+                const data = await response.json();
+                return data.currentTeam;
+            } else {
+                console.error('Error loading current team:', response.statusText);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error loading current team:', error);
+            return null;
+        }
+    }
+
+    async switchTeam(teamId) {
+        try {
+            const response = await fetch('/api/user/current-team', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ teamId })
+            });
+
+            if (response.ok) {
+                this.showNotification('Team switched successfully!', 'success');
+                // Reload the page to refresh all data with new team context
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                const data = await response.json();
+                this.showNotification(`Error switching team: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error switching team:', error);
+            this.showNotification('Error switching team', 'error');
+        }
+    }
+
+    async createTeam(teamData) {
+        try {
+            const response = await fetch('/api/teams', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(teamData)
+            });
+
+            if (response.ok) {
+                const team = await response.json();
+                this.showNotification('Team created successfully!', 'success');
+                return team;
+            } else {
+                const data = await response.json();
+                this.showNotification(`Error creating team: ${data.error}`, 'error');
+                return null;
+            }
+        } catch (error) {
+            console.error('Error creating team:', error);
+            this.showNotification('Error creating team', 'error');
+            return null;
+        }
+    }
+
+    async updateTeam(teamId, teamData) {
+        try {
+            const response = await fetch(`/api/teams/${teamId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(teamData)
+            });
+
+            if (response.ok) {
+                const team = await response.json();
+                this.showNotification('Team updated successfully!', 'success');
+                return team;
+            } else {
+                const data = await response.json();
+                this.showNotification(`Error updating team: ${data.error}`, 'error');
+                return null;
+            }
+        } catch (error) {
+            console.error('Error updating team:', error);
+            this.showNotification('Error updating team', 'error');
+            return null;
+        }
+    }
+
+    async deleteTeam(teamId) {
+        try {
+            const response = await fetch(`/api/teams/${teamId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                this.showNotification('Team deleted successfully!', 'success');
+                return true;
+            } else {
+                const data = await response.json();
+                this.showNotification(`Error deleting team: ${data.error}`, 'error');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error deleting team:', error);
+            this.showNotification('Error deleting team', 'error');
+            return false;
+        }
+    }
+
+    async initializeTeamSelector() {
+        if (!this.currentUser) return;
+
+        const teams = await this.loadUserTeams();
+        const currentTeam = await this.getCurrentTeam();
+        
+        this.renderTeamSelector(teams, currentTeam);
+    }
+
+    renderTeamSelector(teams, currentTeam) {
+        // This will be called to render the team selector in the navigation
+        // We'll implement this when we add the UI components
+        const teamSelectorContainer = document.getElementById('teamSelector');
+        if (!teamSelectorContainer) return;
+
+        if (teams.length === 0) {
+            teamSelectorContainer.innerHTML = `
+                <div class="no-teams">
+                    <span>No teams</span>
+                    <button onclick="window.pracTracDemo.showCreateTeamModal()" class="glass-button">Create Team</button>
+                </div>
+            `;
+            return;
+        }
+
+        const currentTeamName = currentTeam ? currentTeam.name : 'Select Team';
+        
+        teamSelectorContainer.innerHTML = `
+            <div class="team-selector">
+                <button class="team-selector-btn glass-button" onclick="window.pracTracDemo.toggleTeamDropdown()">
+                    🏐 ${currentTeamName} ▼
+                </button>
+                <div class="team-dropdown" id="teamDropdown" style="display: none;">
+                    ${teams.map(team => `
+                        <div class="team-option ${team.id === (currentTeam?.id) ? 'active' : ''}" 
+                             onclick="window.pracTracDemo.switchTeam(${team.id})">
+                            ${team.name} - ${team.season}
+                        </div>
+                    `).join('')}
+                    <div class="team-option create-new" onclick="window.pracTracDemo.showCreateTeamModal()">
+                        ➕ Create New Team
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    toggleTeamDropdown() {
+        const dropdown = document.getElementById('teamDropdown');
+        if (dropdown) {
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    showCreateTeamModal() {
+        // This will be implemented when we create the team management page
+        console.log('Create team modal - to be implemented');
     }
 }
 
