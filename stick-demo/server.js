@@ -3,6 +3,8 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,8 +14,36 @@ const dbPath = path.join(__dirname, 'practrac.db');
 const db = new sqlite3.Database(dbPath);
 db.run('PRAGMA foreign_keys = ON');
 
+// Session configuration
+app.use(session({
+  secret: 'practrac-volleyball-secret-key-2025',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, // Set to true in production with HTTPS
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
 // Create new tables for practice sessions and attendance tracking
 db.serialize(() => {
+  // User authentication table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      first_name TEXT,
+      last_name TEXT,
+      organization TEXT,
+      coaching_level TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_active BOOLEAN DEFAULT 1
+    )
+  `);
+
   // Core application tables
   db.run(`
     CREATE TABLE IF NOT EXISTS teams (
@@ -22,7 +52,9 @@ db.serialize(() => {
       season TEXT NOT NULL,
       division TEXT NOT NULL,
       coach TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      user_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
     )
   `);
 
@@ -68,7 +100,9 @@ db.serialize(() => {
       minPlayers INTEGER NOT NULL,
       maxPlayers INTEGER NOT NULL,
       focus TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      user_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
     )
   `);
 
@@ -81,8 +115,10 @@ db.serialize(() => {
       team_id INTEGER,
       objective TEXT,
       estimated_duration INTEGER,
+      user_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (team_id) REFERENCES teams (id)
+      FOREIGN KEY (team_id) REFERENCES teams (id),
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
     )
   `);
 
@@ -263,6 +299,20 @@ db.serialize(() => {
     }
   });
 });
+
+// Authentication middleware
+const requireAuth = (req, res, next) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+};
+
+// Optional authentication middleware (doesn't block if not authenticated)
+const optionalAuth = (req, res, next) => {
+  // This middleware just passes through, useful for routes that can work with or without auth
+  next();
+};
 
 // Middleware
 app.use(cors());
@@ -518,7 +568,218 @@ const getDrillById = (id, callback) => {
 };
 
 // API Routes
-app.get('/api/teams', (req, res) => {
+
+// Authentication Routes
+app.post('/api/register', async (req, res) => {
+  const { username, email, password } = req.body;
+  
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: 'Username, email, and password are required' });
+  }
+  
+  try {
+    // Check if user already exists
+    db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email], async (err, existingUser) => {
+      if (err) {
+        console.error('Error checking existing user:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username or email already exists' });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      db.run('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)', 
+        [username, email, hashedPassword], 
+        function(err) {
+          if (err) {
+            console.error('Error creating user:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+          }
+          
+          // Set session
+          req.session.userId = this.lastID;
+          req.session.username = username;
+          
+          res.status(201).json({ 
+            message: 'User registered successfully', 
+            user: { id: this.lastID, username, email } 
+          });
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error in registration:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+  
+  // Find user by username or email
+  db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, username], async (err, user) => {
+    if (err) {
+      console.error('Error finding user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    try {
+      // Check password
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      
+      // Set session
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      
+      res.json({ 
+        message: 'Login successful', 
+        user: { id: user.id, username: user.username, email: user.email } 
+      });
+    } catch (error) {
+      console.error('Error comparing passwords:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ message: 'Logout successful' });
+  });
+});
+
+app.get('/api/user', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  db.get('SELECT id, username, email, created_at FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+    if (err) {
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ user });
+  });
+});
+
+app.put('/api/user/settings', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  const { username, email } = req.body;
+  
+  if (!username || !email) {
+    return res.status(400).json({ error: 'Username and email are required' });
+  }
+  
+  // Check if username or email already exists for other users
+  db.get('SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?', 
+    [username, email, req.session.userId], (err, existingUser) => {
+      if (err) {
+        console.error('Error checking existing user:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username or email already exists' });
+      }
+      
+      // Update user
+      db.run('UPDATE users SET username = ?, email = ? WHERE id = ?', 
+        [username, email, req.session.userId], (err) => {
+          if (err) {
+            console.error('Error updating user:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+          }
+          
+          // Update session username
+          req.session.username = username;
+          
+          res.json({ message: 'Settings updated successfully', user: { username, email } });
+        }
+      );
+    }
+  );
+});
+
+app.put('/api/user/password', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  const { currentPassword, newPassword } = req.body;
+  
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current password and new password are required' });
+  }
+  
+  // Get current user
+  db.get('SELECT password_hash FROM users WHERE id = ?', [req.session.userId], async (err, user) => {
+    if (err) {
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    try {
+      // Verify current password
+      const validPassword = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+      
+      // Hash new password
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Update password
+      db.run('UPDATE users SET password_hash = ? WHERE id = ?', 
+        [hashedNewPassword, req.session.userId], (err) => {
+          if (err) {
+            console.error('Error updating password:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+          }
+          
+          res.json({ message: 'Password updated successfully' });
+        }
+      );
+    } catch (error) {
+      console.error('Error in password update:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+app.get('/api/teams', optionalAuth, (req, res) => {
   getTeams((err, teams) => {
     if (err) {
       console.error('Error fetching teams:', err);
@@ -528,7 +789,7 @@ app.get('/api/teams', (req, res) => {
   });
 });
 
-app.get('/api/players', (req, res) => {
+app.get('/api/players', optionalAuth, (req, res) => {
   getPlayers((err, players) => {
     if (err) {
       console.error('Error fetching players:', err);
@@ -538,7 +799,7 @@ app.get('/api/players', (req, res) => {
   });
 });
 
-app.get('/api/drills', (req, res) => {
+app.get('/api/drills', optionalAuth, (req, res) => {
   getDrills((err, drills) => {
     if (err) {
       console.error('Error fetching drills:', err);
@@ -548,7 +809,7 @@ app.get('/api/drills', (req, res) => {
   });
 });
 
-app.get('/api/practices', (req, res) => {
+app.get('/api/practices', optionalAuth, (req, res) => {
   getPractices((err, practices) => {
     if (err) {
       console.error('Error fetching practices:', err);

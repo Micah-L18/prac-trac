@@ -29,7 +29,7 @@
     </style>
 </head>
 <body>
-    <!-- Navigation
+    <!-- Navigation -->
     <nav class="nav-container">
         <div class="nav-glass">
             <a href="index.html" class="logo">🏐 PracTrac</a>
@@ -39,27 +39,84 @@
                 <li><a href="past-practices.html">Past Practices</a></li>
                 <li><a href="roster.html">Roster</a></li>
                 <li><a href="drills.html">Drills</a></li>
+                <li><a href="settings.html">Settings</a></li>
             </ul>
+            <div class="nav-user">
+                <span id="userGreeting">Guest User</span>
+                <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
+                <button class="logout-btn" style="display: none; margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; cursor: pointer;">Logout</button>
+            </div>
         </div>
     </nav>
-     -->
     <!-- Main Content -->
     <main class="container">
-        <!-- Hero Section -->
-        <section class="hero-section fade-in-up">
+        <!-- Guest User Hero Section -->
+        <section id="guestHero" class="hero-section fade-in-up" style="display: none;">
+            <h1 class="hero-title">Welcome to PracTrac</h1>
+            <p class="hero-subtitle">
+                Elite volleyball practice management for coaches. Plan practices, manage drills, 
+                track attendance and organize your team with our modern interface.
+            </p>
+            <div class="flex-center gap-md">
+                <a href="login.html" class="glass-button primary">Login to Get Started</a>
+                <a href="register.html" class="glass-button">Create Account</a>
+            </div>
+            <div style="margin-top: 2rem; text-align: center;">
+                <p style="color: var(--text-tertiary); font-size: var(--font-size-sm);">
+                    Please log in to access practice planning, roster management, and drill library.
+                </p>
+            </div>
+        </section>
+
+        <!-- Authenticated User Hero Section -->
+        <section id="authenticatedHero" class="hero-section fade-in-up" style="display: none;">
             <h1 class="hero-title">Elite Volleyball Practice Management</h1>
             <p class="hero-subtitle">
                 Modern glass-style interface powered by a custom database for volleyball coaches. 
                 Plan and manage your practices in real time, create and use custom drills, track attendance and manage your roster.
             </p>
             <div class="flex-center gap-md">
-                <a href="/practice" class="glass-button primary">Start Planning Practice</a>
-                <!-- <a href="/videos" class="glass-button">Watch Demo Videos</a> -->
+                <a href="practice.html" class="glass-button primary">Start Planning Practice</a>
+                <a href="roster.html" class="glass-button">Manage Roster</a>
             </div>
         </section>
      
     </main>
 
-    <script src="/js/main.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        // Initialize PracTrac demo
+        window.pracTracDemo = new PracTracDemo();
+        
+        // Add custom method to update dashboard based on auth status
+        window.pracTracDemo.updateDashboardContent = function() {
+            const guestHero = document.getElementById('guestHero');
+            const authenticatedHero = document.getElementById('authenticatedHero');
+            
+            if (this.currentUser) {
+                // User is logged in
+                guestHero.style.display = 'none';
+                authenticatedHero.style.display = 'block';
+            } else {
+                // User is not logged in
+                guestHero.style.display = 'block';
+                authenticatedHero.style.display = 'none';
+            }
+        };
+        
+        // Override the auth status update methods to also update dashboard
+        const originalUpdateLoggedIn = window.pracTracDemo.updateUIForLoggedInUser.bind(window.pracTracDemo);
+        const originalUpdateLoggedOut = window.pracTracDemo.updateUIForLoggedOutUser.bind(window.pracTracDemo);
+        
+        window.pracTracDemo.updateUIForLoggedInUser = function() {
+            originalUpdateLoggedIn();
+            this.updateDashboardContent();
+        };
+        
+        window.pracTracDemo.updateUIForLoggedOutUser = function() {
+            originalUpdateLoggedOut();
+            this.updateDashboardContent();
+        };
+    </script>
 </body>
 </html>

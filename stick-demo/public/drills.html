@@ -15,7 +15,7 @@
             padding: var(--spacing-lg);
             transition: all 0.3s ease;
             position: relative;
-        }
+        } 
         .drill-card:hover {
             transform: translateY(-3px);
             border-color: var(--accent-orange);
@@ -166,7 +166,13 @@
                 <li><a href="past-practices.html">Past Practices</a></li>
                 <li><a href="roster.html">Roster</a></li>
                 <li><a href="drills.html" class="active">Drills</a></li>
+                <li><a href="settings.html">Settings</a></li>
             </ul>
+            <div class="nav-user">
+                <span id="userGreeting">Guest User</span>
+                <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
+                <button class="logout-btn" style="display: none; margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; cursor: pointer;">Logout</button>
+            </div>
         </div>
     </nav>
 
@@ -884,6 +890,11 @@
             loadCustomOptions();
             loadDrillData();
         });
+    </script>
+    <script src="js/main.js"></script>
+    <script>
+        // Initialize PracTrac demo and check authentication
+        window.pracTracDemo = new PracTracDemo();
     </script>
     <script src="/js/modal.js"></script>
 

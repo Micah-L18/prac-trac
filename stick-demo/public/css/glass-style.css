@@ -250,6 +250,45 @@ body {
   border: 1px solid var(--glass-border);
 }
 
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.nav-user .login-link {
+  color: var(--accent-orange);
+  text-decoration: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--accent-orange);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+}
+
+.nav-user .login-link:hover {
+  background: var(--accent-orange);
+  color: white;
+}
+
+.nav-user .logout-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: var(--font-size-sm);
+}
+
+.nav-user .logout-btn:hover {
+  background: rgba(255, 107, 107, 0.2);
+  border-color: rgba(255, 107, 107, 0.5);
+  color: #ff6b6b;
+}
+
 /* Main Content Styles */
 .main-container {
   margin-top: 100px;

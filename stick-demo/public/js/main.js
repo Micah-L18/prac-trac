@@ -5,13 +5,131 @@ class PracTracDemo {
         this.isTimerRunning = false;
         this.timerInterval = null;
         this.currentTime = 0;
+        this.currentUser = null;
         this.init();
     }
 
     init() {
+        // Check authentication status
+        this.checkAuthStatus();
         // Initialize any page-specific functionality
         this.setupEventListeners();
         this.animateOnLoad();
+    }
+
+    async checkAuthStatus() {
+        try {
+            const response = await fetch('/api/user');
+            if (response.ok) {
+                const data = await response.json();
+                this.currentUser = data.user;
+                this.updateUIForLoggedInUser();
+            } else {
+                this.currentUser = null;
+                this.updateUIForLoggedOutUser();
+            }
+        } catch (error) {
+            // User not authenticated or network error
+            this.currentUser = null;
+            this.updateUIForLoggedOutUser();
+        }
+    }
+
+    updateUIForLoggedInUser() {
+        // Update any user-specific UI elements
+        const userMenus = document.querySelectorAll('.user-menu');
+        const userGreetings = document.querySelectorAll('#userGreeting');
+        
+        userGreetings.forEach(greeting => {
+            if (greeting) {
+                greeting.textContent = `Hello, ${this.currentUser.username}`;
+            }
+        });
+
+        // Show logout buttons, hide login/register links
+        const loginLinks = document.querySelectorAll('.login-link');
+        const logoutButtons = document.querySelectorAll('.logout-btn');
+        
+        loginLinks.forEach(link => link.style.display = 'none');
+        logoutButtons.forEach(button => {
+            button.style.display = 'inline-block';
+            button.addEventListener('click', this.logout.bind(this));
+        });
+
+        // Show all navigation links for authenticated users
+        this.updateNavigationForAuthenticated();
+    }
+
+    updateUIForLoggedOutUser() {
+        // Show login/register links, hide user-specific elements
+        const loginLinks = document.querySelectorAll('.login-link');
+        const logoutButtons = document.querySelectorAll('.logout-btn');
+        const userGreetings = document.querySelectorAll('#userGreeting');
+        
+        loginLinks.forEach(link => link.style.display = 'inline-block');
+        logoutButtons.forEach(button => button.style.display = 'none');
+        userGreetings.forEach(greeting => {
+            if (greeting) {
+                greeting.textContent = 'Guest User';
+            }
+        });
+
+        // Restrict navigation for non-authenticated users
+        this.updateNavigationForGuest();
+        this.checkPageAccess();
+    }
+
+    async logout() {
+        try {
+            await fetch('/api/logout', { method: 'POST' });
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Force logout
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        }
+    }
+
+    updateNavigationForAuthenticated() {
+        // Show all navigation links for authenticated users
+        const navLinks = document.querySelectorAll('.nav-links li');
+        navLinks.forEach(link => {
+            link.style.display = 'list-item';
+        });
+    }
+
+    updateNavigationForGuest() {
+        // Only show Dashboard for guests, hide all other nav items
+        const navLinks = document.querySelectorAll('.nav-links li');
+        navLinks.forEach(link => {
+            const anchor = link.querySelector('a');
+            if (anchor) {
+                const href = anchor.getAttribute('href');
+                // Only show dashboard for guests
+                if (href === 'index.html') {
+                    link.style.display = 'list-item';
+                } else {
+                    link.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    checkPageAccess() {
+        // Get current page
+        const currentPath = window.location.pathname;
+        const currentPage = currentPath.split('/').pop() || 'index.html';
+        
+        // Define allowed pages for guests
+        const allowedPages = ['index.html', 'login.html', 'register.html', 'settings.html', ''];
+        
+        // If user is not logged in and trying to access restricted page
+        if (!this.currentUser && !allowedPages.includes(currentPage)) {
+            // Redirect to login page
+            window.location.href = 'login.html';
+        }
     }
 
     setupEventListeners() {
