@@ -136,23 +136,46 @@
 <body>
     <!-- Navigation -->
     <nav class="nav-container">
-        <div class="nav-glass">
+        <div class="nav-content">
             <a href="index.html" class="logo">🏐 PracTrac</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Dashboard</a></li>
-                <li><a href="practice.html">Practice Plans</a></li>
-                <li><a href="past-practices.html">Past Practices</a></li>
-                <li><a href="roster.html">Roster</a></li>
-                <li><a href="drills.html">Drills</a></li>
-                <li><a href="settings.html">Settings</a></li>
-            </ul>
-            <div id="teamSelector" class="team-selector-container">
-                <!-- Team selector will be populated by JavaScript -->
-            </div>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
             <div class="nav-user">
                 <span id="userGreeting">Guest User</span>
                 <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
-                <button class="logout-btn" style="display: none; margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; cursor: pointer;">Logout</button>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
             </div>
         </div>
     </nav>
@@ -497,6 +520,10 @@
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
             loadVideoData();
+            // Initialize mobile menu
+            if (typeof initializeMobileMenu === 'function') {
+                initializeMobileMenu();
+            }
         });
     </script>
     <script src="js/main.js"></script>

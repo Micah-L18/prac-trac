@@ -295,6 +295,33 @@ db.serialize(() => {
         });
       }
       
+      // Create scores table to store game scores
+      console.log('🔄 Creating scores table...');
+      db.run(`
+        CREATE TABLE IF NOT EXISTS scores (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id INTEGER NOT NULL,
+          team_a_name TEXT NOT NULL,
+          team_b_name TEXT NOT NULL,
+          team_a_score INTEGER NOT NULL,
+          team_b_score INTEGER NOT NULL,
+          game_time TEXT,
+          notes TEXT,
+          phase_name TEXT,
+          phase_index INTEGER,
+          drill_name TEXT,
+          drill_index INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE
+        )
+      `, (err) => {
+        if (err) {
+          console.error('Error creating scores table:', err);
+        } else {
+          console.log('✅ Scores table created successfully');
+        }
+      });
+      
       // Phase 1 Multi-team Schema Migrations
       console.log('🔄 Running Phase 1 multi-team schema migrations...');
       
@@ -349,6 +376,7 @@ db.serialize(() => {
         
         const hasIsPublic = columns.some(col => col.name === 'is_public');
         const hasUserId = columns.some(col => col.name === 'user_id');
+        const hasTeamId = columns.some(col => col.name === 'team_id');
         
         if (!hasIsPublic) {
           console.log('🔄 Adding is_public column to drills table...');
@@ -368,6 +396,50 @@ db.serialize(() => {
               console.error('Error adding user_id to drills:', err);
             } else {
               console.log('✅ Added user_id column to drills table');
+            }
+          });
+        }
+        
+        if (!hasTeamId) {
+          console.log('🔄 Adding team_id column to drills table...');
+          db.run("ALTER TABLE drills ADD COLUMN team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL", (err) => {
+            if (err) {
+              console.error('Error adding team_id to drills:', err);
+            } else {
+              console.log('✅ Added team_id column to drills table');
+            }
+          });
+        }
+      });
+      
+      // Migration 5: Add team roster columns to scores table if they don't exist
+      db.all("PRAGMA table_info(scores)", [], (err, columns) => {
+        if (err) {
+          console.error('Error checking scores table schema:', err);
+          return;
+        }
+        
+        const hasTeamARoster = columns.some(col => col.name === 'team_a_roster');
+        const hasTeamBRoster = columns.some(col => col.name === 'team_b_roster');
+        
+        if (!hasTeamARoster) {
+          console.log('🔄 Adding team_a_roster column to scores table...');
+          db.run("ALTER TABLE scores ADD COLUMN team_a_roster TEXT", (err) => {
+            if (err) {
+              console.error('Error adding team_a_roster to scores:', err);
+            } else {
+              console.log('✅ Added team_a_roster column to scores table');
+            }
+          });
+        }
+        
+        if (!hasTeamBRoster) {
+          console.log('🔄 Adding team_b_roster column to scores table...');
+          db.run("ALTER TABLE scores ADD COLUMN team_b_roster TEXT", (err) => {
+            if (err) {
+              console.error('Error adding team_b_roster to scores:', err);
+            } else {
+              console.log('✅ Added team_b_roster column to scores table');
             }
           });
         }
@@ -414,6 +486,36 @@ db.serialize(() => {
           });
         }
       });
+      
+      // Migration 7: Assign existing drills to first user since drills are now per-user
+      setTimeout(() => {
+        db.get("SELECT COUNT(*) as count FROM drills WHERE user_id IS NULL", [], (err, result) => {
+          if (err) {
+            console.error('Error checking drills without user:', err);
+            return;
+          }
+          
+          if (result.count > 0) {
+            db.get("SELECT id FROM users ORDER BY id LIMIT 1", [], (err, firstUser) => {
+              if (err) {
+                console.error('Error getting first user for drills:', err);
+                return;
+              }
+              
+              if (firstUser) {
+                console.log('🔄 Assigning existing drills to first user...');
+                db.run("UPDATE drills SET user_id = ? WHERE user_id IS NULL", [firstUser.id], (err) => {
+                  if (err) {
+                    console.error('Error assigning drills to user:', err);
+                  } else {
+                    console.log('✅ Assigned existing drills to first user');
+                  }
+                });
+              }
+            });
+          }
+        });
+      }, 100); // Short delay to ensure previous migrations complete
       
       // Migration 6: Ensure existing data has proper user associations
       // Use a timeout to allow the ALTER TABLE operations to complete first
@@ -498,13 +600,44 @@ const requireAuth = (req, res, next) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  next();
+  
+  // Get the user data including current_team_id
+  db.get('SELECT * FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+    if (err) {
+      console.error('Error fetching user data:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    req.user = user;
+    next();
+  });
 };
 
 // Optional authentication middleware (doesn't block if not authenticated)
 const optionalAuth = (req, res, next) => {
-  // This middleware just passes through, useful for routes that can work with or without auth
-  next();
+  if (!req.session.userId) {
+    // No authentication, just continue
+    return next();
+  }
+  
+  // Get the user data including current_team_id if authenticated
+  db.get('SELECT * FROM users WHERE id = ?', [req.session.userId], (err, user) => {
+    if (err) {
+      console.error('Error fetching user data:', err);
+      // Continue without user data rather than failing
+      return next();
+    }
+    
+    if (user) {
+      req.user = user;
+    }
+    
+    next();
+  });
 };
 
 // Middleware
@@ -594,6 +727,136 @@ const getDrills = (callback) => {
   });
 };
 
+// Team-filtered data fetching functions
+const getPlayersByTeam = (teamId, callback) => {
+  const query = `
+    SELECT p.*, ps.kills, ps.blocks, ps.aces, ps.digs, ps.assists
+    FROM players p
+    LEFT JOIN player_stats ps ON p.id = ps.player_id
+    WHERE p.team_id = ?
+    ORDER BY p.jerseyNumber
+  `;
+  
+  db.all(query, [teamId], (err, players) => {
+    if (err) return callback(err);
+    
+    // Format the response to match the original structure
+    const processedPlayers = players.map(player => ({
+      id: player.id,
+      firstName: player.firstName,
+      lastName: player.lastName,
+      jerseyNumber: player.jerseyNumber,
+      position: player.position,
+      skillLevel: player.skillLevel,
+      height: player.height,
+      weight: player.weight,
+      year: player.year,
+      hometown: player.hometown,
+      stats: {
+        kills: player.kills || 0,
+        blocks: player.blocks || 0,
+        aces: player.aces || 0,
+        digs: player.digs || 0,
+        assists: player.assists || 0
+      }
+    }));
+    
+    callback(null, processedPlayers);
+  });
+};
+
+const getDrillsByTeam = (teamId, callback) => {
+  const query = `
+    SELECT * FROM drills 
+    WHERE team_id = ? OR is_public = 1
+    ORDER BY category, name
+  `;
+  
+  db.all(query, [teamId], (err, drills) => {
+    if (err) return callback(err);
+    
+    // Parse JSON fields with error handling
+    const processedDrills = drills.map(drill => {
+      let equipment = [];
+      let focus = [];
+      
+      try {
+        equipment = JSON.parse(drill.equipment || '[]');
+        if (!Array.isArray(equipment)) {
+          equipment = drill.equipment ? [drill.equipment] : [];
+        }
+      } catch (e) {
+        console.warn(`Invalid equipment JSON for drill ${drill.id}:`, drill.equipment);
+        equipment = drill.equipment ? [drill.equipment] : [];
+      }
+      
+      try {
+        focus = JSON.parse(drill.focus || '[]');
+        if (!Array.isArray(focus)) {
+          focus = drill.focus ? [drill.focus] : [];
+        }
+      } catch (e) {
+        console.warn(`Invalid focus JSON for drill ${drill.id}:`, drill.focus);
+        focus = drill.focus ? [drill.focus] : [];
+      }
+      
+      return {
+        ...drill,
+        equipment,
+        focus
+      };
+    });
+    
+    callback(null, processedDrills);
+  });
+};
+
+const getDrillsByUser = (userId, callback) => {
+  const query = `
+    SELECT * FROM drills 
+    WHERE user_id = ?
+    ORDER BY category, name
+  `;
+  
+  db.all(query, [userId], (err, drills) => {
+    if (err) return callback(err);
+    
+    // Parse JSON fields with error handling
+    const processedDrills = drills.map(drill => {
+      let equipment = [];
+      let focus = [];
+      
+      try {
+        equipment = JSON.parse(drill.equipment || '[]');
+        if (!Array.isArray(equipment)) {
+          equipment = drill.equipment ? [drill.equipment] : [];
+        }
+      } catch (e) {
+        console.warn(`Invalid equipment JSON for drill ${drill.id}:`, drill.equipment);
+        equipment = drill.equipment ? [drill.equipment] : [];
+      }
+      
+      try {
+        focus = JSON.parse(drill.focus || '[]');
+        if (!Array.isArray(focus)) {
+          focus = drill.focus ? [drill.focus] : [];
+        }
+      } catch (e) {
+        console.warn(`Invalid focus JSON for drill ${drill.id}:`, drill.focus);
+        focus = drill.focus ? [drill.focus] : [];
+      }
+      
+      return {
+        ...drill,
+        equipment,
+        focus
+      };
+    });
+    
+    callback(null, processedDrills);
+  });
+};
+
 const getPractices = (callback) => {
   const query = `
     SELECT p.*, t.name as team_name,
@@ -639,6 +902,60 @@ const getPractices = (callback) => {
           phase_order: row.phase_order,
           drills: drillIds
         });
+      }
+    });
+    
+    callback(null, Array.from(practicesMap.values()));
+  });
+};
+
+const getPracticesByTeam = (teamId, callback) => {
+  const query = `
+    SELECT p.*, t.name as team_name,
+           pp.id as phase_id, pp.name as phase_name, pp.duration as phase_duration, 
+           pp.objective as phase_objective, pp.phase_order,
+           GROUP_CONCAT(ppd.drill_id) as drill_ids
+    FROM practices p
+    LEFT JOIN teams t ON p.team_id = t.id
+    LEFT JOIN practice_phases pp ON p.id = pp.practice_id
+    LEFT JOIN practice_phase_drills ppd ON pp.id = ppd.phase_id
+    WHERE p.team_id = ?
+    GROUP BY p.id, pp.id
+    ORDER BY p.id DESC, pp.phase_order
+  `;
+  
+  db.all(query, [teamId], (err, rows) => {
+    if (err) return callback(err);
+    
+    const practicesMap = new Map();
+    
+    rows.forEach(row => {
+      if (!practicesMap.has(row.id)) {
+        practicesMap.set(row.id, {
+          id: row.id,
+          name: row.name,
+          date: row.date,
+          duration: row.duration,
+          team_id: row.team_id,
+          team_name: row.team_name,
+          phases: []
+        });
+      }
+      
+      if (row.phase_id) {
+        const practice = practicesMap.get(row.id);
+        const existingPhase = practice.phases.find(p => p.id === row.phase_id);
+        
+        if (!existingPhase) {
+          practice.phases.push({
+            id: row.phase_id,
+            name: row.phase_name,
+            duration: row.phase_duration,
+            objective: row.phase_objective,
+            phase_order: row.phase_order,
+            drill_ids: row.drill_ids ? row.drill_ids.split(',').map(id => parseInt(id)) : []
+          });
+        }
       }
     });
     
@@ -771,8 +1088,8 @@ app.post('/api/register', async (req, res) => {
   }
   
   try {
-    // Check if user already exists
-    db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email], async (err, existingUser) => {
+    // Check if user already exists (email case-insensitive, username case-sensitive)
+    db.get('SELECT id FROM users WHERE username = ? OR LOWER(email) = LOWER(?)', [username, email], async (err, existingUser) => {
       if (err) {
         console.error('Error checking existing user:', err);
         return res.status(500).json({ error: 'Internal server error' });
@@ -818,8 +1135,9 @@ app.post('/api/login', (req, res) => {
     return res.status(400).json({ error: 'Username and password are required' });
   }
   
-  // Find user by username or email
-  db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, username], async (err, user) => {
+  // Find user by username (case-sensitive) or email (case-insensitive)
+  // Use LOWER() for case-insensitive email comparison
+  db.get('SELECT * FROM users WHERE username = ? OR LOWER(email) = LOWER(?)', [username, username], async (err, user) => {
     if (err) {
       console.error('Error finding user:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -830,7 +1148,7 @@ app.post('/api/login', (req, res) => {
     }
     
     try {
-      // Check password
+      // Check password (case-sensitive)
       const validPassword = await bcrypt.compare(password, user.password_hash);
       if (!validPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -1045,7 +1363,11 @@ app.put('/api/user/current-team', requireAuth, (req, res) => {
 });
 
 app.get('/api/players', optionalAuth, (req, res) => {
-  getPlayers((err, players) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  getPlayersByTeam(req.user.current_team_id, (err, players) => {
     if (err) {
       console.error('Error fetching players:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -1055,7 +1377,11 @@ app.get('/api/players', optionalAuth, (req, res) => {
 });
 
 app.get('/api/drills', optionalAuth, (req, res) => {
-  getDrills((err, drills) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  getDrillsByUser(req.user.id, (err, drills) => {
     if (err) {
       console.error('Error fetching drills:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -1065,7 +1391,11 @@ app.get('/api/drills', optionalAuth, (req, res) => {
 });
 
 app.get('/api/practices', optionalAuth, (req, res) => {
-  getPractices((err, practices) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  getPracticesByTeam(req.user.current_team_id, (err, practices) => {
     if (err) {
       console.error('Error fetching practices:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -1183,14 +1513,15 @@ app.get('/api/drills/:id', (req, res) => {
 });
 
 // CRUD operations for players
-app.post('/api/players', (req, res) => {
+app.post('/api/players', requireAuth, (req, res) => {
   const { firstName, lastName, jerseyNumber, position, skillLevel, height, year } = req.body;
+  const teamId = req.user.current_team_id;
   
-  // Insert the player first
+  // Insert the player first with team_id
   db.run(`
-    INSERT INTO players (firstName, lastName, jerseyNumber, position, skillLevel, height, year) 
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `, [firstName, lastName, jerseyNumber, position, skillLevel, height, year], function(err) {
+    INSERT INTO players (firstName, lastName, jerseyNumber, position, skillLevel, height, year, team_id) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [firstName, lastName, jerseyNumber, position, skillLevel, height, year, teamId], function(err) {
     if (err) {
       console.error('Error creating player:', err);
       return res.status(500).json({ error: 'Failed to create player' });
@@ -1464,12 +1795,13 @@ app.delete('/api/teams/:id', requireAuth, (req, res) => {
 });
 
 // CRUD operations for drills
-app.post('/api/drills', (req, res) => {
+app.post('/api/drills', requireAuth, (req, res) => {
   const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  const userId = req.user.id;
   
   db.run(`
-    INSERT INTO drills (name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO drills (name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus, user_id) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name, 
     category, 
@@ -1479,7 +1811,8 @@ app.post('/api/drills', (req, res) => {
     JSON.stringify(equipment || []), 
     minPlayers, 
     maxPlayers, 
-    JSON.stringify(focus || [])
+    JSON.stringify(focus || []),
+    userId
   ], function(err) {
     if (err) {
       console.error('Error creating drill:', err);
@@ -1497,41 +1830,58 @@ app.post('/api/drills', (req, res) => {
   });
 });
 
-app.put('/api/drills/:id', (req, res) => {
+app.put('/api/drills/:id', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
   const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
   
-  db.run(`
-    UPDATE drills 
-    SET name = ?, category = ?, duration = ?, difficulty = ?, description = ?, equipment = ?, minPlayers = ?, maxPlayers = ?, focus = ?
-    WHERE id = ?
-  `, [
-    name, 
-    category, 
-    duration, 
-    difficulty, 
-    description, 
-    JSON.stringify(equipment || []), 
-    minPlayers, 
-    maxPlayers, 
-    JSON.stringify(focus || []),
-    id
-  ], function(err) {
+  // First check if drill exists and belongs to user
+  db.get('SELECT * FROM drills WHERE id = ?', [id], (err, drill) => {
     if (err) {
-      console.error('Error updating drill:', err);
-      return res.status(500).json({ error: 'Failed to update drill' });
+      console.error('Error checking drill ownership:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
     
-    if (this.changes === 0) {
+    if (!drill) {
       return res.status(404).json({ error: 'Drill not found' });
     }
     
-    getDrillById(id, (err, drill) => {
+    if (drill.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'You can only edit your own drills' });
+    }
+    
+    db.run(`
+      UPDATE drills 
+      SET name = ?, category = ?, duration = ?, difficulty = ?, description = ?, equipment = ?, minPlayers = ?, maxPlayers = ?, focus = ?
+      WHERE id = ? AND user_id = ?
+    `, [
+      name, 
+      category, 
+      duration, 
+      difficulty, 
+      description, 
+      JSON.stringify(equipment || []), 
+      minPlayers, 
+      maxPlayers, 
+      JSON.stringify(focus || []),
+      id,
+      req.user.id
+    ], function(err) {
       if (err) {
-        console.error('Error retrieving updated drill:', err);
-        return res.status(500).json({ error: 'Drill updated but failed to retrieve' });
+        console.error('Error updating drill:', err);
+        return res.status(500).json({ error: 'Failed to update drill' });
       }
-      res.json(drill);
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Drill not found or not owned by user' });
+      }
+      
+      getDrillById(id, (err, drill) => {
+        if (err) {
+          console.error('Error retrieving updated drill:', err);
+          return res.status(500).json({ error: 'Drill updated but failed to retrieve' });
+        }
+        res.json(drill);
+      });
     });
   });
 });
@@ -1605,17 +1955,18 @@ app.delete('/api/videos/:id', (req, res) => {
 });
 
 // CRUD operations for practices
-app.post('/api/practices', (req, res) => {
+app.post('/api/practices', requireAuth, (req, res) => {
   const { name, objective, estimated_duration, phases, date } = req.body;
+  const teamId = req.user.current_team_id;
   
   // Use provided date or default to current date
   const practiceDate = date || new Date().toISOString().split('T')[0];
   
-  // Insert practice
+  // Insert practice with team_id
   db.run(`
-    INSERT INTO practices (name, objective, estimated_duration, date, duration) 
-    VALUES (?, ?, ?, ?, ?)
-  `, [name, objective, estimated_duration, practiceDate, estimated_duration], function(err) {
+    INSERT INTO practices (name, objective, estimated_duration, date, duration, team_id) 
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [name, objective, estimated_duration, practiceDate, estimated_duration, teamId], function(err) {
     if (err) {
       console.error('Error creating practice:', err);
       return res.status(500).json({ error: 'Failed to create practice' });
@@ -1877,12 +2228,12 @@ const getPracticeByIdAsync = (id, callback) => {
 };
 
 // Start a practice session with attendance
-app.post('/api/practice-sessions', (req, res) => {
+app.post('/api/practice-sessions', requireAuth, (req, res) => {
   try {
     const { practice_id, attendance } = req.body;
     
-    // Check if practice exists
-    db.get('SELECT * FROM practices WHERE id = ?', [practice_id], (err, practice) => {
+    // Check if practice exists and belongs to user's current team
+    db.get('SELECT * FROM practices WHERE id = ? AND team_id = ?', [practice_id, req.user.current_team_id], (err, practice) => {
       if (err) {
         console.error('Error checking practice:', err);
         return res.status(500).json({ error: 'Database error' });
@@ -1979,24 +2330,24 @@ app.put('/api/practice-sessions/:id/complete', (req, res) => {
 });
 
 // Get past practice sessions
-app.get('/api/practice-sessions', (req, res) => {
-  getPracticeSessionsAsync((sessions) => {
+app.get('/api/practice-sessions', requireAuth, (req, res) => {
+  getPracticeSessionsByTeam(req.user.current_team_id, (sessions) => {
     res.json(sessions);
   });
 });
 
 // Get active practice sessions (must be before /:id route)
-app.get('/api/practice-sessions/active', (req, res) => {
+app.get('/api/practice-sessions/active', requireAuth, (req, res) => {
   const query = `
     SELECT ps.*, p.name as practice_name, p.objective, p.estimated_duration
     FROM practice_sessions ps
     JOIN practices p ON ps.practice_id = p.id
-    WHERE ps.status IN ('in_progress', 'paused')
+    WHERE ps.status IN ('in_progress', 'paused') AND p.team_id = ?
     ORDER BY ps.last_activity DESC
     LIMIT 1
   `;
   
-  db.get(query, [], (err, session) => {
+  db.get(query, [req.user.current_team_id], (err, session) => {
     if (err) {
       console.error('Error fetching active session:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -2220,6 +2571,50 @@ app.put('/api/practice-sessions/:id/timer-state', (req, res) => {
   });
 });
 
+// Scores API endpoints
+app.post('/api/practice-sessions/:id/scores', (req, res) => {
+  const sessionId = req.params.id;
+  const { teamAName, teamBName, teamAScore, teamBScore, gameTime, notes, phaseName, phaseIndex, drillName, drillIndex, teamARoster, teamBRoster } = req.body;
+  
+  console.log('Saving score for session:', sessionId, req.body);
+  
+  db.run(`
+    INSERT INTO scores (session_id, team_a_name, team_b_name, team_a_score, team_b_score, game_time, notes, phase_name, phase_index, drill_name, drill_index, team_a_roster, team_b_roster)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [sessionId, teamAName, teamBName, teamAScore, teamBScore, gameTime, notes, phaseName, phaseIndex, drillName, drillIndex, teamARoster, teamBRoster], function(err) {
+    if (err) {
+      console.error('Error saving score:', err);
+      return res.status(500).json({ error: 'Failed to save score' });
+    }
+    
+    console.log('Score saved successfully with ID:', this.lastID);
+    res.json({ 
+      id: this.lastID,
+      message: 'Score saved successfully' 
+    });
+  });
+});
+
+app.get('/api/practice-sessions/:id/scores', (req, res) => {
+  const sessionId = req.params.id;
+  
+  console.log('Getting scores for session:', sessionId);
+  
+  db.all(`
+    SELECT * FROM scores 
+    WHERE session_id = ? 
+    ORDER BY created_at ASC
+  `, [sessionId], (err, scores) => {
+    if (err) {
+      console.error('Error getting scores:', err);
+      return res.status(500).json({ error: 'Failed to get scores' });
+    }
+    
+    console.log('Found scores:', scores.length);
+    res.json(scores);
+  });
+});
+
 // Helper functions for practice sessions
 const getPracticeSessions = () => {
   const stmt = db.prepare(`
@@ -2250,6 +2645,26 @@ const getPracticeSessionsAsync = (callback) => {
   `, [], (err, sessions) => {
     if (err) {
       console.error('Error fetching practice sessions:', err);
+      return callback([]);
+    }
+    callback(sessions || []);
+  });
+};
+
+const getPracticeSessionsByTeam = (teamId, callback) => {
+  db.all(`
+    SELECT ps.*, p.name as practice_name, p.objective, p.estimated_duration,
+           COUNT(pa.id) as total_players,
+           SUM(pa.attended) as attended_count
+    FROM practice_sessions ps
+    JOIN practices p ON ps.practice_id = p.id
+    LEFT JOIN practice_attendance pa ON ps.id = pa.session_id
+    WHERE p.team_id = ?
+    GROUP BY ps.id
+    ORDER BY ps.started_at DESC
+  `, [teamId], (err, sessions) => {
+    if (err) {
+      console.error('Error fetching practice sessions by team:', err);
       return callback([]);
     }
     callback(sessions || []);
@@ -2324,7 +2739,7 @@ const getSessionByIdAsync = (sessionId, callback) => {
 
 // Serve HTML pages
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 
 app.get('/practice', (req, res) => {
@@ -2351,10 +2766,24 @@ app.get('/analytics', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'analytics.html'));
 });
 
+app.get('/settings', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'settings.html'));
+});
+
+app.get('/practice-mode', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'practice-mode.html'));
+});
+
+app.get('/player-profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'player-profile.html'));
+});
+
 // Team statistics endpoint
-app.get('/api/team/stats', (req, res) => {
-  // Get total number of players
-  db.get('SELECT COUNT(*) as count FROM players', [], (err, totalPlayersResult) => {
+app.get('/api/team/stats', requireAuth, (req, res) => {
+  const teamId = req.user.current_team_id;
+  
+  // Get total number of players for this team
+  db.get('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId], (err, totalPlayersResult) => {
     if (err) {
       console.error('Error getting total players:', err);
       return res.status(500).json({ error: 'Failed to get team statistics' });
@@ -2362,8 +2791,8 @@ app.get('/api/team/stats', (req, res) => {
     
     const totalPlayers = totalPlayersResult.count;
     
-    // Calculate average skill level
-    db.get('SELECT AVG(skillLevel) as avgSkill FROM players', [], (err, avgSkillResult) => {
+    // Calculate average skill level for this team
+    db.get('SELECT AVG(skillLevel) as avgSkill FROM players WHERE team_id = ?', [teamId], (err, avgSkillResult) => {
       if (err) {
         console.error('Error getting average skill level:', err);
         return res.status(500).json({ error: 'Failed to get team statistics' });
@@ -2371,8 +2800,8 @@ app.get('/api/team/stats', (req, res) => {
       
       const avgSkillLevel = avgSkillResult.avgSkill ? parseFloat(avgSkillResult.avgSkill).toFixed(1) : 0;
       
-      // Calculate average height
-      db.all("SELECT height FROM players WHERE height IS NOT NULL AND height != ''", [], (err, heights) => {
+      // Calculate average height for this team
+      db.all("SELECT height FROM players WHERE team_id = ? AND height IS NOT NULL AND height != ''", [teamId], (err, heights) => {
         if (err) {
           console.error('Error getting heights:', err);
           return res.status(500).json({ error: 'Failed to get team statistics' });
@@ -2397,8 +2826,16 @@ app.get('/api/team/stats', (req, res) => {
           avgHeight = `${avgFeet}'${avgRemainingInches}"`;
         }
         
-        // Calculate attendance rate from practice attendance data
-        db.get('SELECT COUNT(*) as totalAttendanceRecords, SUM(CASE WHEN attended = 1 THEN 1 ELSE 0 END) as attendedCount FROM practice_attendance', [], (err, attendanceResult) => {
+        // Calculate attendance rate from practice attendance data for this team
+        const attendanceQuery = `
+          SELECT COUNT(*) as totalAttendanceRecords, 
+                 SUM(CASE WHEN pa.attended = 1 THEN 1 ELSE 0 END) as attendedCount 
+          FROM practice_attendance pa
+          JOIN players p ON pa.player_id = p.id
+          WHERE p.team_id = ?
+        `;
+        
+        db.get(attendanceQuery, [teamId], (err, attendanceResult) => {
           if (err) {
             console.error('Error getting attendance data:', err);
             return res.status(500).json({ error: 'Failed to get team statistics' });
@@ -2548,28 +2985,44 @@ app.delete('/api/practice-sessions/:id', (req, res) => {
 });
 
 // Delete drill
-app.delete('/api/drills/:id', (req, res) => {
+app.delete('/api/drills/:id', requireAuth, (req, res) => {
   const drillId = parseInt(req.params.id);
   
-  // First, delete drill from practice phases
-  db.run('DELETE FROM practice_phase_drills WHERE drill_id = ?', [drillId], function(err) {
+  // First check if drill exists and belongs to user
+  db.get('SELECT * FROM drills WHERE id = ?', [drillId], (err, drill) => {
     if (err) {
-      console.error('Error removing drill from practices:', err);
-      return res.status(500).json({ error: 'Failed to remove drill from practices' });
+      console.error('Error checking drill ownership:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
     
-    // Then delete the drill
-    db.run('DELETE FROM drills WHERE id = ?', [drillId], function(err) {
+    if (!drill) {
+      return res.status(404).json({ error: 'Drill not found' });
+    }
+    
+    if (drill.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'You can only delete your own drills' });
+    }
+    
+    // First, delete drill from practice phases
+    db.run('DELETE FROM practice_phase_drills WHERE drill_id = ?', [drillId], function(err) {
       if (err) {
-        console.error('Error deleting drill:', err);
-        return res.status(500).json({ error: 'Failed to delete drill' });
+        console.error('Error removing drill from practices:', err);
+        return res.status(500).json({ error: 'Failed to remove drill from practices' });
       }
       
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Drill not found' });
-      }
-      
-      res.json({ message: 'Drill deleted successfully' });
+      // Then delete the drill
+      db.run('DELETE FROM drills WHERE id = ? AND user_id = ?', [drillId, req.user.id], function(err) {
+        if (err) {
+          console.error('Error deleting drill:', err);
+          return res.status(500).json({ error: 'Failed to delete drill' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Drill not found or not owned by user' });
+        }
+        
+        res.json({ message: 'Drill deleted successfully' });
+      });
     });
   });
 });

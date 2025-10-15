@@ -158,23 +158,46 @@
 <body>
     <!-- Navigation -->
     <nav class="nav-container">
-        <div class="nav-glass">
+        <div class="nav-content">
             <a href="index.html" class="logo">🏐 PracTrac</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Dashboard</a></li>
-                <li><a href="practice.html">Practice Plans</a></li>
-                <li><a href="past-practices.html">Past Practices</a></li>
-                <li><a href="roster.html">Roster</a></li>
-                <li><a href="drills.html" class="active">Drills</a></li>
-                <li><a href="settings.html">Settings</a></li>
-            </ul>
-            <div id="teamSelector" class="team-selector-container">
-                <!-- Team selector will be populated by JavaScript -->
-            </div>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html" class="active">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html" class="active">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
             <div class="nav-user">
                 <span id="userGreeting">Guest User</span>
                 <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
-                <button class="logout-btn" style="display: none; margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; cursor: pointer;">Logout</button>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
             </div>
         </div>
     </nav>
@@ -259,100 +282,116 @@
 
         <!-- Custom Drill Builder Modal (Hidden by default) -->
         <div id="customDrillModal" class="modal" style="display: none;">
-            <div class="modal-content" style="width: 90%; max-width: 600px;">
+            <div class="modal-content" style="width: 95%; max-width: 800px; max-height: 95vh; overflow-y: auto;">
                 <div class="modal-header">
                     <h2 style="color: var(--accent-orange); margin: 0;">⚡ Create Custom Drill</h2>
                     <button class="modal-close" onclick="closeCustomDrillModal()">✕</button>
                 </div>
                 
-                <form id="customDrillForm" onsubmit="saveCustomDrill(event)">
-                    <div class="grid grid-2 gap-md mb-md">
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Drill Name</label>
-                            <input type="text" id="drillName" name="name" class="glass-input" placeholder="Custom Passing Drill" required>
+                <form id="customDrillForm" onsubmit="saveCustomDrill(event)" style="padding: var(--spacing-lg);">
+                    <!-- Basic Info Section -->
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-md); font-size: var(--font-size-md); border-bottom: 1px solid var(--glass-border); padding-bottom: var(--spacing-xs);">Basic Information</h3>
+                        
+                        <div style="margin-bottom: var(--spacing-md);">
+                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Drill Name</label>
+                            <input type="text" id="drillName" name="name" class="glass-input" placeholder="Enter drill name..." required style="width: 100%; padding: var(--spacing-sm);">
                         </div>
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Category</label>
-                            <select id="drillCategory" name="category" class="glass-input" required>
-                                <option value="">Select Category</option>
-                                <option value="Warm-up">Warm-up</option>
-                                <option value="Offense">Offense</option>
-                                <option value="Defense">Defense</option>
-                                <option value="Serve/Receive">Serve/Receive</option>
-                                <option value="Conditioning">Conditioning</option>
-                            </select>
+
+                        <div class="grid grid-3 gap-md">
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Category</label>
+                                <select id="drillCategory" name="category" class="glass-input" required style="width: 100%; padding: var(--spacing-sm);">
+                                    <option value="">Select Category</option>
+                                    <option value="Warm-up">Warm-up</option>
+                                    <option value="Offense">Offense</option>
+                                    <option value="Defense">Defense</option>
+                                    <option value="Serve/Receive">Serve/Receive</option>
+                                    <option value="Conditioning">Conditioning</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Difficulty</label>
+                                <select id="drillDifficulty" name="difficulty" class="glass-input" required style="width: 100%; padding: var(--spacing-sm);">
+                                    <option value="">Select Difficulty</option>
+                                    <option value="1">1 - Beginner</option>
+                                    <option value="2">2 - Easy</option>
+                                    <option value="3">3 - Intermediate</option>
+                                    <option value="4">4 - Advanced</option>
+                                    <option value="5">5 - Elite</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Duration (min)</label>
+                                <input type="number" id="drillDuration" name="duration" class="glass-input" placeholder="15" min="1" max="120" required style="width: 100%; padding: var(--spacing-sm);">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-md">
-                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Description</label>
-                        <textarea id="drillDescription" name="description" class="glass-input" rows="3" placeholder="Describe the drill objective and execution..." required></textarea>
+                    <!-- Description Section -->
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Description</label>
+                        <textarea id="drillDescription" name="description" class="glass-input" rows="3" placeholder="Describe the drill objective, setup, and execution..." required style="width: 100%; padding: var(--spacing-sm); resize: vertical;"></textarea>
                     </div>
 
-                    <div class="grid grid-3 gap-md mb-md">
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Duration (min)</label>
-                            <input type="number" id="drillDuration" name="duration" class="glass-input" placeholder="15" min="1" max="120" required>
-                        </div>
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Min Players</label>
-                            <input type="number" id="drillMinPlayers" name="minPlayers" class="glass-input" placeholder="4" min="1" max="20" required>
-                        </div>
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Max Players</label>
-                            <input type="number" id="drillMaxPlayers" name="maxPlayers" class="glass-input" placeholder="12" min="1" max="20" required>
-                        </div>
-                    </div>
+                    <!-- Logistics Section -->
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-md); font-size: var(--font-size-md); border-bottom: 1px solid var(--glass-border); padding-bottom: var(--spacing-xs);">Logistics & Equipment</h3>
 
-                    <div class="grid grid-2 gap-md mb-lg">
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Difficulty Level</label>
-                            <select id="drillDifficulty" name="difficulty" class="glass-input" required>
-                                <option value="">Select Difficulty</option>
-                                <option value="1">1 - Beginner</option>
-                                <option value="2">2 - Easy</option>
-                                <option value="3">3 - Intermediate</option>
-                                <option value="4">4 - Advanced</option>
-                                <option value="5">5 - Elite</option>
-                            </select>
+                        
+                        <div class="grid grid-2 gap-md" style="margin-bottom: var(--spacing-md);">
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Min Players</label>
+                                <input type="number" id="drillMinPlayers" name="minPlayers" class="glass-input" placeholder="4" min="1" max="20" required style="width: 100%; padding: var(--spacing-sm);">
+                            </div>
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Max Players</label>
+                                <input type="number" id="drillMaxPlayers" name="maxPlayers" class="glass-input" placeholder="12" min="1" max="20" required style="width: 100%; padding: var(--spacing-sm);">
+                            </div>
                         </div>
-                        <div>
-                            <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Equipment</label>
-                            <div id="equipmentSelector" style="background: var(--glass-primary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: var(--spacing-sm); max-height: 120px; overflow-y: auto;">
-                                <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
-                                    <!-- Equipment options will be populated by JavaScript -->
+
+                        <div class="grid grid-2 gap-md">
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Equipment Needed</label>
+                                <div id="equipmentSelector" style="background: var(--glass-primary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: var(--spacing-md); min-height: 80px; max-height: 100px; overflow-y: auto;">
+                                    <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                                        <!-- Equipment options will be populated by JavaScript -->
+                                    </div>
                                 </div>
+                                <div style="display: flex; gap: var(--spacing-xs); margin-top: var(--spacing-xs);">
+                                    <input type="text" id="newEquipmentInput" placeholder="Add equipment..." style="flex: 1; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary); font-size: var(--font-size-sm);">
+                                    <button type="button" onclick="addCustomEquipment()" style="padding: var(--spacing-xs) var(--spacing-sm); background: var(--accent-orange); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--font-size-sm);">Add</button>
+                                </div>
+                                <input type="hidden" id="drillEquipment" name="equipment">
                             </div>
-                            <div style="display: flex; gap: var(--spacing-xs); margin-top: var(--spacing-xs);">
-                                <input type="text" id="newEquipmentInput" placeholder="Add new equipment..." style="flex: 1; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary); font-size: var(--font-size-sm);">
-                                <button type="button" onclick="addCustomEquipment()" style="padding: var(--spacing-xs) var(--spacing-sm); background: var(--accent-orange); color: white; border: none; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer;">Add</button>
+                            
+                            <div>
+                                <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Focus Areas</label>
+                                <div id="focusSelector" style="background: var(--glass-primary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: var(--spacing-md); min-height: 80px; max-height: 100px; overflow-y: auto;">
+                                    <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
+                                        <!-- Focus options will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: var(--spacing-xs); margin-top: var(--spacing-xs);">
+                                    <input type="text" id="newFocusInput" placeholder="Add focus area..." style="flex: 1; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary); font-size: var(--font-size-sm);">
+                                    <button type="button" onclick="addCustomFocus()" style="padding: var(--spacing-xs) var(--spacing-sm); background: var(--accent-orange); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--font-size-sm);">Add</button>
+                                </div>
+                                <input type="hidden" id="drillFocus" name="focus">
                             </div>
-                            <input type="hidden" id="drillEquipment" name="equipment">
                         </div>
-                    </div>
-
-                    <div class="mb-lg">
-                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">Focus Areas</label>
-                        <div id="focusSelector" style="background: var(--glass-primary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: var(--spacing-sm); max-height: 120px; overflow-y: auto;">
-                            <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-xs);">
-                                <!-- Focus options will be populated by JavaScript -->
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: var(--spacing-xs); margin-top: var(--spacing-xs);">
-                            <input type="text" id="newFocusInput" placeholder="Add new focus area..." style="flex: 1; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary); font-size: var(--font-size-sm);">
-                            <button type="button" onclick="addCustomFocus()" style="padding: var(--spacing-xs) var(--spacing-sm); background: var(--accent-orange); color: white; border: none; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer;">Add</button>
-                        </div>
-                        <input type="hidden" id="drillFocus" name="focus">
                     </div>
 
                     <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); text-align: center; margin-bottom: var(--spacing-md); padding: var(--spacing-sm); background: var(--glass-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
-                        💡 Click tags to select • Type and press "Add" to create custom options • <span style="color: #4CAF50;">★ Custom options</span> are saved for future use
+                        💡 Click tags to select • Type and press "Add" to create custom options • <span style="color: #4CAF50;">Right-click custom options</span> to remove them
                     </div>
 
-                    <div class="modal-actions">
-                        <button type="button" class="glass-button" onclick="closeCustomDrillModal()">Cancel</button>
-                        <button type="submit" class="glass-button primary">Save Drill</button>
+                    <div class="modal-actions" style="padding-top: var(--spacing-md); border-top: 1px solid var(--glass-border);">
+                        <button type="button" class="glass-button" onclick="closeCustomDrillModal()" style="padding: var(--spacing-sm) var(--spacing-lg);">Cancel</button>
+                        <button type="submit" class="glass-button primary" style="padding: var(--spacing-sm) var(--spacing-lg);">Save Drill</button>
                     </div>
+                                    
+                            </div>
+                        </div>
                 </form>
             </div>
         </div>
@@ -365,10 +404,7 @@
         
         // Base equipment and focus options
         let equipmentOptions = [
-            'Balls', 'Net', 'Cones', 'Agility Ladders', 'Resistance Bands', 
-            'Medicine Balls', 'Antenna', 'Tape/Lines', 'Whistle', 'Scoreboard',
-            'Volleyball Cart', 'Floor Markers', 'Blocking Pads', 'Jump Boxes',
-            'Elastic Bands', 'Water Bottles', 'Towels', 'First Aid Kit'
+            'Cones', 'Extra Antenna', 'Tape/Lines', 'Scoreboard','Blocking Pads', 'Boxes'
         ];
         
         let focusOptions = [
@@ -405,6 +441,9 @@
             try {
                 const response = await fetch('/api/drills');
                 allDrills = await response.json();
+                
+                // Filter drills based on visibility rules
+                allDrills = filterDrillsByVisibility(allDrills);
                 filteredDrills = [...allDrills];
                 
                 // Clean up favorites - remove any drill IDs that no longer exist
@@ -421,12 +460,39 @@
                 renderDrills();
             } catch (error) {
                 console.error('Error loading drill data:', error);
+                // Demo mode - load from localStorage
+                allDrills = JSON.parse(localStorage.getItem('practrac_drills')) || [];
+                
+                // Filter drills based on visibility rules
+                allDrills = filterDrillsByVisibility(allDrills);
+                filteredDrills = [...allDrills];
+                
+                // Clean up favorites - remove any drill IDs that no longer exist
+                const existingDrillIds = allDrills.map(drill => drill.id);
+                const originalFavoritesLength = favoriteDrills.length;
+                favoriteDrills = favoriteDrills.filter(id => existingDrillIds.includes(id));
+                
+                // Update localStorage if favorites were cleaned up
+                if (favoriteDrills.length !== originalFavoritesLength) {
+                    localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
+                }
+                
+                updateStatistics();
+                renderDrills();
             }
         }
+
+
 
         function updateStatistics() {
             document.getElementById('totalDrills').textContent = allDrills.length;
             document.getElementById('favoriteDrills').textContent = favoriteDrills.length;
+        }
+
+        // Filter drills based on visibility rules - simplified to show all drills
+        function filterDrillsByVisibility(drills) {
+            // Simply return all drills since we removed public/private logic
+            return drills;
         }
 
         // Multi-select functionality
@@ -441,8 +507,8 @@
             
             container.innerHTML = equipmentOptions.map(option => {
                 const isCustom = customEquipment.includes(option);
-                return `<span class="option-tag ${isCustom ? 'custom' : ''}" onclick="toggleEquipment('${option}')" data-option="${option}">
-                    ${option}
+                return `<span class="option-tag ${isCustom ? 'custom' : ''}" onclick="toggleEquipment('${option}')" oncontextmenu="${isCustom ? `removeCustomEquipment('${option}'); return false;` : 'return true;'}" data-option="${option}" ${isCustom ? 'title="Right-click to remove"' : ''}>
+                    ${option}${isCustom ? ' <span style="color: #4CAF50;">★</span>' : ''}
                 </span>`;
             }).join('');
         }
@@ -453,8 +519,8 @@
             
             container.innerHTML = focusOptions.map(option => {
                 const isCustom = customFocus.includes(option);
-                return `<span class="option-tag ${isCustom ? 'custom' : ''}" onclick="toggleFocus('${option}')" data-option="${option}">
-                    ${option}
+                return `<span class="option-tag ${isCustom ? 'custom' : ''}" onclick="toggleFocus('${option}')" oncontextmenu="${isCustom ? `removeCustomFocus('${option}'); return false;` : 'return true;'}" data-option="${option}" ${isCustom ? 'title="Right-click to remove"' : ''}>
+                    ${option}${isCustom ? ' <span style="color: #4CAF50;">★</span>' : ''}
                 </span>`;
             }).join('');
         }
@@ -600,6 +666,65 @@
             updateFocusInput();
         }
 
+        // Remove custom options
+        function removeCustomEquipment(option) {
+            if (confirm(`Remove "${option}" from custom equipment options?`)) {
+                // Remove from options array
+                const index = equipmentOptions.indexOf(option);
+                if (index > -1) {
+                    equipmentOptions.splice(index, 1);
+                }
+                
+                // Remove from localStorage
+                const customEquipment = JSON.parse(localStorage.getItem('customEquipment')) || [];
+                const customIndex = customEquipment.indexOf(option);
+                if (customIndex > -1) {
+                    customEquipment.splice(customIndex, 1);
+                    localStorage.setItem('customEquipment', JSON.stringify(customEquipment));
+                }
+                
+                // Remove from selected if it was selected
+                const selectedIndex = selectedEquipment.indexOf(option);
+                if (selectedIndex > -1) {
+                    selectedEquipment.splice(selectedIndex, 1);
+                }
+                
+                // Reinitialize and update displays
+                initializeEquipmentSelector();
+                updateEquipmentDisplay();
+                updateEquipmentInput();
+            }
+        }
+
+        function removeCustomFocus(option) {
+            if (confirm(`Remove "${option}" from custom focus area options?`)) {
+                // Remove from options array
+                const index = focusOptions.indexOf(option);
+                if (index > -1) {
+                    focusOptions.splice(index, 1);
+                }
+                
+                // Remove from localStorage
+                const customFocus = JSON.parse(localStorage.getItem('customFocus')) || [];
+                const customIndex = customFocus.indexOf(option);
+                if (customIndex > -1) {
+                    customFocus.splice(customIndex, 1);
+                    localStorage.setItem('customFocus', JSON.stringify(customFocus));
+                }
+                
+                // Remove from selected if it was selected
+                const selectedIndex = selectedFocus.indexOf(option);
+                if (selectedIndex > -1) {
+                    selectedFocus.splice(selectedIndex, 1);
+                }
+                
+                // Reinitialize and update displays
+                initializeFocusSelector();
+                updateFocusDisplay();
+                updateFocusInput();
+            }
+        }
+
         // Allow Enter key to add options
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
@@ -665,6 +790,8 @@
         function renderDrills() {
             const drillGrid = document.getElementById('drillGrid');
             drillGrid.innerHTML = '';
+            
+            const currentUser = JSON.parse(localStorage.getItem('practrac_user')) || { id: 'demo_user_1' };
 
             filteredDrills.forEach(drill => {
                 const card = document.createElement('div');
@@ -690,8 +817,10 @@
                         ⭐
                     </button>
                     
-                    <div class="drill-category" style="background: ${categoryColors[drill.category] || 'var(--accent-blue)'};">
-                        ${drill.category}
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm);">
+                        <div class="drill-category" style="background: ${categoryColors[drill.category] || 'var(--accent-blue)'};">
+                            ${drill.category}
+                        </div>
                     </div>
                     
                     <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-sm); font-size: var(--font-size-lg);">
@@ -734,6 +863,9 @@
                             <button class="glass-button danger" onclick="deleteDrill(${drill.id}, '${drill.name}')" style="flex: 1;">
                                 🗑️ Delete
                             </button>
+                            <button class="glass-button" onclick="copyDrill(${drill.id})" style="flex: 1;">
+                                📋 Copy
+                            </button>
                         </div>
                     </div>
                 `;
@@ -775,6 +907,58 @@
             renderDrills();
         }
 
+        function useDrill(drillId) {
+            const drill = allDrills.find(d => d.id === drillId);
+            if (drill) {
+                window.pracTracDemo?.showNotification(
+                    `Starting "${drill.name}" drill! This would integrate with practice mode in the full version.`,
+                    'success'
+                );
+            }
+        }
+
+        function copyDrill(drillId) {
+            const drill = allDrills.find(d => d.id === drillId);
+            if (drill) {
+                // Create a copy of the drill
+                const drillCopy = {
+                    ...drill,
+                    id: null, // Will be assigned when saved
+                    name: `${drill.name} (Copy)`
+                };
+                
+                // Populate the form with the copied drill data
+                document.querySelector('#customDrillModal h2').textContent = '📋 Copy Drill';
+                document.getElementById('drillName').value = drillCopy.name;
+                document.getElementById('drillCategory').value = drillCopy.category;
+                document.getElementById('drillDescription').value = drillCopy.description;
+                document.getElementById('drillDuration').value = drillCopy.duration;
+                document.getElementById('drillMinPlayers').value = drillCopy.minPlayers;
+                document.getElementById('drillMaxPlayers').value = drillCopy.maxPlayers;
+                document.getElementById('drillDifficulty').value = drillCopy.difficulty;
+                
+                // Set selected equipment and focus
+                selectedEquipment = Array.isArray(drillCopy.equipment) ? [...drillCopy.equipment] : [];
+                selectedFocus = Array.isArray(drillCopy.focus) ? [...drillCopy.focus] : [];
+                
+                // Initialize selectors and update displays
+                initializeSelectors();
+                updateEquipmentDisplay();
+                updateFocusDisplay();
+                updateEquipmentInput();
+                updateFocusInput();
+                
+                // Show modal (no edit-id, so it will create a new drill)
+                document.getElementById('customDrillForm').removeAttribute('data-edit-id');
+                document.getElementById('customDrillModal').style.display = 'flex';
+                
+                window.pracTracDemo?.showNotification(
+                    `"${drill.name}" copied! Modify as needed and save to create your own version.`,
+                    'info'
+                );
+            }
+        }
+
         function createCustomDrill() {
             // Update modal title for creating
             document.querySelector('#customDrillModal h2').textContent = '⚡ Create Custom Drill';
@@ -801,6 +985,9 @@
             
             const formData = new FormData(event.target);
             const editId = event.target.getAttribute('data-edit-id');
+            
+            // Get current user info
+            const currentUser = JSON.parse(localStorage.getItem('practrac_user')) || { id: 'demo_user_1', username: 'DemoUser' };
             
             const drillData = {
                 name: formData.get('name'),
@@ -836,19 +1023,54 @@
                     loadDrillData();
                     
                     // Show success notification
-                    glassModal.success(
+                    window.pracTracDemo?.showNotification(
                         `Drill ${isEdit ? 'updated' : 'created'} successfully!`,
-                        isEdit ? 'Drill Updated' : 'Drill Created'
+                        'success'
                     );
                 } else {
                     throw new Error(`Failed to ${isEdit ? 'update' : 'create'} drill`);
                 }
             } catch (error) {
                 console.error(`Error ${editId ? 'updating' : 'creating'} drill:`, error);
-                glassModal.error(
-                    `Error ${editId ? 'updating' : 'creating'} drill`,
-                    'Operation Failed'
-                );
+                
+                // Demo mode - save to localStorage with simplified structure
+                try {
+                    let drills = JSON.parse(localStorage.getItem('practrac_drills')) || [];
+                    
+                    if (isEdit) {
+                        // Update existing drill
+                        const drillIndex = drills.findIndex(d => d.id === parseInt(editId));
+                        if (drillIndex !== -1) {
+                            drills[drillIndex] = {
+                                ...drillData,
+                                id: parseInt(editId)
+                            };
+                        }
+                    } else {
+                        // Create new drill
+                        const newId = Math.max(...drills.map(d => d.id || 0), 0) + 1;
+                        drillData.id = newId;
+                        drills.push(drillData);
+                    }
+                    
+                    localStorage.setItem('practrac_drills', JSON.stringify(drills));
+                    
+                    // Close modal and refresh
+                    closeCustomDrillModal();
+                    loadDrillData();
+                    
+                    // Show success notification
+                    window.pracTracDemo?.showNotification(
+                        `Drill ${isEdit ? 'updated' : 'created'} successfully!`,
+                        'success'
+                    );
+                } catch (localStorageError) {
+                    console.error('Error saving to localStorage:', localStorageError);
+                    window.pracTracDemo?.showNotification(
+                        `Error ${editId ? 'updating' : 'creating'} drill`,
+                        'error'
+                    );
+                }
             }
         }
 
@@ -856,20 +1078,15 @@
             // Ensure drillId is an integer for proper comparison
             drillId = parseInt(drillId);
             
-            const confirmed = await showGlassConfirm(
-                `Are you sure you want to delete "${drillName}"? This action cannot be undone and will remove this drill from any practice plans that use it.`,
-                'Delete Drill'
-            );
+            const confirmed = confirm(`Are you sure you want to delete "${drillName}"? This action cannot be undone.`);
             
             if (confirmed) {
-                fetch(`/api/drills/${drillId}`, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        showGlassError(`Error: ${data.error}`);
-                    } else {
+                try {
+                    const response = await fetch(`/api/drills/${drillId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
                         // Remove drill from favorites if it was favorited
                         const favoriteIndex = favoriteDrills.indexOf(drillId);
                         if (favoriteIndex !== -1) {
@@ -877,14 +1094,34 @@
                             localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
                         }
                         
-                        showGlassSuccess('Drill deleted successfully');
+                        window.pracTracDemo?.showNotification('Drill deleted successfully', 'success');
                         loadDrillData(); // Reload the drills list
+                    } else {
+                        throw new Error('Failed to delete drill');
                     }
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error('Error deleting drill:', error);
-                    showGlassError('Error deleting drill');
-                });
+                    
+                    // Demo mode - delete from localStorage
+                    try {
+                        let drills = JSON.parse(localStorage.getItem('practrac_drills')) || [];
+                        drills = drills.filter(drill => drill.id !== drillId);
+                        localStorage.setItem('practrac_drills', JSON.stringify(drills));
+                        
+                        // Remove from favorites if it was favorited
+                        const favoriteIndex = favoriteDrills.indexOf(drillId);
+                        if (favoriteIndex !== -1) {
+                            favoriteDrills.splice(favoriteIndex, 1);
+                            localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
+                        }
+                        
+                        window.pracTracDemo?.showNotification('Drill deleted successfully', 'success');
+                        loadDrillData(); // Reload the drills list
+                    } catch (localStorageError) {
+                        console.error('Error deleting from localStorage:', localStorageError);
+                        window.pracTracDemo?.showNotification('Error deleting drill', 'error');
+                    }
+                }
             }
         }
 
@@ -892,6 +1129,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadCustomOptions();
             loadDrillData();
+            // Initialize mobile menu
+            if (typeof initializeMobileMenu === 'function') {
+                initializeMobileMenu();
+            }
         });
     </script>
     <script src="js/main.js"></script>

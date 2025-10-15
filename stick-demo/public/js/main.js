@@ -29,9 +29,21 @@ class PracTracDemo {
                 this.updateUIForLoggedOutUser();
             }
         } catch (error) {
-            // User not authenticated or network error
-            this.currentUser = null;
-            this.updateUIForLoggedOutUser();
+            // Demo mode - create demo user from localStorage or defaults
+            const storedUser = this.loadFromLocalStorage('user');
+            if (storedUser) {
+                this.currentUser = storedUser;
+            } else {
+                // Create default demo user
+                this.currentUser = {
+                    id: 'demo_user_1',
+                    username: 'DemoUser',
+                    email: 'demo@practrac.com',
+                    name: 'Demo User'
+                };
+                this.saveToLocalStorage('user', this.currentUser);
+            }
+            this.updateUIForLoggedInUser();
         }
     }
 
@@ -46,15 +58,10 @@ class PracTracDemo {
             }
         });
 
-        // Show logout buttons, hide login/register links
+        // Show team selector and hide login/register links
         const loginLinks = document.querySelectorAll('.login-link');
-        const logoutBtns = document.querySelectorAll('.logout-btn');
         
         loginLinks.forEach(link => link.style.display = 'none');
-        logoutBtns.forEach(btn => {
-            btn.style.display = 'block';
-            btn.onclick = () => this.logout();
-        });
 
         // Update navigation for authenticated users
         this.updateNavigationForAuthenticated();
@@ -66,16 +73,20 @@ class PracTracDemo {
     updateUIForLoggedOutUser() {
         // Show login/register links, hide user-specific elements
         const loginLinks = document.querySelectorAll('.login-link');
-        const logoutButtons = document.querySelectorAll('.logout-btn');
         const userGreetings = document.querySelectorAll('#userGreeting');
+        const teamSelectorContainer = document.getElementById('teamSelector');
         
         loginLinks.forEach(link => link.style.display = 'inline-block');
-        logoutButtons.forEach(button => button.style.display = 'none');
         userGreetings.forEach(greeting => {
             if (greeting) {
                 greeting.textContent = 'Guest User';
             }
         });
+        
+        // Hide team selector for logged out users
+        if (teamSelectorContainer) {
+            teamSelectorContainer.style.display = 'none';
+        }
 
         // Restrict navigation for non-authenticated users
         this.updateNavigationForGuest();
@@ -533,7 +544,16 @@ class PracTracDemo {
     }
 
     async initializeTeamSelector() {
-        if (!this.currentUser) return;
+        const teamSelectorContainer = document.getElementById('teamSelector');
+        if (!teamSelectorContainer) return;
+        
+        if (!this.currentUser) {
+            teamSelectorContainer.style.display = 'none';
+            return;
+        }
+
+        // Show the team selector for authenticated users
+        teamSelectorContainer.style.display = 'block';
 
         const teams = await this.loadUserTeams();
         const currentTeam = await this.getCurrentTeam();
@@ -587,8 +607,76 @@ class PracTracDemo {
     }
 
     showCreateTeamModal() {
-        // This will be implemented when we create the team management page
-        console.log('Create team modal - to be implemented');
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Create New Team</h2>
+                    <span class="close-modal" onclick="this.closest('.modal-overlay').remove()">&times;</span>
+                </div>
+                <form id="createTeamForm" class="modal-form">
+                    <div class="form-group">
+                        <label for="teamName">Team Name *</label>
+                        <input type="text" id="teamName" required placeholder="Enter team name">
+                    </div>
+                    <div class="form-group">
+                        <label for="teamSeason">Season *</label>
+                        <input type="text" id="teamSeason" required placeholder="e.g., Fall 2025" value="Fall 2025">
+                    </div>
+                    <div class="form-group">
+                        <label for="teamDivision">Division *</label>
+                        <input type="text" id="teamDivision" required placeholder="e.g., Varsity, JV, Club">
+                    </div>
+                    <div class="form-group">
+                        <label for="teamCoach">Coach Name *</label>
+                        <input type="text" id="teamCoach" required placeholder="Enter coach name">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="glass-button secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                        <button type="submit" class="glass-button primary">Create Team</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Handle form submission
+        document.getElementById('createTeamForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const teamName = document.getElementById('teamName').value.trim();
+            const teamSeason = document.getElementById('teamSeason').value.trim();
+            const teamDivision = document.getElementById('teamDivision').value.trim();
+            const teamCoach = document.getElementById('teamCoach').value.trim();
+            
+            if (!teamName || !teamSeason || !teamDivision || !teamCoach) {
+                this.showNotification('All fields are required', 'error');
+                return;
+            }
+
+            const teamData = {
+                name: teamName,
+                season: teamSeason,
+                division: teamDivision,
+                coach: teamCoach
+            };
+
+            const newTeam = await this.createTeam(teamData);
+            if (newTeam) {
+                modal.remove();
+                // Refresh the team selector to show the new team
+                await this.initializeTeamSelector();
+                // Optionally switch to the new team
+                await this.switchTeam(newTeam.id);
+            }
+        });
+
+        // Focus on the team name input
+        setTimeout(() => {
+            document.getElementById('teamName').focus();
+        }, 100);
     }
 }
 
@@ -608,6 +696,62 @@ function simulateUpload() {
 
 function simulateVideoRecording() {
     window.pracTracDemo.showNotification('Video recording started - Demo mode', 'info');
+}
+
+// Mobile Menu Functionality
+function initializeMobileMenu() {
+    // Reset previous state
+    window.mobileMenuInitialized = false;
+    
+    // Prevent multiple initializations
+    if (window.mobileMenuInitialized) {
+        return;
+    }
+    
+    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+    const mobileMenu = document.querySelector('.mobile-menu');
+    
+    if (mobileMenuToggle && mobileMenu) {
+        // Mark as initialized
+        window.mobileMenuInitialized = true;
+        
+        // Ensure menu starts in closed state
+        mobileMenuToggle.classList.remove('active');
+        mobileMenu.classList.remove('active');
+        
+        mobileMenuToggle.addEventListener('click', () => {
+            mobileMenuToggle.classList.toggle('active');
+            mobileMenu.classList.toggle('active');
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileMenuToggle.contains(e.target) && !mobileMenu.contains(e.target)) {
+                mobileMenuToggle.classList.remove('active');
+                mobileMenu.classList.remove('active');
+            }
+        });
+        
+        // Close mobile menu on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                mobileMenuToggle.classList.remove('active');
+                mobileMenu.classList.remove('active');
+            }
+        });
+
+        // Close mobile menu when clicking on nav links
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenuToggle.classList.remove('active');
+                mobileMenu.classList.remove('active');
+            });
+        });
+        
+        console.log('Mobile menu initialized successfully');
+    } else {
+        console.log('Mobile menu elements not found');
+    }
 }
 
 // Export for use in other scripts

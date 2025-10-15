@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>Practice Mode - PracTrac</title>
     <link rel="stylesheet" href="/css/glass-style.css">
     <style>
@@ -22,6 +25,11 @@
             left: 0;
             right: 0;
             bottom: 0;
+            /* iOS Safari specific */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .practice-mode-container {
@@ -31,6 +39,59 @@
             width: 100vw;
             position: relative;
             overflow: hidden;
+            /* Safari iPad fullscreen fixes */
+            -webkit-app-region: no-drag;
+            /* Prevent iOS Safari bounce */
+            overscroll-behavior: contain;
+            /* Disable pull-to-refresh */
+            touch-action: pan-x pan-y;
+        }
+
+        /* iPad Safari fullscreen specific styles */
+        @supports (-webkit-touch-callout: none) {
+            .practice-mode-container:fullscreen {
+                padding-top: env(safe-area-inset-top, 0);
+                padding-bottom: env(safe-area-inset-bottom, 0);
+                padding-left: env(safe-area-inset-left, 0);
+                padding-right: env(safe-area-inset-right, 0);
+            }
+            
+            /* Hide Safari's default fullscreen controls */
+            .practice-mode-container:fullscreen::backdrop {
+                background: #000000;
+            }
+            
+            /* Disable iPad swipe gestures in fullscreen */
+            .practice-mode-container:fullscreen {
+                -webkit-user-select: none;
+                user-select: none;
+                -webkit-touch-callout: none;
+                pointer-events: auto;
+                touch-action: none !important;
+            }
+            
+            /* Hide iPad's fullscreen exit button */
+            .practice-mode-container:fullscreen::-webkit-media-controls-fullscreen-button {
+                display: none !important;
+            }
+            
+            .practice-mode-container:fullscreen video::-webkit-media-controls-fullscreen-button {
+                display: none !important;
+            }
+            
+            /* Position fullscreen button away from Safari's X button */
+            .fullscreen-toggle {
+                position: absolute;
+                top: calc(env(safe-area-inset-top, 0) + 20px);
+                left: calc(env(safe-area-inset-left, 0) + 20px);
+                z-index: 999;
+                background: rgba(0, 0, 0, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                cursor: pointer;
+            }
         }
 
         /* Top phase navigation */
@@ -365,11 +426,81 @@
             resize: none;
             font-family: inherit;
             font-size: var(--font-size-base);
+            /* Mobile keyboard improvements */
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+            touch-action: manipulation;
         }
 
         .notes-textarea:focus {
             outline: none;
             border-color: var(--accent-orange);
+        }
+
+        /* Mobile keyboard overlay for dismissing */
+        .keyboard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 999;
+            display: none;
+            pointer-events: none;
+        }
+
+        .keyboard-overlay.active {
+            display: block;
+            pointer-events: auto;
+        }
+
+        /* Enhanced input support for screens < 1000px and fullscreen mode */
+        @media (max-width: 999px) {
+            .notes-textarea, .form-input, input, textarea, select {
+                /* Ensure inputs work properly on narrow screens */
+                -webkit-user-select: text !important;
+                user-select: text !important;
+                -webkit-touch-callout: default !important;
+                pointer-events: auto !important;
+                touch-action: manipulation !important;
+            }
+            
+            /* Show keyboard overlay hint */
+            .keyboard-overlay.active::before {
+                content: 'Tap outside to close keyboard';
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                z-index: 1000;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+        }
+
+        /* Fullscreen input support */
+        body.custom-fullscreen .notes-textarea,
+        body.custom-fullscreen .form-input,
+        body.custom-fullscreen input,
+        body.custom-fullscreen textarea,
+        body.custom-fullscreen select,
+        :fullscreen .notes-textarea,
+        :fullscreen .form-input,
+        :fullscreen input,
+        :fullscreen textarea,
+        :fullscreen select {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+            -webkit-touch-callout: default !important;
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
         }
 
         /* Notes Tabs */
@@ -599,24 +730,29 @@
             }
         }
 
-        @media (max-width: 768px) {
+        /* iPhone and small mobile devices */
+        @media (max-width: 999px) {
             .phase-navigation-top {
                 display: flex;
                 flex-direction: column;
-                gap: var(--spacing-md);
-                padding: var(--spacing-sm);
+                gap: var(--spacing-sm);
+                padding: var(--spacing-xs);
+                min-height: 140px;
             }
             
             .phase-info {
-                gap: var(--spacing-sm);
+                gap: var(--spacing-xs);
                 order: 1;
                 justify-self: center;
+                font-size: var(--font-size-sm);
             }
             
             .phase-controls {
-                gap: var(--spacing-md);
+                gap: var(--spacing-sm);
                 order: 2;
                 justify-self: center;
+                flex-wrap: wrap;
+                justify-content: center;
             }
             
             .timer-section {
@@ -627,43 +763,95 @@
             }
             
             .overall-timer {
-                font-size: var(--font-size-sm);
+                font-size: var(--font-size-xs);
             }
             
             .phase-timer {
-                font-size: var(--font-size-lg);
+                font-size: var(--font-size-md);
                 padding: var(--spacing-xs) var(--spacing-sm);
-                min-width: 100px;
+                min-width: 80px;
             }
             
             .nav-btn {
                 padding: var(--spacing-xs) var(--spacing-sm);
-                font-size: var(--font-size-sm);
+                font-size: var(--font-size-xs);
+                min-width: 60px;
             }
             
             .phase-indicator {
-                font-size: var(--font-size-sm);
-                padding: var(--spacing-xs) var(--spacing-sm);
+                font-size: var(--font-size-xs);
+                padding: 2px var(--spacing-xs);
             }
             
             .timer-btn {
-                width: 32px;
-                height: 32px;
-                font-size: var(--font-size-base);
+                width: 28px;
+                height: 28px;
+                font-size: var(--font-size-sm);
             }
             
             .practice-content {
-                padding-top: calc(var(--spacing-md) + 160px); /* More space for stacked nav */
+                padding: var(--spacing-sm);
+                padding-top: 150px; /* More space for stacked nav */
             }
 
             .clip-modal-content {
-                padding: var(--spacing-lg);
-                margin: var(--spacing-md);
+                padding: var(--spacing-md);
+                margin: var(--spacing-sm);
+                max-height: 85vh;
+                overflow-y: auto;
             }
             
             .clip-video-placeholder {
                 width: 90vw;
-                height: 50vh;
+                height: 40vh;
+            }
+            
+            /* Mobile notes improvements */
+            .notes-section {
+                min-height: 200px;
+            }
+            
+            .notes-textarea {
+                min-height: 120px;
+                font-size: 16px; /* Prevent zoom on iOS */
+                -webkit-appearance: none;
+                appearance: none;
+                border-radius: 8px;
+            }
+            
+            /* Improve touch targets */
+            .notes-tab {
+                padding: var(--spacing-sm) var(--spacing-md);
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+            }
+        }
+
+        /* iPad and tablet specific */
+        @media (min-width: 1000px) and (max-width: 1024px) {
+            .phase-navigation-top {
+                padding: var(--spacing-sm);
+            }
+            
+            .practice-content {
+                padding: var(--spacing-md);
+                padding-top: calc(var(--spacing-md) + 100px);
+            }
+            
+            .notes-textarea {
+                font-size: 16px; /* Prevent zoom on iPad */
+            }
+            
+            /* Better touch targets for iPad */
+            .timer-btn {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .nav-btn {
+                padding: var(--spacing-sm) var(--spacing-md);
+                min-height: 44px;
             }
         }
 
@@ -1066,6 +1254,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Keyboard dismissal overlay for mobile -->
+    <div class="keyboard-overlay" id="keyboardOverlay"></div>
 
     <script>
         // Practice mode state
@@ -2016,6 +2207,8 @@
 
         // Scoreboard functionality
         let scoreboardState = {
+            teamAName: 'Home',
+            teamBName: 'Away',
             teamAScore: 0,
             teamBScore: 0,
             gameTime: 0,
@@ -2053,6 +2246,8 @@
         function updateScoreDisplay() {
             document.getElementById('teamAScore').textContent = scoreboardState.teamAScore;
             document.getElementById('teamBScore').textContent = scoreboardState.teamBScore;
+            document.getElementById('teamAName').textContent = scoreboardState.teamAName;
+            document.getElementById('teamBName').textContent = scoreboardState.teamBName;
             
             const minutes = Math.floor(scoreboardState.gameTime / 60);
             const seconds = scoreboardState.gameTime % 60;
@@ -2071,6 +2266,925 @@
                 }, 1000);
                 scoreboardState.isGameTimerRunning = true;
             }
+        }
+
+        function updateTeamName(team) {
+            if (team === 'A') {
+                const newName = document.getElementById('teamAName').textContent.trim();
+                if (newName) {
+                    scoreboardState.teamAName = newName;
+                } else {
+                    // If empty, reset to default and update display
+                    scoreboardState.teamAName = 'Home';
+                    document.getElementById('teamAName').textContent = 'Home';
+                }
+            } else {
+                const newName = document.getElementById('teamBName').textContent.trim();
+                if (newName) {
+                    scoreboardState.teamBName = newName;
+                } else {
+                    // If empty, reset to default and update display
+                    scoreboardState.teamBName = 'Away';
+                    document.getElementById('teamBName').textContent = 'Away';
+                }
+            }
+        }
+
+        // Team Setup functionality
+        let teamAssignments = {
+            teamA: [],
+            teamB: []
+        };
+
+        function showTeamSetupModal() {
+            const modal = document.getElementById('teamSetupModal');
+            
+            // Update team name inputs with current values
+            document.getElementById('teamANameInput').value = scoreboardState.teamAName;
+            document.getElementById('teamBNameInput').value = scoreboardState.teamBName;
+            
+            // Populate available players
+            populateAvailablePlayers();
+            
+            // Setup drop zones
+            setupDropZones();
+            
+            modal.style.display = 'block';
+        }
+
+        function closeTeamSetupModal() {
+            const modal = document.getElementById('teamSetupModal');
+            modal.style.display = 'none';
+        }
+
+        function populateAvailablePlayers() {
+            const availableContainer = document.getElementById('availablePlayers');
+            availableContainer.innerHTML = '';
+            
+            // Debug logging
+            console.log('Populating available players...');
+            console.log('attendanceData:', attendanceData);
+            console.log('players:', players);
+            console.log('teamAssignments:', teamAssignments);
+            
+            // Fallback: if attendanceData is empty or not working, use all players
+            let playersToShow = [];
+            
+            if (attendanceData && attendanceData.length > 0) {
+                // Get present players from attendance
+                const presentPlayers = attendanceData.filter(record => record.attended);
+                console.log('presentPlayers:', presentPlayers);
+                
+                // Find players not assigned to teams
+                const assignedPlayerIds = [...teamAssignments.teamA, ...teamAssignments.teamB];
+                const availablePlayers = presentPlayers.filter(record => !assignedPlayerIds.includes(record.player_id));
+                console.log('availablePlayers:', availablePlayers);
+                
+                playersToShow = availablePlayers;
+            } else {
+                // Fallback: show all players if attendance data is not available
+                console.log('Using fallback: showing all players');
+                const assignedPlayerIds = [...teamAssignments.teamA, ...teamAssignments.teamB];
+                playersToShow = players.filter(player => !assignedPlayerIds.includes(player.id)).map(player => ({
+                    player_id: player.id,
+                    attended: true
+                }));
+            }
+            
+            if (playersToShow.length === 0) {
+                availableContainer.innerHTML = `
+                    <div style="color: var(--text-secondary); font-style: italic; text-align: center; width: 100%; padding: 1rem;">
+                        ${(attendanceData && attendanceData.length > 0) ? 'All players assigned' : 'No players found - check console for debug info'}
+                    </div>
+                `;
+                return;
+            }
+            
+            playersToShow.forEach(record => {
+                // Find player details from the loaded players data
+                const player = players.find(p => p.id === record.player_id);
+                if (player) {
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'available-player-card';
+                    playerCard.draggable = true;
+                    playerCard.dataset.playerId = player.id;
+                    
+                    // Create player display with name, number, and position
+                    const playerName = player.name || player.firstName || `Player ${player.id}`;
+                    const jerseyNumber = player.jerseyNumber || player.number || '#';
+                    const position = player.position || '';
+                    
+                    const displayText = `${jerseyNumber} ${playerName}${position ? ` (${position})` : ''}`;
+                    playerCard.innerHTML = `
+                        <div style="font-weight: bold; font-size: 0.9rem;">#${jerseyNumber}</div>
+                        <div style="font-size: 1rem;">${playerName}</div>
+                        ${position ? `<div style="font-size: 0.8rem; opacity: 0.8;">${position}</div>` : ''}
+                    `;
+                    playerCard.title = 'Click to assign to team or drag to team area';
+                    
+                    // Add click handler as alternative to drag-and-drop
+                    playerCard.addEventListener('click', function() {
+                        showPlayerAssignmentMenu(player.id, playerName, playerCard);
+                    });
+                    
+                    // Add drag event listeners
+                    playerCard.addEventListener('dragstart', handleDragStart);
+                    playerCard.addEventListener('dragend', handleDragEnd);
+                    
+                    availableContainer.appendChild(playerCard);
+                } else {
+                    // Create a card even if player details aren't found
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'available-player-card';
+                    playerCard.draggable = true;
+                    playerCard.dataset.playerId = record.player_id;
+                    playerCard.innerHTML = `
+                        <div style="font-weight: bold;">#?</div>
+                        <div>Player ${record.player_id}</div>
+                    `;
+                    playerCard.title = 'Click to assign to team';
+                    
+                    playerCard.addEventListener('click', function() {
+                        showPlayerAssignmentMenu(record.player_id, `Player ${record.player_id}`, playerCard);
+                    });
+                    
+                    availableContainer.appendChild(playerCard);
+                }
+            });
+        }
+
+        function showPlayerAssignmentMenu(playerId, playerName, playerCard) {
+            // Create a simple context menu for team assignment
+            const existingMenu = document.querySelector('.player-assignment-menu');
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+            
+            const menu = document.createElement('div');
+            menu.className = 'player-assignment-menu';
+            menu.style.cssText = `
+                position: absolute;
+                background: var(--glass-primary);
+                border: 1px solid var(--glass-border);
+                border-radius: 8px;
+                padding: 0.5rem;
+                z-index: 10001;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            
+            const rect = playerCard.getBoundingClientRect();
+            menu.style.left = rect.left + 'px';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            
+            const teamAButton = document.createElement('button');
+            teamAButton.textContent = `Assign to ${scoreboardState.teamAName}`;
+            teamAButton.className = 'assignment-btn';
+            teamAButton.style.cssText = `
+                display: block;
+                width: 100%;
+                padding: 0.5rem;
+                margin-bottom: 0.25rem;
+                background: var(--accent-orange);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.9rem;
+            `;
+            teamAButton.onclick = () => {
+                assignPlayerToTeam(playerId, 'A');
+                menu.remove();
+            };
+            
+            const teamBButton = document.createElement('button');
+            teamBButton.textContent = `Assign to ${scoreboardState.teamBName}`;
+            teamBButton.className = 'assignment-btn';
+            teamBButton.style.cssText = `
+                display: block;
+                width: 100%;
+                padding: 0.5rem;
+                background: var(--accent-blue);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.9rem;
+            `;
+            teamBButton.onclick = () => {
+                assignPlayerToTeam(playerId, 'B');
+                menu.remove();
+            };
+            
+            menu.appendChild(teamAButton);
+            menu.appendChild(teamBButton);
+            document.body.appendChild(menu);
+            
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== playerCard) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 100);
+        }
+
+        function assignPlayerToTeam(playerId, team) {
+            const teamKey = team === 'A' ? 'teamA' : 'teamB';
+            const otherTeamKey = team === 'A' ? 'teamB' : 'teamA';
+            
+            // Remove from other team if already assigned
+            teamAssignments[otherTeamKey] = teamAssignments[otherTeamKey].filter(id => id !== playerId);
+            
+            // Add to this team if not already there
+            if (!teamAssignments[teamKey].includes(playerId)) {
+                teamAssignments[teamKey].push(playerId);
+            }
+            
+            // Update displays
+            updateTeamDisplay('A');
+            updateTeamDisplay('B');
+            populateAvailablePlayers();
+        }
+
+        function updateTeamDisplay(team) {
+            const containerId = team === 'A' ? 'teamAPlayers' : 'teamBPlayers';
+            const container = document.getElementById(containerId);
+            const playerIds = teamAssignments[team === 'A' ? 'teamA' : 'teamB'];
+            
+            container.innerHTML = '';
+            
+            if (playerIds.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'team-placeholder';
+                placeholder.style.cssText = 'text-align: center; color: var(--text-secondary); font-style: italic;';
+                placeholder.textContent = 'Drag players here';
+                container.appendChild(placeholder);
+                return;
+            }
+            
+            playerIds.forEach(playerId => {
+                const player = players.find(p => p.id === playerId);
+                
+                const playerCard = document.createElement('div');
+                playerCard.className = 'team-player-card';
+                playerCard.dataset.playerId = playerId;
+                
+                const playerInfo = document.createElement('div');
+                playerInfo.style.cssText = 'display: flex; flex-direction: column; flex-grow: 1;';
+                
+                if (player) {
+                    const name = player.name || player.firstName || `Player ${player.id}`;
+                    const jerseyNumber = player.jerseyNumber || player.number || '#';
+                    const position = player.position || '';
+                    
+                    playerInfo.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: bold; color: var(--accent-orange);">#${jerseyNumber}</span>
+                            <span style="font-weight: 500;">${name}</span>
+                        </div>
+                        ${position ? `<div style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.2rem;">${position}</div>` : ''}
+                    `;
+                } else {
+                    playerInfo.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: bold; color: var(--accent-orange);">#?</span>
+                            <span>Player ${playerId}</span>
+                        </div>
+                    `;
+                }
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'player-remove-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => removePlayerFromTeam(playerId, team);
+                
+                playerCard.appendChild(playerInfo);
+                playerCard.appendChild(removeBtn);
+                container.appendChild(playerCard);
+            });
+        }
+
+        function removePlayerFromTeam(playerId, team) {
+            const teamKey = team === 'A' ? 'teamA' : 'teamB';
+            teamAssignments[teamKey] = teamAssignments[teamKey].filter(id => id !== playerId);
+            updateTeamDisplay(team);
+            populateAvailablePlayers();
+        }
+
+        function autoAssignTeams() {
+            console.log('Auto-assigning teams...');
+            
+            // Use the same logic as populateAvailablePlayers to get available players
+            let availablePlayerIds = [];
+            
+            if (attendanceData && attendanceData.length > 0) {
+                // Get present players from attendance
+                const presentPlayers = attendanceData.filter(record => record.attended);
+                availablePlayerIds = presentPlayers.map(record => record.player_id);
+                console.log('Using attendance data:', availablePlayerIds);
+            } else {
+                // Fallback: use all players if attendance data is not available
+                availablePlayerIds = players.map(player => player.id);
+                console.log('Using all players as fallback:', availablePlayerIds);
+            }
+            
+            if (availablePlayerIds.length === 0) {
+                console.log('No players available for assignment');
+                return;
+            }
+            
+            // Shuffle players randomly using Fisher-Yates shuffle for better randomness
+            const shuffled = [...availablePlayerIds];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            
+            console.log('Shuffled players:', shuffled);
+            
+            // Split into two teams
+            const midpoint = Math.ceil(shuffled.length / 2);
+            teamAssignments.teamA = shuffled.slice(0, midpoint);
+            teamAssignments.teamB = shuffled.slice(midpoint);
+            
+            console.log('Team A assigned:', teamAssignments.teamA);
+            console.log('Team B assigned:', teamAssignments.teamB);
+            
+            // Update displays
+            updateTeamDisplay('A');
+            updateTeamDisplay('B');
+            populateAvailablePlayers();
+        }
+
+        function clearTeams() {
+            teamAssignments.teamA = [];
+            teamAssignments.teamB = [];
+            updateTeamDisplay('A');
+            updateTeamDisplay('B');
+            populateAvailablePlayers();
+        }
+
+        function applyTeamSetup() {
+            // Update team names
+            const teamAName = document.getElementById('teamANameInput').value.trim() || 'Home';
+            const teamBName = document.getElementById('teamBNameInput').value.trim() || 'Away';
+            
+            scoreboardState.teamAName = teamAName;
+            scoreboardState.teamBName = teamBName;
+            
+            // Update scoreboard display
+            updateScoreDisplay();
+            
+            // Close modal
+            closeTeamSetupModal();
+            
+            // Show success message
+            glassModal.showSuccess('Teams setup successfully!', 'Team Setup Complete');
+        }
+
+        // Drag and drop functionality
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedElement = null;
+        }
+
+        // Set up drop zones for team containers
+        function setupDropZones() {
+            const teamAContainer = document.getElementById('teamAPlayers');
+            const teamBContainer = document.getElementById('teamBPlayers');
+            
+            [teamAContainer, teamBContainer].forEach((container, index) => {
+                const team = index === 0 ? 'A' : 'B';
+                
+                container.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    container.classList.add('drag-over');
+                });
+                
+                container.addEventListener('dragleave', (e) => {
+                    if (!container.contains(e.relatedTarget)) {
+                        container.classList.remove('drag-over');
+                    }
+                });
+                
+                container.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    container.classList.remove('drag-over');
+                    
+                    if (draggedElement) {
+                        const playerId = parseInt(draggedElement.dataset.playerId);
+                        const teamKey = team === 'A' ? 'teamA' : 'teamB';
+                        
+                        // Remove from other team if already assigned
+                        const otherTeamKey = team === 'A' ? 'teamB' : 'teamA';
+                        teamAssignments[otherTeamKey] = teamAssignments[otherTeamKey].filter(id => id !== playerId);
+                        
+                        // Add to this team if not already there
+                        if (!teamAssignments[teamKey].includes(playerId)) {
+                            teamAssignments[teamKey].push(playerId);
+                        }
+                        
+                        // Update displays
+                        updateTeamDisplay('A');
+                        updateTeamDisplay('B');
+                        populateAvailablePlayers();
+                    }
+                });
+            });
+        }
+
+        // Initialize drop zones when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDropZones();
+        });
+
+        // Save score functionality
+        function showSaveScoreModal() {
+            const modal = document.getElementById('saveScoreModal');
+            
+            // Get current phase information
+            const currentPhaseIndex = practiceState.currentPhase;
+            const currentPhaseData = practiceState.phases[currentPhaseIndex];
+            const phaseName = currentPhaseData ? currentPhaseData.name : 'Unknown Phase';
+            
+            // Populate the modal with current score data
+            document.getElementById('saveTeamAName').textContent = scoreboardState.teamAName;
+            document.getElementById('saveTeamBName').textContent = scoreboardState.teamBName;
+            document.getElementById('saveTeamAScore').textContent = scoreboardState.teamAScore;
+            document.getElementById('saveTeamBScore').textContent = scoreboardState.teamBScore;
+            
+            const minutes = Math.floor(scoreboardState.gameTime / 60);
+            const seconds = scoreboardState.gameTime % 60;
+            document.getElementById('saveGameTime').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update the modal header to show current phase
+            const modalHeader = document.querySelector('.save-score-header h2');
+            modalHeader.textContent = `💾 Save Game Score - ${phaseName}`;
+            
+            // Populate phase selection dropdown
+            populatePhaseSelection(currentPhaseIndex);
+            
+            // Populate drill selection for current phase
+            populateDrillSelection(currentPhaseIndex);
+            
+            modal.style.display = 'flex';
+        }
+
+        // Populate phase selection dropdown
+        function populatePhaseSelection(currentPhaseIndex = 0) {
+            const phaseSelect = document.getElementById('phaseSelection');
+            phaseSelect.innerHTML = '';
+            
+            if (practiceState.phases && practiceState.phases.length > 0) {
+                practiceState.phases.forEach((phase, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `Phase ${index + 1}: ${phase.name || 'Unnamed Phase'}`;
+                    if (index === currentPhaseIndex) {
+                        option.selected = true;
+                    }
+                    phaseSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = '0';
+                option.textContent = 'Current Phase';
+                phaseSelect.appendChild(option);
+            }
+            
+            // Add event listener for phase selection change
+            phaseSelect.addEventListener('change', function() {
+                populateDrillSelection(parseInt(this.value));
+            });
+        }
+
+        // Populate drill selection dropdown based on selected phase
+        function populateDrillSelection(phaseIndex) {
+            const drillSelect = document.getElementById('drillSelection');
+            drillSelect.innerHTML = '<option value="">Select a drill...</option>';
+            
+            if (practiceState.phases && practiceState.phases[phaseIndex] && practiceState.phases[phaseIndex].drills) {
+                const drills = practiceState.phases[phaseIndex].drills;
+                drills.forEach((drill, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = drill.name || `Drill ${index + 1}`;
+                    drillSelect.appendChild(option);
+                });
+                
+                // If no drills in this phase, show message
+                if (drills.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No drills in this phase';
+                    option.disabled = true;
+                    drillSelect.appendChild(option);
+                }
+            }
+        }
+
+        function closeSaveScoreModal() {
+            const modal = document.getElementById('saveScoreModal');
+            modal.style.display = 'none';
+            
+            // Reset modal header
+            const modalHeader = document.querySelector('.save-score-header h2');
+            modalHeader.textContent = '💾 Save Game Score';
+            
+            // Clear form
+            document.getElementById('phaseSelection').innerHTML = '';
+            document.getElementById('drillSelection').innerHTML = '<option value="">Select a drill...</option>';
+            document.getElementById('gameNotes').value = '';
+        }
+
+        function saveGameScore() {
+            // Get selected phase and drill information
+            const selectedPhaseIndex = parseInt(document.getElementById('phaseSelection').value);
+            const selectedDrillIndex = document.getElementById('drillSelection').value !== '' ? 
+                parseInt(document.getElementById('drillSelection').value) : null;
+            
+            const selectedPhaseData = practiceState.phases[selectedPhaseIndex];
+            const selectedPhaseName = selectedPhaseData ? selectedPhaseData.name : 'Unknown Phase';
+            
+            let selectedDrillData = null;
+            let selectedDrillName = null;
+            if (selectedDrillIndex !== null && selectedPhaseData && selectedPhaseData.drills) {
+                selectedDrillData = selectedPhaseData.drills[selectedDrillIndex];
+                selectedDrillName = selectedDrillData ? selectedDrillData.name : null;
+            }
+            
+            const gameData = {
+                date: new Date().toISOString(),
+                sessionId: practiceState.sessionId,
+                teamAName: scoreboardState.teamAName,
+                teamBName: scoreboardState.teamBName,
+                teamAScore: scoreboardState.teamAScore,
+                teamBScore: scoreboardState.teamBScore,
+                gameTime: scoreboardState.gameTime,
+                notes: document.getElementById('gameNotes').value,
+                practicePlan: practiceState.practiceName || 'Unknown Practice',
+                // Phase and drill information
+                phaseIndex: selectedPhaseIndex,
+                phaseName: selectedPhaseName,
+                drillIndex: selectedDrillIndex,
+                drillName: selectedDrillName,
+                drillData: selectedDrillData,
+                phaseType: 'scoreboard_game',
+                practiceData: {
+                    totalPhases: practiceState.phases.length,
+                    selectedPhase: selectedPhaseIndex + 1,
+                    practiceId: practiceState.practiceId || null
+                }
+            };
+            
+            // Get existing saved games or initialize empty array
+            let savedGames = [];
+            try {
+                const saved = localStorage.getItem('practrac_saved_games');
+                if (saved) {
+                    savedGames = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Error loading saved games:', e);
+                savedGames = [];
+            }
+            
+            // Save to database instead of localStorage
+            try {
+                if (!practiceState.sessionId) {
+                    showNotification('No active practice session found. Please start a practice first.', 'error');
+                    return;
+                }
+
+                // Prepare team roster data
+                const teamARoster = teamAssignments.teamA.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                const teamBRoster = teamAssignments.teamB.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                // Prepare score data for API
+                const scoreData = {
+                    teamAName: gameData.teamAName,
+                    teamBName: gameData.teamBName,
+                    teamAScore: gameData.teamAScore,
+                    teamBScore: gameData.teamBScore,
+                    gameTime: gameData.gameTime,
+                    notes: gameData.notes,
+                    phaseName: gameData.phaseName,
+                    phaseIndex: gameData.phaseIndex,
+                    drillName: gameData.drillName,
+                    drillIndex: gameData.drillIndex,
+                    teamARoster: JSON.stringify(teamARoster),
+                    teamBRoster: JSON.stringify(teamBRoster)
+                };
+
+                // Save to database via API
+                fetch(`/api/practice-sessions/${practiceState.sessionId}/scores`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scoreData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save score to database');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Score saved to database:', data);
+                    
+                    // Show success message with phase and drill info
+                    let successMessage = `Game saved to ${selectedPhaseName}!`;
+                    if (selectedDrillName) {
+                        successMessage += ` (${selectedDrillName})`;
+                    }
+                    successMessage += ' 🎉';
+                    showNotification(successMessage, 'success');
+                    
+                    // Close save modal but keep scoreboard open
+                    closeSaveScoreModal();
+                })
+                .catch(error => {
+                    console.error('Error saving score to database:', error);
+                    showNotification('Failed to save score to database. Please try again.', 'error');
+                });
+                
+            } catch (e) {
+                console.error('Error saving game:', e);
+                showNotification('Failed to save game. Please try again.', 'error');
+            }
+        }
+
+        // Save game data to past practices for integration
+        function saveToPastPractices(gameData) {
+            try {
+                // Get existing past practices
+                let pastPractices = [];
+                const savedPractices = localStorage.getItem('practrac_past_practices');
+                if (savedPractices) {
+                    pastPractices = JSON.parse(savedPractices);
+                }
+                
+                // Find or create a practice entry for current session
+                let currentPractice = null;
+                if (practiceState.sessionId) {
+                    currentPractice = pastPractices.find(p => p.sessionId === practiceState.sessionId);
+                }
+                
+                if (!currentPractice) {
+                    // Create new practice entry for current session
+                    currentPractice = {
+                        id: practiceState.sessionId || Date.now(),
+                        sessionId: practiceState.sessionId,
+                        date: new Date().toISOString(),
+                        plan: gameData.practicePlan,
+                        duration: 0,
+                        notes: '',
+                        scores: [],
+                        phases: practiceState.phases || []
+                    };
+                    pastPractices.unshift(currentPractice);
+                } else if (!currentPractice.scores) {
+                    currentPractice.scores = [];
+                }
+                
+                // Add the game score to this practice
+                currentPractice.scores.push({
+                    id: Date.now(),
+                    sessionId: practiceState.sessionId,
+                    teamAName: gameData.teamAName,
+                    teamBName: gameData.teamBName,
+                    teamAScore: gameData.teamAScore,
+                    teamBScore: gameData.teamBScore,
+                    gameTime: gameData.gameTime,
+                    notes: gameData.notes,
+                    phaseName: gameData.phaseName,
+                    phaseIndex: gameData.phaseIndex,
+                    drillName: gameData.drillName,
+                    drillIndex: gameData.drillIndex,
+                    drillData: gameData.drillData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Save back to localStorage
+                localStorage.setItem('practrac_past_practices', JSON.stringify(pastPractices));
+                
+            } catch (e) {
+                console.error('Error saving to past practices:', e);
+            }
+        }
+
+        // Save and exit function - saves the game and closes both modals
+        function saveAndExit() {
+            // Get selected phase and drill information
+            const selectedPhaseIndex = parseInt(document.getElementById('phaseSelection').value);
+            const selectedDrillIndex = document.getElementById('drillSelection').value !== '' ? 
+                parseInt(document.getElementById('drillSelection').value) : null;
+            
+            const selectedPhaseData = practiceState.phases[selectedPhaseIndex];
+            const selectedPhaseName = selectedPhaseData ? selectedPhaseData.name : 'Unknown Phase';
+            
+            let selectedDrillData = null;
+            let selectedDrillName = null;
+            if (selectedDrillIndex !== null && selectedPhaseData && selectedPhaseData.drills) {
+                selectedDrillData = selectedPhaseData.drills[selectedDrillIndex];
+                selectedDrillName = selectedDrillData ? selectedDrillData.name : null;
+            }
+            
+            const gameData = {
+                date: new Date().toISOString(),
+                sessionId: practiceState.sessionId,
+                teamAName: scoreboardState.teamAName,
+                teamBName: scoreboardState.teamBName,
+                teamAScore: scoreboardState.teamAScore,
+                teamBScore: scoreboardState.teamBScore,
+                gameTime: scoreboardState.gameTime,
+                notes: document.getElementById('gameNotes').value,
+                practicePlan: practiceState.practiceName || 'Unknown Practice',
+                // Phase and drill information
+                phaseIndex: selectedPhaseIndex,
+                phaseName: selectedPhaseName,
+                drillIndex: selectedDrillIndex,
+                drillName: selectedDrillName,
+                drillData: selectedDrillData,
+                phaseType: 'scoreboard_game',
+                practiceData: {
+                    totalPhases: practiceState.phases.length,
+                    selectedPhase: selectedPhaseIndex + 1,
+                    practiceId: practiceState.practiceId || null
+                }
+            };
+            
+            // Save to database instead of localStorage
+            try {
+                if (!practiceState.sessionId) {
+                    showNotification('No active practice session found. Please start a practice first.', 'error');
+                    return;
+                }
+
+                // Prepare team roster data
+                const teamARoster = teamAssignments.teamA.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                const teamBRoster = teamAssignments.teamB.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                // Prepare score data for API
+                const scoreData = {
+                    teamAName: gameData.teamAName,
+                    teamBName: gameData.teamBName,
+                    teamAScore: gameData.teamAScore,
+                    teamBScore: gameData.teamBScore,
+                    gameTime: gameData.gameTime,
+                    notes: gameData.notes,
+                    phaseName: gameData.phaseName,
+                    phaseIndex: gameData.phaseIndex,
+                    drillName: gameData.drillName,
+                    drillIndex: gameData.drillIndex,
+                    teamARoster: JSON.stringify(teamARoster),
+                    teamBRoster: JSON.stringify(teamBRoster)
+                };
+
+                // Save to database via API
+                fetch(`/api/practice-sessions/${practiceState.sessionId}/scores`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scoreData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save score to database');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Score saved to database:', data);
+                    
+                    // Show success message with phase and drill info
+                    let successMessage = `Game saved to ${selectedPhaseName}!`;
+                    if (selectedDrillName) {
+                        successMessage += ` (${selectedDrillName})`;
+                    }
+                    successMessage += ' Exiting scoreboard... 🎉';
+                    showNotification(successMessage, 'success');
+                    
+                    // Close both modals
+                    closeSaveScoreModal();
+                    closeScoreboard();
+                })
+                .catch(error => {
+                    console.error('Error saving score to database:', error);
+                    showNotification('Failed to save score to database. Please try again.', 'error');
+                });
+                
+            } catch (e) {
+                console.error('Error saving game:', e);
+                showNotification('Failed to save game. Please try again.', 'error');
+            }
+        }
+
+        // Notification system for save feedback
+        function showNotification(message, type = 'info') {
+            // Remove any existing notification
+            const existing = document.querySelector('.save-notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `save-notification ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--accent-orange)' : '#e74c3c'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: var(--radius-md);
+                z-index: 3000;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
 
         // Water break functionality
@@ -2117,15 +3231,154 @@
                 `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
 
-        // Fullscreen functionality
+        // Enhanced fullscreen functionality for all devices including iPhone
         function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+            if (isInFullscreen()) {
+                exitFullscreen();
+            } else {
+                enterFullscreen();
+            }
+        }
+
+        function isInFullscreen() {
+            // Check multiple fullscreen APIs and custom fullscreen state
+            return !!(document.fullscreenElement || 
+                     document.webkitFullscreenElement || 
+                     document.mozFullScreenElement || 
+                     document.msFullscreenElement ||
+                     document.body.classList.contains('custom-fullscreen'));
+        }
+
+        function enterFullscreen() {
+            const element = document.documentElement;
+            
+            // Try standard fullscreen API first
+            if (element.requestFullscreen) {
+                element.requestFullscreen().catch(err => {
+                    console.log('Standard fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else if (element.webkitRequestFullscreen) {
+                // Safari
+                element.webkitRequestFullscreen().catch(err => {
+                    console.log('WebKit fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else if (element.mozRequestFullScreen) {
+                // Firefox
+                element.mozRequestFullScreen().catch(err => {
+                    console.log('Mozilla fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else if (element.msRequestFullscreen) {
+                // IE/Edge
+                element.msRequestFullscreen().catch(err => {
+                    console.log('MS fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
                 });
             } else {
-                document.exitFullscreen();
+                // Fallback for unsupported browsers (like iPhone Safari)
+                enterCustomFullscreen();
             }
+        }
+
+        function exitFullscreen() {
+            // Exit standard fullscreen if active
+            if (document.fullscreenElement || document.webkitFullscreenElement || 
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            } else {
+                // Exit custom fullscreen
+                exitCustomFullscreen();
+            }
+        }
+
+        function enterCustomFullscreen() {
+            // Custom fullscreen for iPhone and other devices that don't support fullscreen API
+            document.body.classList.add('custom-fullscreen');
+            
+            // Hide browser UI on mobile
+            if (isMobile()) {
+                // Scroll to hide address bar
+                setTimeout(() => {
+                    window.scrollTo(0, 1);
+                    document.body.scrollTop = 1;
+                }, 100);
+                
+                // Lock orientation on mobile if possible
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(err => {
+                        console.log('Orientation lock not supported');
+                    });
+                }
+            }
+            
+            // Add visual indicator for custom fullscreen
+            showFullscreenNotification('Fullscreen mode active (tap fullscreen button to exit)');
+        }
+
+        function exitCustomFullscreen() {
+            document.body.classList.remove('custom-fullscreen');
+            
+            // Unlock orientation if locked
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+            
+            showFullscreenNotification('Exited fullscreen mode');
+        }
+
+        function showFullscreenNotification(message) {
+            // Remove existing notification
+            const existing = document.querySelector('.fullscreen-notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = 'fullscreen-notification';
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: var(--radius-md);
+                z-index: 10000;
+                font-size: 0.9rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid var(--glass-border);
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Fade in
+            setTimeout(() => {
+                notification.style.opacity = '1';
+            }, 100);
+            
+            // Auto remove after 2 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
         }
 
         // Close modals with Escape key
@@ -2138,6 +3391,227 @@
                     endWaterBreak();
                 }
             }
+        });
+
+        // Mobile keyboard and touch improvements
+        function initializeMobileSupport() {
+            const keyboardOverlay = document.getElementById('keyboardOverlay');
+            
+            // Check if we should enable mobile support based on screen width
+            function shouldEnableMobileSupport() {
+                return window.innerWidth < 1000 || isMobile();
+            }
+            
+            // Get all input elements (textareas, inputs, selects)
+            function getAllInputElements() {
+                return document.querySelectorAll('.notes-textarea, .form-input, input, textarea, select');
+            }
+            
+            // Setup input event handlers
+            function setupInputHandlers() {
+                const inputs = getAllInputElements();
+                
+                inputs.forEach(input => {
+                    // Remove existing event listeners to avoid duplicates
+                    input.removeEventListener('focus', handleInputFocus);
+                    input.removeEventListener('blur', handleInputBlur);
+                    
+                    // Add new event listeners
+                    input.addEventListener('focus', handleInputFocus);
+                    input.addEventListener('blur', handleInputBlur);
+                });
+            }
+            
+            function handleInputFocus(event) {
+                const input = event.target;
+                if (shouldEnableMobileSupport()) {
+                    keyboardOverlay.classList.add('active');
+                    // Prevent zoom on iOS and enable proper input in fullscreen
+                    if (input.style.fontSize !== '16px') {
+                        input.style.fontSize = '16px';
+                    }
+                    // Ensure input works in fullscreen mode
+                    enableFullscreenInput(input);
+                }
+            }
+            
+            function handleInputBlur(event) {
+                if (shouldEnableMobileSupport()) {
+                    keyboardOverlay.classList.remove('active');
+                }
+            }
+            
+            // Initial setup
+            setupInputHandlers();
+            
+            // Re-setup handlers when new elements are added (like modals)
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        setupInputHandlers();
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Click outside to dismiss keyboard - enabled for screens < 1000px
+            keyboardOverlay.addEventListener('click', function() {
+                if (shouldEnableMobileSupport()) {
+                    const inputs = getAllInputElements();
+                    inputs.forEach(input => input.blur());
+                    keyboardOverlay.classList.remove('active');
+                }
+            });
+            
+            // Handle window resize to update mobile support status
+            window.addEventListener('resize', function() {
+                // If screen gets wider than 1000px and we're not on mobile, disable overlay
+                if (!shouldEnableMobileSupport() && keyboardOverlay.classList.contains('active')) {
+                    keyboardOverlay.classList.remove('active');
+                }
+            });
+            
+            // Prevent default touch behaviors that interfere with fullscreen
+            if (isIOS()) {
+                document.addEventListener('touchstart', function(e) {
+                    // Prevent pull-to-refresh and bounce effects
+                    if (e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                document.addEventListener('touchmove', function(e) {
+                    // Prevent scrolling when in fullscreen mode unless it's inside an input
+                    if (document.fullscreenElement || document.body.classList.contains('custom-fullscreen')) {
+                        if (!e.target.closest('.notes-textarea, .form-input, input, textarea, select')) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
+                
+                // Disable double-tap zoom
+                let lastTouchEnd = 0;
+                document.addEventListener('touchend', function(e) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        e.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, { passive: false });
+            }
+        }
+
+        // Enable input functionality in fullscreen mode
+        function enableFullscreenInput(inputElement) {
+            // Ensure the input element is focusable and interactive in fullscreen
+            inputElement.style.pointerEvents = 'auto';
+            inputElement.style.touchAction = 'manipulation';
+            inputElement.style.webkitUserSelect = 'text';
+            inputElement.style.userSelect = 'text';
+            
+            // For iOS Safari fullscreen issues
+            if (isIOS() && (document.fullscreenElement || document.body.classList.contains('custom-fullscreen'))) {
+                // Temporarily allow user selection for input
+                const container = inputElement.closest('.practice-mode-container, .save-score-modal, .scoreboard-modal');
+                if (container) {
+                    container.style.webkitUserSelect = 'auto';
+                    container.style.userSelect = 'auto';
+                    container.style.webkitTouchCallout = 'default';
+                    container.style.webkitTapHighlightColor = 'rgba(0,0,0,0.1)';
+                }
+                
+                // Ensure the input itself allows interaction
+                inputElement.style.webkitTouchCallout = 'default';
+                inputElement.style.webkitTapHighlightColor = 'rgba(0,0,0,0.1)';
+                
+                // Restore after input is finished (on blur)
+                const restoreSettings = () => {
+                    if (container) {
+                        container.style.webkitUserSelect = 'none';
+                        container.style.userSelect = 'none';
+                        container.style.webkitTouchCallout = 'none';
+                        container.style.webkitTapHighlightColor = 'transparent';
+                    }
+                    inputElement.removeEventListener('blur', restoreSettings);
+                };
+                
+                inputElement.addEventListener('blur', restoreSettings, { once: true });
+            }
+            
+            // Ensure proper keyboard display on mobile devices
+            if (isMobile() || window.innerWidth < 1000) {
+                // Force the input to be visible and scrollable if needed
+                setTimeout(() => {
+                    inputElement.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }, 100);
+            }
+        }
+
+        // Device detection utilities
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent);
+        }
+
+        function isIPad() {
+            return /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        // Enhanced fullscreen functionality for mobile/iPad
+        function enhanceFullscreenForMobile() {
+            if (isIOS()) {
+                const practiceContainer = document.getElementById('practiceContainer');
+                
+                // Listen for fullscreen changes
+                document.addEventListener('fullscreenchange', function() {
+                    if (document.fullscreenElement) {
+                        // Entering fullscreen - disable iOS gestures
+                        practiceContainer.style.touchAction = 'none';
+                        practiceContainer.style.webkitUserSelect = 'none';
+                        practiceContainer.style.userSelect = 'none';
+                        
+                        // Hide address bar on iOS
+                        setTimeout(() => {
+                            window.scrollTo(0, 1);
+                        }, 100);
+                    } else {
+                        // Exiting fullscreen - restore normal behavior
+                        practiceContainer.style.touchAction = 'pan-x pan-y';
+                        practiceContainer.style.webkitUserSelect = 'text';
+                        practiceContainer.style.userSelect = 'text';
+                    }
+                });
+                
+                // Prevent accidental exit gestures
+                practiceContainer.addEventListener('touchstart', function(e) {
+                    if (document.fullscreenElement && e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        const isTopEdge = touch.clientY < 50;
+                        const isBottomEdge = touch.clientY > window.innerHeight - 50;
+                        
+                        // Prevent swipe from edges in fullscreen
+                        if (isTopEdge || isBottomEdge) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
+            }
+        }
+
+        // Initialize mobile support when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMobileSupport();
+            enhanceFullscreenForMobile();
         });
     </script>
     <script src="/js/modal.js"></script>
@@ -2312,6 +3786,101 @@
             background: var(--accent-orange);
         }
 
+        /* Scoreboard Mobile Responsive Styles */
+        @media (max-width: 999px) {
+            .scoreboard-title {
+                font-size: 1.8rem;
+            }
+
+            .game-timer {
+                font-size: 1.3rem;
+                margin: 0.5rem 0;
+            }
+
+            .score-container {
+                gap: 1.5rem;
+                margin: 1rem 0;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .team-score {
+                min-width: 150px;
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .team-name {
+                font-size: 1.3rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .team-points {
+                font-size: 4rem;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            }
+
+            .vs-divider {
+                font-size: 2rem;
+                margin: 0.5rem 0;
+                transform: rotate(90deg);
+            }
+
+            .score-controls {
+                gap: 0.5rem;
+                margin-top: 0.5rem;
+            }
+
+            .score-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 1rem;
+                min-width: 50px;
+            }
+
+            .scoreboard-actions {
+                top: 10px;
+                right: 10px;
+            }
+
+            .scoreboard-close-btn {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+        }
+
+        /* iPhone specific adjustments (smaller screens) */
+        @media (max-width: 414px) {
+            .scoreboard-title {
+                font-size: 1.5rem;
+            }
+
+            .game-timer {
+                font-size: 1.1rem;
+            }
+
+            .score-container {
+                gap: 1rem;
+            }
+
+            .team-name {
+                font-size: 1.1rem;
+            }
+
+            .team-points {
+                font-size: 3rem;
+            }
+
+            .vs-divider {
+                font-size: 1.5rem;
+            }
+
+            .score-btn {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.9rem;
+                min-width: 45px;
+            }
+        }
+
         /* Water Break Modal Styles */
         .water-break-modal {
             position: fixed;
@@ -2361,6 +3930,351 @@
             gap: 1rem;
             justify-content: center;
         }
+
+        /* Save Score Modal Styles */
+        .save-score-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .save-score-content {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .save-score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .save-score-header h2 {
+            margin: 0;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #999;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .save-score-summary {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .final-score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-orange);
+            margin-bottom: 0.5rem;
+        }
+
+        .game-duration {
+            color: #ccc;
+            font-size: 1rem;
+        }
+
+        .save-score-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            color: white;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-input::placeholder {
+            color: #999;
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .save-score-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .cancel-btn, .save-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cancel-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 1px solid var(--glass-border);
+        }
+
+        .cancel-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, var(--accent-orange), #ff7a4d);
+            color: white;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+        }
+
+        /* Mobile responsive for save score modal */
+        @media (max-width: 999px) {
+            .save-score-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                width: calc(100% - 2rem);
+            }
+
+            .final-score {
+                font-size: 1.5rem;
+            }
+
+            .save-score-actions {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .cancel-btn, .save-btn {
+                width: 100%;
+                margin-left: 0 !important;
+            }
+        }
+
+        /* Team Setup Modal Styles */
+        .team-players-list {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .team-player-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            color: white;
+            cursor: move;
+            user-select: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+            font-size: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .team-player-card:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+            transform: translateY(-1px);
+        }
+
+        .team-player-card.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+        }
+
+        .available-player-card {
+            background: linear-gradient(135deg, rgba(76, 237, 196, 0.3), rgba(76, 237, 196, 0.2));
+            border: 2px solid var(--accent-green);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            text-align: center;
+            min-width: 100px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            align-items: center;
+        }
+
+        .available-player-card:hover {
+            background: linear-gradient(135deg, rgba(76, 237, 196, 0.5), rgba(76, 237, 196, 0.3));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-color: #4ECDC4;
+        }
+
+        .team-players-list.drag-over {
+            background: rgba(255, 255, 255, 0.1);
+            border-style: solid !important;
+        }
+
+        .team-placeholder {
+            transition: opacity 0.2s ease;
+        }
+
+        .team-players-list:not(:empty) .team-placeholder {
+            display: none;
+        }
+
+        .player-remove-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .player-remove-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+            border-color: #ef4444;
+        }
+
+        /* Custom fullscreen styles for iPhone and unsupported browsers */
+        body.custom-fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+            z-index: 99999;
+        }
+
+        body.custom-fullscreen .practice-mode-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 100000;
+        }
+
+        /* Hide system UI on custom fullscreen for iPhone */
+        body.custom-fullscreen {
+            /* iOS Safari specific */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            /* Hide scrollbars */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body.custom-fullscreen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Enhance fullscreen button visibility */
+        .nav-btn[onclick="toggleFullscreen()"] {
+            position: relative;
+        }
+
+        body.custom-fullscreen .nav-btn[onclick="toggleFullscreen()"]::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px solid var(--accent-orange);
+            border-radius: inherit;
+            pointer-events: none;
+            animation: fullscreen-pulse 2s infinite;
+        }
+
+        @keyframes fullscreen-pulse {
+            0%, 100% { 
+                opacity: 0.5;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.05);
+            }
+        }
     </style>
 
     <!-- Scoreboard Modal -->
@@ -2376,7 +4290,7 @@
         
         <div class="score-container">
             <div class="team-score">
-                <div class="team-name" id="teamAName">Home</div>
+                <div class="team-name" id="teamAName" contenteditable="true" onblur="updateTeamName('A')" style="cursor: text;">Home</div>
                 <div class="team-points" id="teamAScore">0</div>
                 <div class="score-controls">
                     <button class="score-btn" onclick="changeScore('A', -1)">-</button>
@@ -2387,7 +4301,7 @@
             <div class="vs-divider">VS</div>
             
             <div class="team-score">
-                <div class="team-name" id="teamBName">Away</div>
+                <div class="team-name" id="teamBName" contenteditable="true" onblur="updateTeamName('B')" style="cursor: text;">Away</div>
                 <div class="team-points" id="teamBScore">0</div>
                 <div class="score-controls">
                     <button class="score-btn" onclick="changeScore('B', -1)">-</button>
@@ -2397,8 +4311,125 @@
         </div>
         
         <div style="margin-top: 2rem;">
+            <button class="score-btn" onclick="showTeamSetupModal()" style="background: var(--accent-blue); margin-right: 1rem;">👥 Setup Teams</button>
             <button class="score-btn" onclick="resetScores()" style="background: #666; margin-right: 1rem;">Reset Scores</button>
-            <button class="score-btn" onclick="toggleGameTimer()">Start/Stop Timer</button>
+            <button class="score-btn" onclick="toggleGameTimer()" style="margin-right: 1rem;">Start/Stop Timer</button>
+            <button class="score-btn" onclick="showSaveScoreModal()" style="background: var(--accent-orange);">💾 Save Score</button>
+        </div>
+    </div>
+
+    <!-- Save Score Modal -->
+    <div id="saveScoreModal" class="save-score-modal" style="display: none;">
+        <div class="save-score-content">
+            <div class="save-score-header">
+                <h2>💾 Save Game Score</h2>
+                <button class="close-btn" onclick="closeSaveScoreModal()">✕</button>
+            </div>
+            
+            <div class="save-score-summary">
+                <div class="final-score">
+                    <span id="saveTeamAName">Home</span> <span id="saveTeamAScore">0</span> - <span id="saveTeamBScore">0</span> <span id="saveTeamBName">Away</span>
+                </div>
+                <div class="game-duration">
+                    Game Time: <span id="saveGameTime">00:00</span>
+                </div>
+            </div>
+            
+            <div class="save-score-form">
+                <div class="form-group">
+                    <label for="phaseSelection">Practice Phase:</label>
+                    <select id="phaseSelection" class="form-input">
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="drillSelection">Drill (Optional):</label>
+                    <select id="drillSelection" class="form-input">
+                        <option value="">Select a drill...</option>
+                        <!-- Options will be populated dynamically based on selected phase -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gameNotes">Score Notes:</label>
+                    <textarea id="gameNotes" class="form-input" rows="4" placeholder="Key plays, highlights, areas for improvement..."></textarea>
+                </div>
+                
+                <div class="save-score-actions">
+                    <button class="cancel-btn" onclick="closeSaveScoreModal()">Cancel</button>
+                    <button class="save-btn" onclick="saveGameScore()">Save Game</button>
+                    <button class="save-btn" onclick="saveAndExit()" style="background: linear-gradient(135deg, #4ECDC4, #44a8a0); margin-left: 0.5rem;">Save & Exit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Setup Modal -->
+    <div id="teamSetupModal" class="save-score-modal" style="display: none;">
+        <div class="save-score-content" style="max-width: 800px;">
+            <div class="save-score-header">
+                <h2>👥 Setup Teams</h2>
+                <button class="close-btn" onclick="closeTeamSetupModal()">✕</button>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="teamANameInput" style="display: block; margin-bottom: 0.5rem; color: var(--accent-orange); font-weight: bold;">Team A Name:</label>
+                        <input type="text" id="teamANameInput" value="Home" class="form-input" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label for="teamBNameInput" style="display: block; margin-bottom: 0.5rem; color: var(--accent-blue); font-weight: bold;">Team B Name:</label>
+                        <input type="text" id="teamBNameInput" value="Away" class="form-input" style="width: 100%;">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: start;">
+                    <div>
+                        <h3 style="color: var(--accent-orange); margin-bottom: 1rem; text-align: center;">Team A Players</h3>
+                        <div id="teamAPlayers" class="team-players-list" style="min-height: 200px; border: 2px dashed var(--accent-orange); border-radius: 8px; padding: 1rem;">
+                            <div class="team-placeholder" style="text-align: center; color: var(--text-secondary); font-style: italic;">
+                                Drag players here
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding-top: 2rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <button onclick="autoAssignTeams()" class="score-btn" style="background: var(--accent-green); padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                🎲 Auto Assign
+                            </button>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <button onclick="clearTeams()" class="score-btn" style="background: #666; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                🗑️ Clear All
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--accent-blue); margin-bottom: 1rem; text-align: center;">Team B Players</h3>
+                        <div id="teamBPlayers" class="team-players-list" style="min-height: 200px; border: 2px dashed var(--accent-blue); border-radius: 8px; padding: 1rem;">
+                            <div class="team-placeholder" style="text-align: center; color: var(--text-secondary); font-style: italic;">
+                                Drag players here
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 1rem; text-align: center;">Available Players</h3>
+                    <div id="availablePlayers" class="available-players-list" style="min-height: 100px; border: 2px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <!-- Players will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="save-score-actions">
+                <button class="cancel-btn" onclick="closeTeamSetupModal()">Cancel</button>
+                <button class="save-btn" onclick="applyTeamSetup()">Apply Team Setup</button>
+            </div>
         </div>
     </div>
 
@@ -2413,6 +4444,7 @@
             </div>
         </div>
     </div>
+
     </style>
 </body>
 </html>

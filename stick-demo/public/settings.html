@@ -5,295 +5,120 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Settings - PracTrac</title>
     <link rel="stylesheet" href="css/glass-style.css">
-    <style>
-        .settings-container {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 30px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .settings-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .settings-header h1 {
-            color: white;
-            margin: 0 0 10px 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-
-        .settings-section {
-            margin-bottom: 40px;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 25px;
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .section-title {
-            color: white;
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            color: white;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-
-        .form-group input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.5);
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-right: 10px;
-        }
-
-        .btn-primary {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: rgba(255, 0, 0, 0.2);
-            color: #ff6b6b;
-            border-color: rgba(255, 0, 0, 0.3);
-        }
-
-        .btn-danger:hover {
-            background: rgba(255, 0, 0, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .error-message, .success-message {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .error-message {
-            background: rgba(255, 0, 0, 0.1);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            color: #ff6b6b;
-        }
-
-        .success-message {
-            background: rgba(0, 255, 0, 0.1);
-            border: 1px solid rgba(0, 255, 0, 0.3);
-            color: #51cf66;
-        }
-
-        .user-info {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-        }
-
-        .user-info h3 {
-            color: white;
-            margin: 0 0 10px 0;
-            font-size: 1.5rem;
-        }
-
-        .user-info p {
-            color: rgba(255, 255, 255, 0.8);
-            margin: 5px 0;
-        }
-
-        .logout-section {
-            text-align: center;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-    </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="nav-container">
-        <div class="nav-glass">
+        <div class="nav-content">
             <a href="index.html" class="logo">🏐 PracTrac</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Dashboard</a></li>
-                <li><a href="practice.html">Practice Plans</a></li>
-                <li><a href="past-practices.html">Past Practices</a></li>
-                <li><a href="roster.html">Roster</a></li>
-                <li><a href="drills.html">Drills</a></li>
-                <li><a href="settings.html" class="active">Settings</a></li>
-            </ul>
-            <div id="teamSelector" class="team-selector-container">
-                <!-- Team selector will be populated by JavaScript -->
-            </div>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html" class="active">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html" class="active">Settings</a></li>
+                </ul>
+            </nav>
+            
             <div class="nav-user">
-                <span id="userGreeting">Loading...</span>
+                <span id="userGreeting">Guest User</span>
                 <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
-                <button class="logout-btn" style="display: none; margin-left: 10px; padding: 5px 10px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; color: white; cursor: pointer;">Logout</button>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="main-container">
-
-        <div class="settings-container">
+        <div class="settings-container glass-card">
             <div class="settings-header">
-                <h1>Account Settings</h1>
+                <h1 class="hero-title">⚙️ Settings</h1>
+                <p class="text-secondary">Manage your account and preferences</p>
             </div>
 
-            <div class="user-info" id="userInfo">
-                <!-- User info will be loaded here -->
+            <div class="settings-section glass-card">
+                <h3 class="section-title">Account Information</h3>
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail" class="glass-input" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="userUsername">Username</label>
+                    <input type="text" id="userUsername" class="glass-input" placeholder="Your username">
+                </div>
+                <div class="form-group">
+                    <label for="userName">Name</label>
+                    <input type="text" id="userName" class="glass-input" placeholder="Your name">
+                </div>
+                <button onclick="updateAccountInfo()" class="glass-button btn-primary">Update Account</button>
             </div>
 
-            <div class="settings-section">
-                <h3 class="section-title">Profile Information</h3>
-                
-                <div id="profileMessage" style="display: none;"></div>
-
-                <form id="profileForm">
-                    <div class="form-group">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" name="username" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" id="updateProfileBtn">Update Profile</button>
-                </form>
-            </div>
-
-            <div class="settings-section">
+            <div class="settings-section glass-card">
                 <h3 class="section-title">Change Password</h3>
-                
-                <div id="passwordMessage" style="display: none;"></div>
-
-                <form id="passwordForm">
-                    <div class="form-group">
-                        <label for="currentPassword">Current Password</label>
-                        <input type="password" id="currentPassword" name="currentPassword" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="newPassword">New Password</label>
-                        <input type="password" id="newPassword" name="newPassword" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="confirmNewPassword">Confirm New Password</label>
-                        <input type="password" id="confirmNewPassword" name="confirmNewPassword" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" id="updatePasswordBtn">Change Password</button>
-                </form>
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" class="glass-input" placeholder="Enter current password">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" class="glass-input" placeholder="Enter new password">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" class="glass-input" placeholder="Confirm new password">
+                </div>
+                <button onclick="changePassword()" class="glass-button btn-primary">Change Password</button>
             </div>
 
-            <div class="logout-section">
-                <button class="btn btn-danger" id="logoutBtn2">Logout from Account</button>
+            <!-- <div class="settings-section glass-card">
+                <h3 class="section-title">Team Management</h3>
+                <div class="form-group">
+                    <label for="teamSelect">Current Team</label>
+                    <select id="teamSelect" class="glass-select">
+                        <option value="">Loading teams...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newTeamName">Create New Team</label>
+                    <input type="text" id="newTeamName" class="glass-input" placeholder="Enter team name">
+                </div>
+                <button onclick="createTeam()" class="glass-button btn-secondary">Create Team</button>
+            </div> -->
+
+            <div class="settings-section glass-card">
+                <!-- <h3 class="section-title">Danger Zone</h3>
+                <p class="text-tertiary mb-md">These actions cannot be undone.</p> -->
+                <button onclick="logout()" class="glass-button btn-danger">Logout</button>
             </div>
         </div>
     </div>
 
     <script src="js/main.js"></script>
     <script>
-        let currentUser = null;
-
-        function showMessage(elementId, message, isError = false) {
-            const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.className = isError ? 'error-message' : 'success-message';
-            element.style.display = 'block';
-            
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 5000);
-        }
-
-        async function loadUserInfo() {
-            try {
-                const response = await fetch('/api/user');
-                if (response.ok) {
-                    const data = await response.json();
-                    currentUser = data.user;
-                    
-                    // Update user info display
-                    document.getElementById('userInfo').innerHTML = `
-                        <h3>Welcome, ${currentUser.username}!</h3>
-                        <p>Email: ${currentUser.email}</p>
-                        <p>Member since: ${new Date(currentUser.created_at).toLocaleDateString()}</p>
-                    `;
-                    
-                    // Update user greeting in navbar
-                    document.getElementById('userGreeting').textContent = `Hello, ${currentUser.username}`;
-                    
-                    // Populate form fields
-                    document.getElementById('username').value = currentUser.username;
-                    document.getElementById('email').value = currentUser.email;
-                    
-                } else {
-                    // User not authenticated, redirect to login
-                    window.location.href = 'login.html';
-                }
-            } catch (error) {
-                console.error('Error loading user info:', error);
-                window.location.href = 'login.html';
-            }
-        }
-
+        // Simple settings functionality
         async function logout() {
             try {
                 const response = await fetch('/api/logout', { method: 'POST' });
@@ -307,115 +132,80 @@
             }
         }
 
-        // Profile form handler
-        document.getElementById('profileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        async function updateAccountInfo() {
+            const username = document.getElementById('userUsername').value;
+            const name = document.getElementById('userName').value;
             
-            const username = document.getElementById('username').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const updateBtn = document.getElementById('updateProfileBtn');
-            
-            if (!username || !email) {
-                showMessage('profileMessage', 'Please fill in all fields', true);
+            if (!username.trim()) {
+                alert('Username cannot be empty');
                 return;
             }
-            
-            updateBtn.disabled = true;
-            updateBtn.textContent = 'Updating...';
             
             try {
-                const response = await fetch('/api/user/settings', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email }),
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showMessage('profileMessage', 'Profile updated successfully!');
-                    // Update current user info
-                    currentUser.username = username;
-                    currentUser.email = email;
-                    // Update localStorage
-                    localStorage.setItem('user', JSON.stringify(currentUser));
-                    // Update navbar greeting
-                    document.getElementById('userGreeting').textContent = `Hello, ${username}`;
+                // In demo mode, just update localStorage and UI
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user) {
+                    user.username = username.trim();
+                    user.name = name.trim();
+                    localStorage.setItem('user', JSON.stringify(user));
+                    
+                    // Update the greeting in the navigation
+                    const userGreetings = document.querySelectorAll('#userGreeting');
+                    userGreetings.forEach(greeting => {
+                        if (greeting) {
+                            greeting.textContent = `Hello, ${user.username}`;
+                        }
+                    });
+                    
+                    alert('Account updated successfully!');
                 } else {
-                    showMessage('profileMessage', data.error || 'Update failed', true);
+                    alert('Please log in to update account information');
                 }
             } catch (error) {
-                console.error('Profile update error:', error);
-                showMessage('profileMessage', 'Network error. Please try again.', true);
-            } finally {
-                updateBtn.disabled = false;
-                updateBtn.textContent = 'Update Profile';
+                console.error('Update error:', error);
+                alert('Error updating account information');
             }
-        });
-
-        // Password form handler
-        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-            const updateBtn = document.getElementById('updatePasswordBtn');
-            
-            if (!currentPassword || !newPassword || !confirmNewPassword) {
-                showMessage('passwordMessage', 'Please fill in all fields', true);
-                return;
-            }
-            
-            if (newPassword !== confirmNewPassword) {
-                showMessage('passwordMessage', 'New passwords do not match', true);
-                return;
-            }
-            
-            if (newPassword.length < 6) {
-                showMessage('passwordMessage', 'New password must be at least 6 characters long', true);
-                return;
-            }
-            
-            updateBtn.disabled = true;
-            updateBtn.textContent = 'Changing...';
-            
-            try {
-                const response = await fetch('/api/user/password', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ currentPassword, newPassword }),
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showMessage('passwordMessage', 'Password changed successfully!');
-                    // Clear password fields
-                    document.getElementById('currentPassword').value = '';
-                    document.getElementById('newPassword').value = '';
-                    document.getElementById('confirmNewPassword').value = '';
-                } else {
-                    showMessage('passwordMessage', data.error || 'Password change failed', true);
-                }
-            } catch (error) {
-                console.error('Password change error:', error);
-                showMessage('passwordMessage', 'Network error. Please try again.', true);
-            } finally {
-                updateBtn.disabled = false;
-                updateBtn.textContent = 'Change Password';
-            }
-        });
-
-        // Logout button handlers
-        const navLogoutBtn = document.querySelector('.logout-btn');
-        if (navLogoutBtn) {
-            navLogoutBtn.addEventListener('click', logout);
         }
-        document.getElementById('logoutBtn2').addEventListener('click', logout);
+
+        async function changePassword() {
+            // Simple demo function
+            alert('Password change functionality - Demo mode');
+        }
 
         // Load user info on page load
-        window.addEventListener('load', loadUserInfo);
+        window.addEventListener('load', () => {
+            // Initialize mobile menu
+            if (typeof initializeMobileMenu === 'function') {
+                initializeMobileMenu();
+                console.log('Mobile menu initialized for settings page');
+            } else {
+                console.error('initializeMobileMenu function not found');
+            }
+            
+            // Load current user information
+            loadUserInfo();
+        });
+        
+        function loadUserInfo() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user && user.username) {
+                    // Populate the form fields with current user data
+                    const emailField = document.getElementById('userEmail');
+                    const usernameField = document.getElementById('userUsername');
+                    const nameField = document.getElementById('userName');
+                    
+                    if (emailField) emailField.value = user.email || '';
+                    if (usernameField) usernameField.value = user.username || '';
+                    if (nameField) nameField.value = user.name || '';
+                } else {
+                    // No user logged in, maybe redirect to login
+                    console.log('No user data found');
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
 
         // Initialize PracTrac demo
         window.pracTracDemo = new PracTracDemo();
