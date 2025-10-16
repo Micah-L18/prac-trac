@@ -316,12 +316,9 @@
         }
 
         function showCreatePracticeModal() {
-            console.log('showCreatePracticeModal called');
             const modal = document.getElementById('createPracticeModal');
-            console.log('Modal element:', modal);
             if (modal) {
                 modal.style.display = 'flex';
-                console.log('Modal display set to flex');
             } else {
                 console.error('Modal element not found');
             }
@@ -947,7 +944,6 @@
                     } else {
                         // No active session found - hide banner
                         hideActiveSessionBanner();
-                        console.log('No active practice session found');
                     }
                 } else {
                     // Server errors
@@ -1088,7 +1084,6 @@
         // Initialize mobile menu
         if (typeof initializeMobileMenu === 'function') {
             initializeMobileMenu();
-            console.log('Mobile menu initialized for practice page');
         } else {
             console.error('initializeMobileMenu function not found');
         }

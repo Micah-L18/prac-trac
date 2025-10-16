@@ -177,7 +177,6 @@
             // Initialize mobile menu
             if (typeof initializeMobileMenu === 'function') {
                 initializeMobileMenu();
-                console.log('Mobile menu initialized for settings page');
             } else {
                 console.error('initializeMobileMenu function not found');
             }
@@ -200,7 +199,6 @@
                     if (nameField) nameField.value = user.name || '';
                 } else {
                     // No user logged in, maybe redirect to login
-                    console.log('No user data found');
                 }
             } catch (error) {
                 console.error('Error loading user info:', error);

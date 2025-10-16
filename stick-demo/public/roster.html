@@ -617,7 +617,6 @@
 
                 if (response.ok) {
                     const newPlayer = await response.json();
-                    console.log('Player added successfully:', newPlayer);
                     
                     // Close modal and refresh the player list
                     closeAddPlayerModal();
@@ -738,7 +737,6 @@
 
                 if (response.ok) {
                     const updatedPlayer = await response.json();
-                    console.log('Player updated successfully:', updatedPlayer);
                     
                     // Close modal and refresh the player list
                     closeEditPlayerModal();

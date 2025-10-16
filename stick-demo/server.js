@@ -323,7 +323,7 @@ db.serialize(() => {
       });
       
       // Phase 1 Multi-team Schema Migrations
-      console.log('🔄 Running Phase 1 multi-team schema migrations...');
+      // console.log('🔄 Running Phase 1 multi-team schema migrations...');
       
       // Migration 1: Add is_active to teams table if it doesn't exist
       db.all("PRAGMA table_info(teams)", [], (err, columns) => {
@@ -575,7 +575,7 @@ db.serialize(() => {
                         console.error('Error setting current team:', err);
                       } else {
                         console.log('✅ Set current team for first user');
-                        console.log('🎉 Phase 1 multi-team migration completed successfully!');
+                        // console.log('🎉 Phase 1 multi-team migration completed successfully!');
                       }
                     });
                   } else {
@@ -1040,7 +1040,12 @@ const getPlayerByIdSync = (id) => {
 };
 
 const getDrillById = (id, callback) => {
-  db.get('SELECT * FROM drills WHERE id = ?', [id], (err, drill) => {
+  db.get(`
+    SELECT d.*, u.username as creatorName 
+    FROM drills d 
+    LEFT JOIN users u ON d.user_id = u.id 
+    WHERE d.id = ?
+  `, [id], (err, drill) => {
     if (err) return callback(err);
     if (!drill) return callback(null, null);
     
@@ -1070,7 +1075,9 @@ const getDrillById = (id, callback) => {
     const processedDrill = {
       ...drill,
       equipment,
-      focus
+      focus,
+      isPublic: drill.is_public === 1,
+      createdBy: drill.user_id
     };
     
     callback(null, processedDrill);
@@ -1381,12 +1388,52 @@ app.get('/api/drills', optionalAuth, (req, res) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
   
-  getDrillsByUser(req.user.id, (err, drills) => {
+  // Get all drills: user's own drills (both public and private) + public drills from others
+  db.all(`
+    SELECT d.*, u.username as creatorName 
+    FROM drills d 
+    LEFT JOIN users u ON d.user_id = u.id 
+    WHERE d.user_id = ? OR d.is_public = 1
+    ORDER BY d.user_id = ? DESC, d.created_at DESC
+  `, [req.user.id, req.user.id], (err, drills) => {
     if (err) {
       console.error('Error fetching drills:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
-    res.json(drills);
+    
+    // Process drills to parse JSON fields and add helper fields
+    const processedDrills = drills.map(drill => {
+      let equipment = [];
+      let focus = [];
+      
+      try {
+        equipment = JSON.parse(drill.equipment || '[]');
+        if (!Array.isArray(equipment)) {
+          equipment = drill.equipment ? [drill.equipment] : [];
+        }
+      } catch (e) {
+        equipment = drill.equipment ? [drill.equipment] : [];
+      }
+      
+      try {
+        focus = JSON.parse(drill.focus || '[]');
+        if (!Array.isArray(focus)) {
+          focus = drill.focus ? [drill.focus] : [];
+        }
+      } catch (e) {
+        focus = drill.focus ? [drill.focus] : [];
+      }
+      
+      return {
+        ...drill,
+        equipment,
+        focus,
+        isPublic: drill.is_public === 1,
+        createdBy: drill.user_id
+      };
+    });
+    
+    res.json(processedDrills);
   });
 });
 
@@ -1796,12 +1843,12 @@ app.delete('/api/teams/:id', requireAuth, (req, res) => {
 
 // CRUD operations for drills
 app.post('/api/drills', requireAuth, (req, res) => {
-  const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus, is_public } = req.body;
   const userId = req.user.id;
   
   db.run(`
-    INSERT INTO drills (name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus, user_id) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO drills (name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus, user_id, is_public) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name, 
     category, 
@@ -1812,7 +1859,8 @@ app.post('/api/drills', requireAuth, (req, res) => {
     minPlayers, 
     maxPlayers, 
     JSON.stringify(focus || []),
-    userId
+    userId,
+    is_public ? 1 : 0
   ], function(err) {
     if (err) {
       console.error('Error creating drill:', err);
@@ -1832,7 +1880,7 @@ app.post('/api/drills', requireAuth, (req, res) => {
 
 app.put('/api/drills/:id', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus } = req.body;
+  const { name, category, duration, difficulty, description, equipment, minPlayers, maxPlayers, focus, is_public } = req.body;
   
   // First check if drill exists and belongs to user
   db.get('SELECT * FROM drills WHERE id = ?', [id], (err, drill) => {
@@ -1851,7 +1899,7 @@ app.put('/api/drills/:id', requireAuth, (req, res) => {
     
     db.run(`
       UPDATE drills 
-      SET name = ?, category = ?, duration = ?, difficulty = ?, description = ?, equipment = ?, minPlayers = ?, maxPlayers = ?, focus = ?
+      SET name = ?, category = ?, duration = ?, difficulty = ?, description = ?, equipment = ?, minPlayers = ?, maxPlayers = ?, focus = ?, is_public = ?
       WHERE id = ? AND user_id = ?
     `, [
       name, 
@@ -1863,6 +1911,7 @@ app.put('/api/drills/:id', requireAuth, (req, res) => {
       minPlayers, 
       maxPlayers, 
       JSON.stringify(focus || []),
+      is_public ? 1 : 0,
       id,
       req.user.id
     ], function(err) {

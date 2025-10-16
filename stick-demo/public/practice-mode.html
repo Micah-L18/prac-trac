@@ -1483,8 +1483,7 @@
                     const session = await response.json();
                     practiceState.sessionId = session.id;
                 } else {
-                    // Resuming existing session - just log for debugging
-                    console.log('Resuming existing session:', practiceState.sessionId);
+                    // Resuming existing session
                 }
 
                 // Hide attendance modal and show practice
@@ -1504,7 +1503,6 @@
         function initializePracticeMode() {
             try {
                 // Handle practices with or without phases
-                console.log('Initializing practice mode with phases:', practiceState.phases?.length || 0);
                 
                 // Set initial phase time if phases exist
                 if (practiceState.phases && practiceState.phases.length > 0) {
@@ -1639,7 +1637,6 @@
         function updatePhaseDisplay() {
             // Handle practices with or without phases
             if (!practiceState.phases || practiceState.phases.length === 0) {
-                console.log('Practice has no phases - showing free practice mode');
                 document.getElementById('phaseTitle').textContent = 'Free Practice';
                 document.getElementById('phaseDescription').textContent = 'No structured phases - practice freely';
                 document.getElementById('phaseIndicator').textContent = 'Open Session';
@@ -2198,7 +2195,6 @@
                     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
                     navigator.sendBeacon(`/api/practice-sessions/${practiceState.sessionId}/timer-state`, blob);
                     
-                    console.log('Session state saved on page unload');
                 } catch (error) {
                     console.error('Error saving session state on unload:', error);
                 }
@@ -2321,29 +2317,20 @@
             const availableContainer = document.getElementById('availablePlayers');
             availableContainer.innerHTML = '';
             
-            // Debug logging
-            console.log('Populating available players...');
-            console.log('attendanceData:', attendanceData);
-            console.log('players:', players);
-            console.log('teamAssignments:', teamAssignments);
-            
             // Fallback: if attendanceData is empty or not working, use all players
             let playersToShow = [];
             
             if (attendanceData && attendanceData.length > 0) {
                 // Get present players from attendance
                 const presentPlayers = attendanceData.filter(record => record.attended);
-                console.log('presentPlayers:', presentPlayers);
                 
                 // Find players not assigned to teams
                 const assignedPlayerIds = [...teamAssignments.teamA, ...teamAssignments.teamB];
                 const availablePlayers = presentPlayers.filter(record => !assignedPlayerIds.includes(record.player_id));
-                console.log('availablePlayers:', availablePlayers);
                 
                 playersToShow = availablePlayers;
             } else {
                 // Fallback: show all players if attendance data is not available
-                console.log('Using fallback: showing all players');
                 const assignedPlayerIds = [...teamAssignments.teamA, ...teamAssignments.teamB];
                 playersToShow = players.filter(player => !assignedPlayerIds.includes(player.id)).map(player => ({
                     player_id: player.id,
@@ -2575,7 +2562,7 @@
         }
 
         function autoAssignTeams() {
-            console.log('Auto-assigning teams...');
+
             
             // Use the same logic as populateAvailablePlayers to get available players
             let availablePlayerIds = [];
@@ -2584,15 +2571,12 @@
                 // Get present players from attendance
                 const presentPlayers = attendanceData.filter(record => record.attended);
                 availablePlayerIds = presentPlayers.map(record => record.player_id);
-                console.log('Using attendance data:', availablePlayerIds);
             } else {
                 // Fallback: use all players if attendance data is not available
                 availablePlayerIds = players.map(player => player.id);
-                console.log('Using all players as fallback:', availablePlayerIds);
             }
             
             if (availablePlayerIds.length === 0) {
-                console.log('No players available for assignment');
                 return;
             }
             
@@ -2603,15 +2587,10 @@
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
             
-            console.log('Shuffled players:', shuffled);
-            
             // Split into two teams
             const midpoint = Math.ceil(shuffled.length / 2);
             teamAssignments.teamA = shuffled.slice(0, midpoint);
             teamAssignments.teamB = shuffled.slice(midpoint);
-            
-            console.log('Team A assigned:', teamAssignments.teamA);
-            console.log('Team B assigned:', teamAssignments.teamB);
             
             // Update displays
             updateTeamDisplay('A');
@@ -2929,7 +2908,6 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Score saved to database:', data);
                     
                     // Show success message with phase and drill info
                     let successMessage = `Game saved to ${selectedPhaseName}!`;
@@ -3122,7 +3100,6 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Score saved to database:', data);
                     
                     // Show success message with phase and drill info
                     let successMessage = `Game saved to ${selectedPhaseName}!`;

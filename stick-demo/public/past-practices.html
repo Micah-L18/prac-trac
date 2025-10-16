@@ -552,7 +552,6 @@
                 }
                 
                 const savedScores = await response.json();
-                console.log('Loaded scores from database:', savedScores);
                 
                 if (savedScores.length === 0) {
                     scoresContent.innerHTML = `
@@ -1005,7 +1004,7 @@
         function closeGameDetails() {
             document.getElementById('gameDetailsModal').style.display = 'none';
         }
-        
+
     </script>
     <script src="js/main.js"></script>
     <script>

@@ -1,0 +1,13 @@
+🏐 PracTrac Stick Demo Server running on http://localhost:3000
+📊 SQLite Database Demo - Volleyball Practice Management
+🗄️  Database: /Users/micahlloyd/Documents/Github Projects/prac-trac/stick-demo/practrac.db
+🔄 Creating scores table...
+🔄 Running Phase 1 multi-team schema migrations...
+✅ All database tables initialized
+✅ Scores table created successfully
+✅ Player notes table schema is up to date
+✅ Assigned existing teams to first user
+✅ Assigned existing drills to first user
+✅ Assigned existing practices to first user
+✅ Set current team for first user
+🎉 Phase 1 multi-team migration completed successfully!

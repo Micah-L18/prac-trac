@@ -381,6 +381,21 @@
                         </div>
                     </div>
 
+                    <!-- Sharing Settings Section -->
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <h3 style="color: var(--text-primary); margin-bottom: var(--spacing-md); font-size: var(--font-size-md); border-bottom: 1px solid var(--glass-border); padding-bottom: var(--spacing-xs);">Sharing Settings</h3>
+                        
+                        <div style="display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-secondary); border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
+                            <label style="display: flex; align-items: center; cursor: pointer; color: var(--text-primary); font-weight: 500;">
+                                <input type="checkbox" id="drillIsPublic" name="is_public" style="margin-right: var(--spacing-sm); width: 18px; height: 18px; accent-color: var(--accent-orange);">
+                                <span>🌍 Make this drill public</span>
+                            </label>
+                            <div style="font-size: var(--font-size-sm); color: var(--text-tertiary); flex: 1;">
+                                Public drills can be viewed and used by other coaches in the community
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); text-align: center; margin-bottom: var(--spacing-md); padding: var(--spacing-sm); background: var(--glass-tertiary); border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
                         💡 Click tags to select • Type and press "Add" to create custom options • <span style="color: #4CAF50;">Right-click custom options</span> to remove them
                     </div>
@@ -393,6 +408,61 @@
                             </div>
                         </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Drill Details Modal -->
+        <div id="drillDetailsModal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2 id="drillDetailsModalTitle">Drill Details</h2>
+                    <button class="modal-close" onclick="closeDrillDetailsModal()">✕</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div style="margin-bottom: var(--spacing-lg);">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Category</div>
+                                <div id="drillDetailsCategory" style="color: var(--text-primary); font-weight: 500;"></div>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Difficulty</div>
+                                <div id="drillDetailsDifficulty" style="color: var(--text-primary); font-weight: 500;"></div>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Duration</div>
+                                <div id="drillDetailsDuration" style="color: var(--text-primary); font-weight: 500;"></div>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Players</div>
+                                <div id="drillDetailsPlayers" style="color: var(--text-primary); font-weight: 500;"></div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: var(--spacing-md);">
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Description</div>
+                            <div id="drillDetailsDescription" style="color: var(--text-primary); line-height: 1.6;"></div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md);">
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Equipment</div>
+                                <ul id="drillDetailsEquipment" style="color: var(--text-primary); margin: 0; padding-left: var(--spacing-md);"></ul>
+                            </div>
+                            <div>
+                                <div style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">Focus Areas</div>
+                                <ul id="drillDetailsFocus" style="color: var(--text-primary); margin: 0; padding-left: var(--spacing-md);"></ul>
+                            </div>
+                        </div>
+                        
+                        <div id="drillDetailsCreator" style="font-size: var(--font-size-xs); color: var(--text-tertiary); text-align: center; margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--glass-border);"></div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions" style="padding-top: var(--spacing-md); border-top: 1px solid var(--glass-border);">
+                    <button type="button" class="glass-button primary" onclick="closeDrillDetailsModal()" style="padding: var(--spacing-sm) var(--spacing-lg);">Close</button>
+                </div>
             </div>
         </div>
     </main>
@@ -754,6 +824,13 @@
         function editDrill(drillId) {
             const drill = allDrills.find(d => d.id === drillId);
             if (drill) {
+                // Check ownership before allowing edit
+                const currentUser = JSON.parse(localStorage.getItem('user')) || { id: 1, username: 'DemoUser' };
+                if (drill.user_id != currentUser.id) {
+                    alert('You can only edit drills that you created.');
+                    return;
+                }
+                
                 // Update modal title for editing
                 document.querySelector('#customDrillModal h2').textContent = '✏️ Edit Drill';
                 
@@ -768,6 +845,9 @@
                 document.getElementById('drillMinPlayers').value = drill.minPlayers;
                 document.getElementById('drillMaxPlayers').value = drill.maxPlayers;
                 document.getElementById('drillDifficulty').value = drill.difficulty;
+                
+                // Set public checkbox - handle both is_public and isPublic field names
+                document.getElementById('drillIsPublic').checked = drill.is_public || drill.isPublic || false;
                 
                 // Set selected equipment and focus
                 selectedEquipment = Array.isArray(drill.equipment) ? drill.equipment : (drill.equipment ? [drill.equipment] : []);
@@ -791,7 +871,8 @@
             const drillGrid = document.getElementById('drillGrid');
             drillGrid.innerHTML = '';
             
-            const currentUser = JSON.parse(localStorage.getItem('practrac_user')) || { id: 'demo_user_1' };
+            // Get current user from localStorage (set by main.js) or fallback to demo user with correct ID type
+            const currentUser = JSON.parse(localStorage.getItem('user')) || { id: 1 };
 
             filteredDrills.forEach(drill => {
                 const card = document.createElement('div');
@@ -820,6 +901,9 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm);">
                         <div class="drill-category" style="background: ${categoryColors[drill.category] || 'var(--accent-blue)'};">
                             ${drill.category}
+                        </div>
+                        <div style="font-size: var(--font-size-xs); padding: 2px 6px; border-radius: var(--radius-sm); background: ${drill.is_public || drill.isPublic ? 'var(--accent-green)' : 'var(--glass-border)'}; color: ${drill.is_public || drill.isPublic ? 'white' : 'var(--text-tertiary)'};">
+                            ${drill.is_public || drill.isPublic ? '🌍 Public' : '🔒 Private'}
                         </div>
                     </div>
                     
@@ -857,16 +941,24 @@
 
                     <div class="flex-center mt-md">
                         <div style="display: flex; gap: var(--spacing-sm); width: 100%;">
-                            <button class="glass-button primary" onclick="editDrill(${drill.id})" style="flex: 1;">
-                                ✏️ Edit
-                            </button>
-                            <button class="glass-button danger" onclick="deleteDrill(${drill.id}, '${drill.name}')" style="flex: 1;">
-                                🗑️ Delete
-                            </button>
-                            <button class="glass-button" onclick="copyDrill(${drill.id})" style="flex: 1;">
-                                📋 Copy
-                            </button>
+                            ${drill.user_id == currentUser.id ? `
+                                <button class="glass-button primary" onclick="editDrill(${drill.id})" style="flex: 1;">
+                                    ✏️ Edit
+                                </button>
+                                <button class="glass-button danger" onclick="deleteDrill(${drill.id}, '${drill.name}')" style="flex: 1;">
+                                    🗑️ Delete
+                                </button>
+                            ` : `
+                                <button class="glass-button primary" onclick="viewDrillDetails(${drill.id})" style="width: 100%;">
+                                    �️ View Details
+                                </button>
+                            `}
                         </div>
+                        ${drill.user_id != currentUser.id && drill.creatorName ? `
+                            <div style="font-size: var(--font-size-xs); color: var(--text-tertiary); text-align: center; margin-top: var(--spacing-xs);">
+                                Created by ${drill.creatorName}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 
@@ -907,56 +999,48 @@
             renderDrills();
         }
 
-        function useDrill(drillId) {
+        function viewDrillDetails(drillId) {
             const drill = allDrills.find(d => d.id === drillId);
             if (drill) {
-                window.pracTracDemo?.showNotification(
-                    `Starting "${drill.name}" drill! This would integrate with practice mode in the full version.`,
-                    'success'
-                );
+                // Populate the drill details modal
+                document.getElementById('drillDetailsModalTitle').textContent = drill.name;
+                document.getElementById('drillDetailsCategory').textContent = drill.category;
+                document.getElementById('drillDetailsDescription').textContent = drill.description;
+                document.getElementById('drillDetailsDuration').textContent = `${drill.duration} minutes`;
+                document.getElementById('drillDetailsPlayers').textContent = `${drill.minPlayers}-${drill.maxPlayers} players`;
+                document.getElementById('drillDetailsDifficulty').textContent = `Level ${drill.difficulty}`;
+                
+                // Equipment list
+                const equipmentList = document.getElementById('drillDetailsEquipment');
+                if (Array.isArray(drill.equipment) && drill.equipment.length > 0) {
+                    equipmentList.innerHTML = drill.equipment.map(item => `<li>${item}</li>`).join('');
+                } else {
+                    equipmentList.innerHTML = '<li>None specified</li>';
+                }
+                
+                // Focus areas
+                const focusList = document.getElementById('drillDetailsFocus');
+                if (Array.isArray(drill.focus) && drill.focus.length > 0) {
+                    focusList.innerHTML = drill.focus.map(skill => `<li>${skill}</li>`).join('');
+                } else {
+                    focusList.innerHTML = '<li>General skills</li>';
+                }
+                
+                // Creator attribution
+                if (drill.creatorName) {
+                    document.getElementById('drillDetailsCreator').textContent = `Created by ${drill.creatorName}`;
+                    document.getElementById('drillDetailsCreator').style.display = 'block';
+                } else {
+                    document.getElementById('drillDetailsCreator').style.display = 'none';
+                }
+                
+                // Show the modal
+                document.getElementById('drillDetailsModal').style.display = 'flex';
             }
         }
 
-        function copyDrill(drillId) {
-            const drill = allDrills.find(d => d.id === drillId);
-            if (drill) {
-                // Create a copy of the drill
-                const drillCopy = {
-                    ...drill,
-                    id: null, // Will be assigned when saved
-                    name: `${drill.name} (Copy)`
-                };
-                
-                // Populate the form with the copied drill data
-                document.querySelector('#customDrillModal h2').textContent = '📋 Copy Drill';
-                document.getElementById('drillName').value = drillCopy.name;
-                document.getElementById('drillCategory').value = drillCopy.category;
-                document.getElementById('drillDescription').value = drillCopy.description;
-                document.getElementById('drillDuration').value = drillCopy.duration;
-                document.getElementById('drillMinPlayers').value = drillCopy.minPlayers;
-                document.getElementById('drillMaxPlayers').value = drillCopy.maxPlayers;
-                document.getElementById('drillDifficulty').value = drillCopy.difficulty;
-                
-                // Set selected equipment and focus
-                selectedEquipment = Array.isArray(drillCopy.equipment) ? [...drillCopy.equipment] : [];
-                selectedFocus = Array.isArray(drillCopy.focus) ? [...drillCopy.focus] : [];
-                
-                // Initialize selectors and update displays
-                initializeSelectors();
-                updateEquipmentDisplay();
-                updateFocusDisplay();
-                updateEquipmentInput();
-                updateFocusInput();
-                
-                // Show modal (no edit-id, so it will create a new drill)
-                document.getElementById('customDrillForm').removeAttribute('data-edit-id');
-                document.getElementById('customDrillModal').style.display = 'flex';
-                
-                window.pracTracDemo?.showNotification(
-                    `"${drill.name}" copied! Modify as needed and save to create your own version.`,
-                    'info'
-                );
-            }
+        function closeDrillDetailsModal() {
+            document.getElementById('drillDetailsModal').style.display = 'none';
         }
 
         function createCustomDrill() {
@@ -966,6 +1050,9 @@
             // Reset form for new drill
             document.getElementById('customDrillForm').reset();
             document.getElementById('customDrillForm').removeAttribute('data-edit-id');
+            
+            // Reset public checkbox to false for new drills
+            document.getElementById('drillIsPublic').checked = false;
             
             // Initialize selectors and reset selections
             initializeSelectors();
@@ -977,6 +1064,7 @@
         function closeCustomDrillModal() {
             document.getElementById('customDrillModal').style.display = 'none';
             document.getElementById('customDrillForm').reset();
+            document.getElementById('drillIsPublic').checked = false;
             resetSelectors();
         }
 
@@ -987,7 +1075,7 @@
             const editId = event.target.getAttribute('data-edit-id');
             
             // Get current user info
-            const currentUser = JSON.parse(localStorage.getItem('practrac_user')) || { id: 'demo_user_1', username: 'DemoUser' };
+            const currentUser = JSON.parse(localStorage.getItem('user')) || { id: 1, username: 'DemoUser' };
             
             const drillData = {
                 name: formData.get('name'),
@@ -998,7 +1086,8 @@
                 equipment: formData.get('equipment') ? formData.get('equipment').split(',').map(item => item.trim()) : [],
                 minPlayers: parseInt(formData.get('minPlayers')),
                 maxPlayers: parseInt(formData.get('maxPlayers')),
-                focus: formData.get('focus') ? formData.get('focus').split(',').map(item => item.trim()) : []
+                focus: formData.get('focus') ? formData.get('focus').split(',').map(item => item.trim()) : [],
+                is_public: document.getElementById('drillIsPublic').checked
             };
 
             try {
@@ -1016,7 +1105,6 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log(`Drill ${isEdit ? 'updated' : 'created'} successfully:`, result);
                     
                     // Close modal and refresh the drill list
                     closeCustomDrillModal();
@@ -1077,6 +1165,16 @@
         async function deleteDrill(drillId, drillName) {
             // Ensure drillId is an integer for proper comparison
             drillId = parseInt(drillId);
+            
+            // Check ownership before allowing delete
+            const drill = allDrills.find(d => d.id === drillId);
+            if (drill) {
+                const currentUser = JSON.parse(localStorage.getItem('user')) || { id: 1, username: 'DemoUser' };
+                if (drill.user_id != currentUser.id) {
+                    alert('You can only delete drills that you created.');
+                    return;
+                }
+            }
             
             const confirmed = confirm(`Are you sure you want to delete "${drillName}"? This action cannot be undone.`);
             
