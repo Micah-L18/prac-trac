@@ -5,6 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Settings - PracTrac</title>
     <link rel="stylesheet" href="css/glass-style.css">
+    <style>
+        /* Settings page specific styles */
+        .settings-section .form-group label {
+            text-align: center;
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .settings-section .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .settings-section .section-title {
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .settings-section button {
+            display: block;
+            margin: var(--spacing-lg) auto 0 auto;
+        }
+    </style>
 </head>
 <body>
     <nav class="nav-container">
@@ -40,6 +64,18 @@
                     <li><a href="drills.html">Drills</a></li>
                     <li><a href="settings.html" class="active">Settings</a></li>
                 </ul>
+                
+                <!-- Mobile Team Selector -->
+                <div id="mobileTeamSelector" class="mobile-team-selector-container" style="display: none;">
+                    <!-- Mobile team selector will be populated by JavaScript -->
+                </div>
+                
+                <!-- Mobile User Actions -->
+                <div class="mobile-user-actions">
+                    <span id="mobileUserGreeting">Guest User</span>
+                    <a href="login.html" class="mobile-login-link">Login</a>
+                    <button onclick="window.pracTracDemo.logout()" class="mobile-logout-btn" style="display: none;">Logout</button>
+                </div>
             </nav>
             
             <div class="nav-user">

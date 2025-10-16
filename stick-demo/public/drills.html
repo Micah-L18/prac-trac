@@ -199,6 +199,18 @@
                     <li><a href="drills.html" class="active">Drills</a></li>
                     <li><a href="settings.html">Settings</a></li>
                 </ul>
+                
+                <!-- Mobile Team Selector -->
+                <div id="mobileTeamSelector" class="mobile-team-selector-container" style="display: none;">
+                    <!-- Mobile team selector will be populated by JavaScript -->
+                </div>
+                
+                <!-- Mobile User Actions -->
+                <div class="mobile-user-actions">
+                    <span id="mobileUserGreeting">Guest User</span>
+                    <a href="login.html" class="mobile-login-link">Login</a>
+                    <button onclick="window.pracTracDemo.logout()" class="mobile-logout-btn" style="display: none;">Logout</button>
+                </div>
             </nav>
             
             <div class="nav-user">
@@ -219,7 +231,7 @@
                     Drill Library
                 </h1>
                 <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
-                    Professional volleyball drills with custom statistics tracking
+                    Custom sharable volleyball drills
                 </p>
             </div>
             <button class="glass-button primary" onclick="createCustomDrill()">

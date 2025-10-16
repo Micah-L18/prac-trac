@@ -51,6 +51,7 @@ class PracTracDemo {
         // Update any user-specific UI elements
         const userMenus = document.querySelectorAll('.user-menu');
         const userGreetings = document.querySelectorAll('#userGreeting');
+        const mobileUserGreetings = document.querySelectorAll('#mobileUserGreeting');
         
         userGreetings.forEach(greeting => {
             if (greeting) {
@@ -58,26 +59,49 @@ class PracTracDemo {
             }
         });
 
+        mobileUserGreetings.forEach(greeting => {
+            if (greeting) {
+                greeting.textContent = `Hello, ${this.currentUser.username}`;
+            }
+        });
+
         // Show team selector and hide login/register links
         const loginLinks = document.querySelectorAll('.login-link');
+        const mobileLoginLinks = document.querySelectorAll('.mobile-login-link');
+        const mobileLogoutBtns = document.querySelectorAll('.mobile-logout-btn');
         
         loginLinks.forEach(link => link.style.display = 'none');
+        mobileLoginLinks.forEach(link => link.style.display = 'none');
+        mobileLogoutBtns.forEach(btn => btn.style.display = 'inline-block');
 
         // Update navigation for authenticated users
         this.updateNavigationForAuthenticated();
         
-        // Initialize team selector
+        // Initialize team selector (both desktop and mobile)
         this.initializeTeamSelector();
     }
 
     updateUIForLoggedOutUser() {
         // Show login/register links, hide user-specific elements
         const loginLinks = document.querySelectorAll('.login-link');
+        const mobileLoginLinks = document.querySelectorAll('.mobile-login-link');
+        const mobileLogoutBtns = document.querySelectorAll('.mobile-logout-btn');
         const userGreetings = document.querySelectorAll('#userGreeting');
+        const mobileUserGreetings = document.querySelectorAll('#mobileUserGreeting');
         const teamSelectorContainer = document.getElementById('teamSelector');
+        const mobileTeamSelectorContainer = document.getElementById('mobileTeamSelector');
         
         loginLinks.forEach(link => link.style.display = 'inline-block');
+        mobileLoginLinks.forEach(link => link.style.display = 'inline-block');
+        mobileLogoutBtns.forEach(btn => btn.style.display = 'none');
+        
         userGreetings.forEach(greeting => {
+            if (greeting) {
+                greeting.textContent = 'Guest User';
+            }
+        });
+        
+        mobileUserGreetings.forEach(greeting => {
             if (greeting) {
                 greeting.textContent = 'Guest User';
             }
@@ -86,6 +110,10 @@ class PracTracDemo {
         // Hide team selector for logged out users
         if (teamSelectorContainer) {
             teamSelectorContainer.style.display = 'none';
+        }
+        
+        if (mobileTeamSelectorContainer) {
+            mobileTeamSelectorContainer.style.display = 'none';
         }
 
         // Restrict navigation for non-authenticated users
@@ -470,6 +498,30 @@ class PracTracDemo {
         }
     }
 
+    // Update team-specific displays on the current page
+    async updateTeamDisplays() {
+        try {
+            const currentTeam = await this.getCurrentTeam();
+            
+            // Update team name display if present
+            const teamNameElement = document.getElementById('teamNameDisplay');
+            if (teamNameElement) {
+                if (currentTeam) {
+                    teamNameElement.textContent = `${currentTeam.name} • ${currentTeam.season}`;
+                } else {
+                    teamNameElement.textContent = 'No team selected • Please select a team';
+                }
+            }
+            
+            // Call page-specific update functions if they exist
+            if (typeof updateTeamNameDisplay === 'function') {
+                updateTeamNameDisplay();
+            }
+        } catch (error) {
+            console.error('Error updating team displays:', error);
+        }
+    }
+
     async createTeam(teamData) {
         try {
             const response = await fetch('/api/teams', {
@@ -545,15 +597,17 @@ class PracTracDemo {
 
     async initializeTeamSelector() {
         const teamSelectorContainer = document.getElementById('teamSelector');
-        if (!teamSelectorContainer) return;
+        const mobileTeamSelectorContainer = document.getElementById('mobileTeamSelector');
         
         if (!this.currentUser) {
-            teamSelectorContainer.style.display = 'none';
+            if (teamSelectorContainer) teamSelectorContainer.style.display = 'none';
+            if (mobileTeamSelectorContainer) mobileTeamSelectorContainer.style.display = 'none';
             return;
         }
 
-        // Show the team selector for authenticated users
-        teamSelectorContainer.style.display = 'block';
+        // Show the team selectors for authenticated users
+        if (teamSelectorContainer) teamSelectorContainer.style.display = 'block';
+        if (mobileTeamSelectorContainer) mobileTeamSelectorContainer.style.display = 'block';
 
         const teams = await this.loadUserTeams();
         const currentTeam = await this.getCurrentTeam();
@@ -562,24 +616,19 @@ class PracTracDemo {
     }
 
     renderTeamSelector(teams, currentTeam) {
-        // This will be called to render the team selector in the navigation
-        // We'll implement this when we add the UI components
+        // Render desktop team selector
         const teamSelectorContainer = document.getElementById('teamSelector');
-        if (!teamSelectorContainer) return;
-
-        if (teams.length === 0) {
-            teamSelectorContainer.innerHTML = `
-                <div class="no-teams">
-                    <span>No teams</span>
-                    <button onclick="window.pracTracDemo.showCreateTeamModal()" class="glass-button">Create Team</button>
-                </div>
-            `;
-            return;
-        }
-
-        const currentTeamName = currentTeam ? currentTeam.name : 'Select Team';
+        const mobileTeamSelectorContainer = document.getElementById('mobileTeamSelector');
         
-        teamSelectorContainer.innerHTML = `
+        const currentTeamName = currentTeam ? currentTeam.name : 'Select Team';
+
+        // Desktop team selector content
+        const desktopContent = teams.length === 0 ? `
+            <div class="no-teams">
+                <span>No teams</span>
+                <button onclick="window.pracTracDemo.showCreateTeamModal()" class="glass-button">Create Team</button>
+            </div>
+        ` : `
             <div class="team-selector">
                 <button class="team-selector-btn glass-button" onclick="window.pracTracDemo.toggleTeamDropdown()">
                     🏐 ${currentTeamName} ▼
@@ -597,6 +646,45 @@ class PracTracDemo {
                 </div>
             </div>
         `;
+
+        // Mobile team selector content
+        const mobileContent = teams.length === 0 ? `
+            <div class="mobile-no-teams">
+                <div class="mobile-team-header">Teams</div>
+                <div class="mobile-team-empty">
+                    <span>No teams available</span>
+                    <button onclick="window.pracTracDemo.showCreateTeamModal()" class="mobile-create-team-btn">Create Team</button>
+                </div>
+            </div>
+        ` : `
+            <div class="mobile-team-selector">
+                <div class="mobile-team-header">Current Team</div>
+                <div class="mobile-current-team">
+                    🏐 ${currentTeamName}
+                </div>
+                <div class="mobile-team-options">
+                    ${teams.map(team => `
+                        <div class="mobile-team-option ${team.id === (currentTeam?.id) ? 'active' : ''}" 
+                             onclick="window.pracTracDemo.switchTeam(${team.id})">
+                            ${team.name} - ${team.season}
+                        </div>
+                    `).join('')}
+                    <div class="mobile-team-option create-new" onclick="window.pracTracDemo.showCreateTeamModal()">
+                        ➕ Create New Team
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Update desktop team selector
+        if (teamSelectorContainer) {
+            teamSelectorContainer.innerHTML = desktopContent;
+        }
+
+        // Update mobile team selector
+        if (mobileTeamSelectorContainer) {
+            mobileTeamSelectorContainer.innerHTML = mobileContent;
+        }
     }
 
     toggleTeamDropdown() {

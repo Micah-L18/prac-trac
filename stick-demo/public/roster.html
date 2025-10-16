@@ -108,6 +108,18 @@
                     <li><a href="drills.html">Drills</a></li>
                     <li><a href="settings.html">Settings</a></li>
                 </ul>
+                
+                <!-- Mobile Team Selector -->
+                <div id="mobileTeamSelector" class="mobile-team-selector-container" style="display: none;">
+                    <!-- Mobile team selector will be populated by JavaScript -->
+                </div>
+                
+                <!-- Mobile User Actions -->
+                <div class="mobile-user-actions">
+                    <span id="mobileUserGreeting">Guest User</span>
+                    <a href="login.html" class="mobile-login-link">Login</a>
+                    <button onclick="window.pracTracDemo.logout()" class="mobile-logout-btn" style="display: none;">Logout</button>
+                </div>
             </nav>
             
             <div class="nav-user">
@@ -123,13 +135,13 @@
     <!-- Main Content -->
     <main class="main-container">
         <!-- Header -->
-        <section class="flex-between mb-xl">
+        <section class="flex-between mb-xl roster-header">
             <div>
                 <h1 style="font-size: var(--font-size-3xl); font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-sm);">
                     Team Roster
                 </h1>
-                <p style="color: var(--text-secondary); font-size: var(--font-size-lg);">
-                    Riverside High Volleyball • Fall 2025 Season
+                <p id="teamNameDisplay" style="color: var(--text-secondary); font-size: var(--font-size-lg);">
+                    Loading team information...
                 </p>
             </div>
             <button class="glass-button primary" onclick="addNewPlayer()">
@@ -137,8 +149,25 @@
             </button>
         </section>
 
+        <!-- Team Selector for Roster -->
+        <section class="glass-card mb-lg">
+            <div class="p-lg">
+                <h3 style="color: var(--accent-orange); font-size: var(--font-size-lg); margin-bottom: var(--spacing-md);">
+                    📋 Select Team to View
+                </h3>
+                <div style="display: flex; gap: var(--spacing-md); align-items: center; flex-wrap: wrap;">
+                    <select id="rosterTeamSelector" class="glass-select" style="min-width: 200px;">
+                        <option value="">Loading teams...</option>
+                    </select>
+                    <button id="refreshRosterBtn" class="glass-button" onclick="refreshRosterData()" style="display: none;">
+                        🔄 
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- Team Overview -->
-        <section class="glass-card mb-xl">
+        <section class="glass-card mb-xl roster-team-overview">
             <div class="p-lg">
                 <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-2xl);">
                     📊 Team Overview
@@ -170,30 +199,7 @@
             <!-- Players will be loaded here -->
         </section>
 
-        <!-- Detailed Roster Table -->
-        <section class="glass-card">
-            <div class="p-lg">
-                <h2 class="mb-lg" style="color: var(--accent-orange); font-size: var(--font-size-2xl);">
-                    📋 Detailed Roster
-                </h2>
-                
-                <table class="glass-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Player</th>
-                            <th>Position</th>
-                            <th>Year</th>
-                            <th>Height</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rosterTable">
-                        <!-- Roster data will be loaded here -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+
     </main>
 
     <!-- Add Player Modal -->
@@ -448,6 +454,99 @@
     </style>
 
     <script>
+        // Initialize roster team selector
+        async function initializeRosterTeamSelector() {
+            try {
+                if (window.pracTracDemo && window.pracTracDemo.currentUser) {
+                    const teams = await window.pracTracDemo.loadUserTeams();
+                    const currentTeam = await window.pracTracDemo.getCurrentTeam();
+                    const selector = document.getElementById('rosterTeamSelector');
+                    
+                    if (teams.length === 0) {
+                        selector.innerHTML = '<option value="">No teams available</option>';
+                        return;
+                    }
+                    
+                    // Populate team options
+                    selector.innerHTML = teams.map(team => 
+                        `<option value="${team.id}" ${team.id === currentTeam?.id ? 'selected' : ''}>
+                            ${team.name} - ${team.season}
+                        </option>`
+                    ).join('');
+                    
+                    // Add event listener for team changes
+                    selector.addEventListener('change', handleRosterTeamChange);
+                    
+                    // Show refresh button
+                    document.getElementById('refreshRosterBtn').style.display = 'inline-block';
+                } else {
+                    // Guest mode - show demo team
+                    const selector = document.getElementById('rosterTeamSelector');
+                    selector.innerHTML = '<option value="demo">Demo Team - Fall 2025</option>';
+                }
+            } catch (error) {
+                console.error('Error initializing roster team selector:', error);
+                const selector = document.getElementById('rosterTeamSelector');
+                selector.innerHTML = '<option value="">Error loading teams</option>';
+            }
+        }
+
+        // Handle team change in roster selector
+        async function handleRosterTeamChange(event) {
+            const selectedTeamId = event.target.value;
+            if (selectedTeamId && selectedTeamId !== 'demo') {
+                try {
+                    // Switch to the selected team
+                    await window.pracTracDemo.switchTeam(parseInt(selectedTeamId));
+                    // The page will reload automatically from the switchTeam function
+                } catch (error) {
+                    console.error('Error switching team:', error);
+                    window.pracTracDemo.showNotification('Error switching team', 'error');
+                }
+            }
+        }
+
+        // Refresh roster data
+        async function refreshRosterData() {
+            try {
+                await loadPlayerData();
+                await window.pracTracDemo.updateTeamDisplays();
+                window.pracTracDemo.showNotification('Roster data refreshed', 'success');
+            } catch (error) {
+                console.error('Error refreshing roster data:', error);
+                window.pracTracDemo.showNotification('Error refreshing data', 'error');
+            }
+        }
+
+        // Update team name display
+        async function updateTeamNameDisplay() {
+            try {
+                // Get current team from the global pracTracDemo instance
+                if (window.pracTracDemo && window.pracTracDemo.currentUser) {
+                    const currentTeam = await window.pracTracDemo.getCurrentTeam();
+                    const teamNameElement = document.getElementById('teamNameDisplay');
+                    
+                    if (currentTeam && teamNameElement) {
+                        teamNameElement.textContent = `${currentTeam.name} • ${currentTeam.season}`;
+                    } else if (teamNameElement) {
+                        teamNameElement.textContent = 'No team selected • Please select a team';
+                    }
+                } else {
+                    // Fallback for guest users
+                    const teamNameElement = document.getElementById('teamNameDisplay');
+                    if (teamNameElement) {
+                        teamNameElement.textContent = 'Demo Team • Fall 2025 Season';
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating team name display:', error);
+                const teamNameElement = document.getElementById('teamNameDisplay');
+                if (teamNameElement) {
+                    teamNameElement.textContent = 'Demo Team • Fall 2025 Season';
+                }
+            }
+        }
+
         // Update team overview with real data
         async function updateTeamOverview(players) {
             try {
@@ -765,10 +864,19 @@
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
             loadPlayerData();
+            
             // Initialize mobile menu
             if (typeof initializeMobileMenu === 'function') {
                 initializeMobileMenu();
             }
+            
+            // Wait for main.js to load and then update team name
+            setTimeout(() => {
+                if (window.pracTracDemo) {
+                    window.pracTracDemo.updateTeamDisplays();
+                    initializeRosterTeamSelector();
+                }
+            }, 100);
         });
     </script>
     <script src="js/main.js"></script>
