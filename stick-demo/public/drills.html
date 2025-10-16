@@ -86,6 +86,15 @@
             color: white;
             border-color: var(--accent-orange);
         }
+        
+        .ownership-tab {
+            transition: all 0.3s ease;
+        }
+        
+        .ownership-tab:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
         .drill-stats {
             background: var(--glass-tertiary);
             border-radius: var(--radius-sm);
@@ -241,6 +250,27 @@
                             <option value="4">Advanced (⭐⭐⭐⭐)</option>
                             <option value="5">Expert (⭐⭐⭐⭐⭐)</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Ownership Filter -->
+                <div style="margin-bottom: var(--spacing-lg);">
+                    <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs);">
+                        Drill Ownership
+                    </label>
+                    <div style="display: flex; gap: var(--spacing-xs);">
+                        <button id="allDrillsOwnershipTab" class="ownership-tab active" onclick="setOwnershipFilter('all')" 
+                                style="flex: 1; padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--accent-blue); color: white; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; border: none; outline: none;">
+                            🌍 All Drills
+                        </button>
+                        <button id="myDrillsOwnershipTab" class="ownership-tab" onclick="setOwnershipFilter('personal')" 
+                                style="flex: 1; padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; border: none; outline: none;">
+                            👤 My Drills
+                        </button>
+                        <button id="publicDrillsOwnershipTab" class="ownership-tab" onclick="setOwnershipFilter('public')" 
+                                style="flex: 1; padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; border: none; outline: none;">
+                            🔗 Public Drills
+                        </button>
                     </div>
                 </div>
 
@@ -472,6 +502,10 @@
         let filteredDrills = [];
         let favoriteDrills = JSON.parse(localStorage.getItem('favoriteDrills')) || [];
         
+        // Ownership filter state
+        let currentOwnershipFilter = 'all'; // 'all', 'personal', 'public'
+        let currentUser = null;
+        
         // Base equipment and focus options
         let equipmentOptions = [
             'Cones', 'Extra Antenna', 'Tape/Lines', 'Scoreboard','Blocking Pads', 'Boxes'
@@ -511,6 +545,9 @@
             try {
                 const response = await fetch('/api/drills');
                 allDrills = await response.json();
+                
+                // Get current user info for ownership filtering
+                currentUser = JSON.parse(localStorage.getItem('user')) || { id: 1, username: 'DemoUser' };
                 
                 // Filter drills based on visibility rules
                 allDrills = filterDrillsByVisibility(allDrills);
@@ -970,7 +1007,28 @@
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const difficultyFilter = document.getElementById('difficultyFilter').value;
             
-            filteredDrills = allDrills.filter(drill => {
+            // Start with all drills
+            filteredDrills = [...allDrills];
+            
+            // Apply category filter first
+            const activeTab = document.querySelector('.filter-tab.active');
+            if (activeTab) {
+                const category = activeTab.textContent.includes('All') ? 'all' : 
+                                activeTab.textContent.includes('Favorites') ? 'favorites' :
+                                activeTab.textContent.trim();
+                
+                if (category === 'favorites') {
+                    filteredDrills = filteredDrills.filter(drill => favoriteDrills.includes(drill.id));
+                } else if (category !== 'all') {
+                    filteredDrills = filteredDrills.filter(drill => drill.category === category);
+                }
+            }
+            
+            // Apply ownership filter
+            applyOwnershipFilter();
+            
+            // Apply search and difficulty filters
+            filteredDrills = filteredDrills.filter(drill => {
                 const matchesSearch = drill.name.toLowerCase().includes(searchTerm) ||
                                     drill.description.toLowerCase().includes(searchTerm) ||
                                     (Array.isArray(drill.focus) ? drill.focus.some(skill => skill.toLowerCase().includes(searchTerm)) : 
@@ -996,7 +1054,71 @@
             } else {
                 filteredDrills = allDrills.filter(drill => drill.category === category);
             }
+            
+            // Apply ownership filter to the category-filtered results
+            applyOwnershipFilter();
             renderDrills();
+        }
+
+        function setOwnershipFilter(filterType) {
+            currentOwnershipFilter = filterType;
+            updateOwnershipTabs();
+            
+            // Re-apply current category filter and then ownership filter
+            const activeTab = document.querySelector('.filter-tab.active');
+            const category = activeTab ? (activeTab.textContent.includes('All') ? 'all' : 
+                                        activeTab.textContent.includes('Favorites') ? 'favorites' :
+                                        activeTab.textContent.trim()) : 'all';
+            
+            if (category === 'all') {
+                filteredDrills = [...allDrills];
+            } else if (category === 'favorites') {
+                filteredDrills = allDrills.filter(drill => favoriteDrills.includes(drill.id));
+            } else {
+                filteredDrills = allDrills.filter(drill => drill.category === category);
+            }
+            
+            // Apply ownership filter
+            applyOwnershipFilter();
+            
+            // Apply other active filters (search, difficulty)
+            filterDrills();
+        }
+
+        function updateOwnershipTabs() {
+            // Reset all ownership tabs
+            document.querySelectorAll('.ownership-tab').forEach(tab => {
+                tab.style.background = 'var(--glass-secondary)';
+                tab.style.color = 'var(--text-secondary)';
+            });
+
+            // Activate current tab
+            let activeTab;
+            switch(currentOwnershipFilter) {
+                case 'all':
+                    activeTab = document.getElementById('allDrillsOwnershipTab');
+                    break;
+                case 'personal':
+                    activeTab = document.getElementById('myDrillsOwnershipTab');
+                    break;
+                case 'public':
+                    activeTab = document.getElementById('publicDrillsOwnershipTab');
+                    break;
+            }
+            
+            if (activeTab) {
+                activeTab.style.background = 'var(--accent-blue)';
+                activeTab.style.color = 'white';
+            }
+        }
+
+        function applyOwnershipFilter() {
+            if (currentOwnershipFilter === 'personal') {
+                filteredDrills = filteredDrills.filter(drill => drill.user_id == currentUser.id);
+            } else if (currentOwnershipFilter === 'public') {
+                filteredDrills = filteredDrills.filter(drill => drill.user_id != currentUser.id && (drill.is_public || drill.isPublic));
+            }
+            // 'all' doesn't need additional filtering
         }
 
         function viewDrillDetails(drillId) {
@@ -1227,6 +1349,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadCustomOptions();
             loadDrillData();
+            // Initialize ownership filter tabs
+            updateOwnershipTabs();
             // Initialize mobile menu
             if (typeof initializeMobileMenu === 'function') {
                 initializeMobileMenu();

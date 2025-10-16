@@ -147,17 +147,94 @@
 
     <!-- Drill Selector Modal -->
     <div id="drillSelectorModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2 style="color: var(--accent-orange); margin: 0;">🏐 Select Drills for Phase</h2>
                 <button class="modal-close" onclick="closeDrillSelector()">✕</button>
             </div>
             
+            <!-- Filter Section -->
             <div class="mb-md" style="margin-bottom: var(--spacing-md);">
-                <input type="text" id="drillSearchInput" class="glass-input" placeholder="🔍 Search drills..." onkeyup="filterDrillsInSelector()">
+                <!-- Search and Difficulty -->
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                    <div>
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-size: var(--font-size-sm);">
+                            Search Drills
+                        </label>
+                        <input type="text" id="drillSearchInput" class="glass-input" placeholder="Search by name, skill, or equipment..." onkeyup="filterDrillsInSelector()" 
+                               style="width: 100%; padding: var(--spacing-sm); border-radius: var(--radius-sm);">
+                    </div>
+                    <div style="min-width: 140px;">
+                        <label style="color: var(--text-secondary); display: block; margin-bottom: var(--spacing-xs); font-size: var(--font-size-sm);">
+                            Difficulty Level
+                        </label>
+                        <select id="difficultyFilter" class="glass-input" onchange="filterDrillsInSelector()" 
+                                style="width: 100%; padding: var(--spacing-sm); border-radius: var(--radius-sm);">
+                            <option value="">All Levels</option>
+                            <option value="1">Beginner (⭐)</option>
+                            <option value="2">Easy (⭐⭐)</option>
+                            <option value="3">Intermediate (⭐⭐⭐)</option>
+                            <option value="4">Advanced (⭐⭐⭐⭐)</option>
+                            <option value="5">Expert (⭐⭐⭐⭐⭐)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Category Filter Tabs -->
+                <div class="filter-tabs" style="display: flex; gap: var(--spacing-xs); flex-wrap: wrap; margin-bottom: var(--spacing-md);">
+                    <div class="filter-tab active" onclick="filterByCategory('all')" data-category="all" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--accent-orange); color: white; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        All Drills
+                    </div>
+                    <div class="filter-tab" onclick="filterByCategory('favorites')" data-category="favorites" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        ⭐ Favorites
+                    </div>
+                    <div class="filter-tab" onclick="filterByCategory('Warm-up')" data-category="Warm-up" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        Warm-up
+                    </div>
+                    <div class="filter-tab" onclick="filterByCategory('Offense')" data-category="Offense" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        Offense
+                    </div>
+                    <div class="filter-tab" onclick="filterByCategory('Defense')" data-category="Defense" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        Defense
+                    </div>
+                    <div class="filter-tab" onclick="filterByCategory('Serve/Receive')" data-category="Serve/Receive" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        Serve/Receive
+                    </div>
+                    <div class="filter-tab" onclick="filterByCategory('Conditioning')" data-category="Conditioning" 
+                         style="padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease; white-space: nowrap;">
+                        Conditioning
+                    </div>
+                </div>
+
+                <!-- Personal/Public Filter -->
+                <div style="display: flex; gap: var(--spacing-xs); margin-bottom: var(--spacing-md);">
+                    <button id="allDrillsTab" class="ownership-tab active" onclick="setDrillOwnershipFilter('all')" 
+                            style="flex: 1; padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--accent-blue); color: white; border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease;">
+                        🌍 All Drills
+                    </button>
+                    <button id="myDrillsTab" class="ownership-tab" onclick="setDrillOwnershipFilter('personal')" 
+                            style="flex: 1; padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease;">
+                        � My Drills
+                    </button>
+                    <button id="publicDrillsTab" class="ownership-tab" onclick="setDrillOwnershipFilter('public')" 
+                            style="flex: 1; padding: var(--spacing-sm); border: 1px solid var(--glass-border); background: var(--glass-secondary); color: var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--font-size-sm); cursor: pointer; transition: all 0.3s ease;">
+                        🔗 Public Drills
+                    </button>
+                </div>
             </div>
 
-            <div id="drillSelectorGrid" class="grid grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-md); max-height: 400px; overflow-y: auto;">
+            <!-- Results Summary -->
+            <div id="filterSummary" style="margin-bottom: var(--spacing-md); padding: var(--spacing-sm); background: var(--glass-secondary); border-radius: var(--radius-sm); border: 1px solid var(--glass-border); font-size: var(--font-size-sm); color: var(--text-secondary);">
+                Showing all drills
+            </div>
+
+            <div id="drillSelectorGrid" class="grid grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-md); max-height: 400px; overflow-y: auto;">
                 <!-- Drills will be loaded here -->
             </div>
 
@@ -264,6 +341,12 @@
         let drills = [];
         let currentPhaseId = null;
         let selectedDrillsForPhase = {};
+        
+        // Drill filtering state
+        let currentOwnershipFilter = 'all'; // 'all', 'personal', 'public'
+        let currentCategoryFilter = 'all'; // 'all', 'favorites', or specific category
+        let currentUser = null;
+        let favoriteDrills = JSON.parse(localStorage.getItem('favoriteDrills')) || [];
 
         async function loadPractices() {
             try {
@@ -310,6 +393,9 @@
             try {
                 const response = await fetch('/api/drills');
                 drills = await response.json();
+                
+                // Get current user info for filtering
+                currentUser = JSON.parse(localStorage.getItem('user')) || { id: 1, username: 'DemoUser' };
             } catch (error) {
                 console.error('Error loading drills:', error);
             }
@@ -394,6 +480,14 @@
 
         function openDrillSelector(phaseId) {
             currentPhaseId = phaseId;
+            
+            // Initialize filter state
+            currentOwnershipFilter = 'all';
+            currentCategoryFilter = 'all';
+            document.getElementById('drillSearchInput').value = '';
+            document.getElementById('difficultyFilter').value = '';
+            updateFilterTabs();
+            
             loadDrillsIntoSelector();
             updateDrillSelectionCount();
             document.getElementById('drillSelectorModal').style.display = 'flex';
@@ -402,25 +496,226 @@
         function closeDrillSelector() {
             document.getElementById('drillSelectorModal').style.display = 'none';
             document.getElementById('drillSearchInput').value = ''; // Clear search
+            document.getElementById('difficultyFilter').value = ''; // Clear difficulty filter
+            currentOwnershipFilter = 'all'; // Reset ownership filter
+            currentCategoryFilter = 'all'; // Reset category filter
+            updateFilterTabs();
             currentPhaseId = null;
+        }
+
+        function setDrillOwnershipFilter(filterType) {
+            currentOwnershipFilter = filterType;
+            updateOwnershipTabs();
+            filterDrillsInSelector();
+        }
+
+        function filterByCategory(category) {
+            currentCategoryFilter = category;
+            updateCategoryTabs();
+            filterDrillsInSelector();
+        }
+
+        function updateOwnershipTabs() {
+            // Reset all ownership tabs
+            document.querySelectorAll('.ownership-tab').forEach(tab => {
+                tab.style.background = 'var(--glass-secondary)';
+                tab.style.color = 'var(--text-secondary)';
+            });
+
+            // Activate current tab
+            let activeTab;
+            switch(currentOwnershipFilter) {
+                case 'all':
+                    activeTab = document.getElementById('allDrillsTab');
+                    break;
+                case 'personal':
+                    activeTab = document.getElementById('myDrillsTab');
+                    break;
+                case 'public':
+                    activeTab = document.getElementById('publicDrillsTab');
+                    break;
+            }
+            
+            if (activeTab) {
+                activeTab.style.background = 'var(--accent-blue)';
+                activeTab.style.color = 'white';
+            }
+        }
+
+        function updateCategoryTabs() {
+            // Reset all category tabs
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.style.background = 'var(--glass-secondary)';
+                tab.style.color = 'var(--text-secondary)';
+                tab.classList.remove('active');
+            });
+
+            // Activate current tab
+            const activeTab = document.querySelector(`[data-category="${currentCategoryFilter}"]`);
+            if (activeTab) {
+                activeTab.style.background = 'var(--accent-orange)';
+                activeTab.style.color = 'white';
+                activeTab.classList.add('active');
+            }
+        }
+
+        function updateFilterTabs() {
+            updateOwnershipTabs();
+            updateCategoryTabs();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('drillSearchInput').value = '';
+            document.getElementById('difficultyFilter').value = '';
+            currentOwnershipFilter = 'all';
+            currentCategoryFilter = 'all';
+            updateFilterTabs();
+            filterDrillsInSelector();
+        }
+
+        function getFilteredDrills() {
+            let filteredDrills = drills;
+
+            // Apply ownership filter
+            if (currentOwnershipFilter === 'personal') {
+                filteredDrills = filteredDrills.filter(drill => drill.user_id == currentUser.id);
+            } else if (currentOwnershipFilter === 'public') {
+                filteredDrills = filteredDrills.filter(drill => drill.user_id != currentUser.id && (drill.is_public || drill.isPublic));
+            }
+
+            // Apply category filter
+            if (currentCategoryFilter === 'favorites') {
+                filteredDrills = filteredDrills.filter(drill => favoriteDrills.includes(drill.id));
+            } else if (currentCategoryFilter !== 'all') {
+                filteredDrills = filteredDrills.filter(drill => 
+                    drill.category && drill.category.toLowerCase() === currentCategoryFilter.toLowerCase()
+                );
+            }
+
+            // Apply difficulty filter
+            const difficultyFilter = document.getElementById('difficultyFilter').value;
+            if (difficultyFilter) {
+                filteredDrills = filteredDrills.filter(drill => 
+                    drill.difficulty && drill.difficulty.toString() === difficultyFilter
+                );
+            }
+
+            // Apply search filter
+            const searchTerm = document.getElementById('drillSearchInput').value.toLowerCase();
+            if (searchTerm) {
+                filteredDrills = filteredDrills.filter(drill => {
+                    const name = (drill.name || '').toLowerCase();
+                    const description = (drill.description || '').toLowerCase();
+                    const category = (drill.category || '').toLowerCase();
+                    const focus = Array.isArray(drill.focus) ? drill.focus.join(' ').toLowerCase() : '';
+                    const equipment = Array.isArray(drill.equipment) ? drill.equipment.join(' ').toLowerCase() : '';
+                    
+                    return name.includes(searchTerm) || 
+                           description.includes(searchTerm) || 
+                           category.includes(searchTerm) ||
+                           focus.includes(searchTerm) ||
+                           equipment.includes(searchTerm);
+                });
+            }
+
+            return filteredDrills;
+        }
+
+        function updateFilterSummary(filteredDrills) {
+            const summaryElement = document.getElementById('filterSummary');
+            const totalDrills = drills.length;
+            const filteredCount = filteredDrills.length;
+            
+            let summaryText = `Showing ${filteredCount} of ${totalDrills} drills`;
+            
+            // Add filter details
+            const activeFilters = [];
+            
+            if (currentOwnershipFilter === 'personal') {
+                activeFilters.push('👤 My Drills');
+            } else if (currentOwnershipFilter === 'public') {
+                activeFilters.push('🔗 Public Drills');
+            }
+            
+            if (currentCategoryFilter === 'favorites') {
+                activeFilters.push('⭐ Favorites');
+            } else if (currentCategoryFilter !== 'all') {
+                activeFilters.push(`📋 ${currentCategoryFilter}`);
+            }
+            
+            const difficultyFilter = document.getElementById('difficultyFilter').value;
+            if (difficultyFilter) {
+                const difficultyOption = document.querySelector(`#difficultyFilter option[value="${difficultyFilter}"]`);
+                activeFilters.push(difficultyOption ? difficultyOption.textContent : `⭐ Level ${difficultyFilter}`);
+            }
+            
+            const searchTerm = document.getElementById('drillSearchInput').value;
+            if (searchTerm) {
+                activeFilters.push(`🔍 "${searchTerm}"`);
+            }
+            
+            if (activeFilters.length > 0) {
+                summaryText += ` (Filters: ${activeFilters.join(', ')})`;
+            }
+            
+            summaryElement.textContent = summaryText;
         }
 
         function loadDrillsIntoSelector() {
             const drillGrid = document.getElementById('drillSelectorGrid');
+            const filteredDrills = getFilteredDrills();
             
-            drillGrid.innerHTML = drills.map(drill => {
+            updateFilterSummary(filteredDrills);
+            
+            if (filteredDrills.length === 0) {
+                drillGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: var(--spacing-xl); color: var(--text-secondary);">
+                        <div style="font-size: 2rem; margin-bottom: var(--spacing-md);">🔍</div>
+                        <div style="font-size: var(--font-size-lg); margin-bottom: var(--spacing-sm);">No drills found</div>
+                        <div style="font-size: var(--font-size-sm);">Try adjusting your filters or search terms</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            drillGrid.innerHTML = filteredDrills.map(drill => {
                 const isSelected = selectedDrillsForPhase[currentPhaseId]?.some(d => d.id === drill.id);
+                const isOwner = drill.user_id == currentUser.id;
+                const isPublic = drill.is_public || drill.isPublic;
+                const isFavorite = favoriteDrills.includes(drill.id);
+                
+                // Determine ownership indicator
+                let ownershipBadge = '';
+                if (isOwner) {
+                    ownershipBadge = '<span style="background: var(--accent-green); color: white; padding: 2px 6px; border-radius: var(--radius-sm); font-size: var(--font-size-xs);">👤 Mine</span>';
+                } else if (isPublic) {
+                    ownershipBadge = '<span style="background: var(--accent-blue); color: white; padding: 2px 6px; border-radius: var(--radius-sm); font-size: var(--font-size-xs);">🌍 Public</span>';
+                }
+                
                 return `
                     <div class="glass-card" 
                          data-drill-id="${drill.id}" 
                          onclick="toggleDrillSelection(${drill.id}, this)"
                          style="padding: var(--spacing-md); cursor: pointer; transition: all 0.3s ease; ${isSelected ? 'border-color: var(--accent-orange); box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);' : ''}">
-                        <h5 style="margin: 0 0 var(--spacing-sm) 0; color: var(--text-primary); font-size: var(--font-size-md);">${drill.name}</h5>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-sm);">
+                            <h5 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-md); flex: 1;">${drill.name}</h5>
+                            <div style="display: flex; gap: var(--spacing-xs); align-items: center;">
+                                <button onclick="event.stopPropagation(); toggleDrillFavorite(${drill.id}, this)" 
+                                        style="background: none; border: none; cursor: pointer; font-size: var(--font-size-md); padding: 2px; transition: all 0.2s ease;"
+                                        title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                                    ${isFavorite ? '⭐' : '☆'}
+                                </button>
+                                ${ownershipBadge}
+                            </div>
+                        </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
                             <span style="color: var(--accent-orange); font-size: var(--font-size-sm); font-weight: 500;">📋 ${drill.category}</span>
-                            <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">⭐ ${drill.difficulty}</span>
+                            <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">⭐ ${drill.difficulty}/5</span>
                         </div>
-                        <p style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin: 0; line-height: 1.4;">${drill.description || 'No description available'}</p>
+                        <p style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin: 0 0 var(--spacing-xs) 0; line-height: 1.4;">${drill.description || 'No description available'}</p>
+                        ${drill.focus && Array.isArray(drill.focus) && drill.focus.length > 0 ? 
+                            `<div style="margin-top: var(--spacing-xs);"><small style="color: var(--text-secondary); font-size: var(--font-size-xs);">🎯 ${drill.focus.join(', ')}</small></div>` : ''
+                        }
                     </div>
                 `;
             }).join('');
@@ -503,21 +798,33 @@
             }
         }
 
-        function filterDrillsInSelector() {
-            const searchTerm = document.getElementById('drillSearchInput').value.toLowerCase();
-            const drillItems = document.querySelectorAll('[data-drill-id]');
+        function toggleDrillFavorite(drillId, buttonElement) {
+            const index = favoriteDrills.indexOf(drillId);
             
-            drillItems.forEach(item => {
-                const title = item.querySelector('h5').textContent.toLowerCase();
-                const category = item.querySelector('.text-accent').textContent.toLowerCase();
-                const description = item.querySelector('.text-tertiary').textContent.toLowerCase();
-                
-                if (title.includes(searchTerm) || category.includes(searchTerm) || description.includes(searchTerm)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+            if (index > -1) {
+                // Remove from favorites
+                favoriteDrills.splice(index, 1);
+                buttonElement.textContent = '☆';
+                buttonElement.title = 'Add to favorites';
+            } else {
+                // Add to favorites
+                favoriteDrills.push(drillId);
+                buttonElement.textContent = '⭐';
+                buttonElement.title = 'Remove from favorites';
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('favoriteDrills', JSON.stringify(favoriteDrills));
+            
+            // If currently showing favorites, refresh the view
+            if (currentCategoryFilter === 'favorites') {
+                filterDrillsInSelector();
+            }
+        }
+
+        function filterDrillsInSelector() {
+            // Simply reload the drills with current filters
+            loadDrillsIntoSelector();
         }
 
         async function submitPracticeForm(event) {
@@ -1317,6 +1624,42 @@
             gap: var(--spacing-md);
             justify-content: flex-end;
             margin-top: var(--spacing-lg);
+        }
+
+        .filter-tab {
+            border: none;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .filter-tab:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-tab.active {
+            background: var(--accent-orange) !important;
+            color: white !important;
+        }
+
+        .ownership-tab {
+            border: none;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .ownership-tab:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .ownership-tab.active {
+            background: var(--accent-blue) !important;
+            color: white !important;
+        }
+
+        #filterSummary {
+            font-style: italic;
         }
     </style>
 </body>
