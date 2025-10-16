@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Settings - PracTrac</title>
+    <link rel="stylesheet" href="css/glass-style.css">
+</head>
+<body>
+    <nav class="nav-container">
+        <div class="nav-content">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html" class="active">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html" class="active">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <div class="nav-user">
+                <span id="userGreeting">Guest User</span>
+                <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="settings-container glass-card">
+            <div class="settings-header">
+                <h1 class="hero-title">⚙️ Settings</h1>
+                <p class="text-secondary">Manage your account and preferences</p>
+            </div>
+
+            <div class="settings-section glass-card">
+                <h3 class="section-title">Account Information</h3>
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail" class="glass-input" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="userUsername">Username</label>
+                    <input type="text" id="userUsername" class="glass-input" placeholder="Your username">
+                </div>
+                <div class="form-group">
+                    <label for="userName">Name</label>
+                    <input type="text" id="userName" class="glass-input" placeholder="Your name">
+                </div>
+                <button onclick="updateAccountInfo()" class="glass-button btn-primary">Update Account</button>
+            </div>
+
+            <div class="settings-section glass-card">
+                <h3 class="section-title">Change Password</h3>
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" class="glass-input" placeholder="Enter current password">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" class="glass-input" placeholder="Enter new password">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" class="glass-input" placeholder="Confirm new password">
+                </div>
+                <button onclick="changePassword()" class="glass-button btn-primary">Change Password</button>
+            </div>
+
+            <!-- <div class="settings-section glass-card">
+                <h3 class="section-title">Team Management</h3>
+                <div class="form-group">
+                    <label for="teamSelect">Current Team</label>
+                    <select id="teamSelect" class="glass-select">
+                        <option value="">Loading teams...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newTeamName">Create New Team</label>
+                    <input type="text" id="newTeamName" class="glass-input" placeholder="Enter team name">
+                </div>
+                <button onclick="createTeam()" class="glass-button btn-secondary">Create Team</button>
+            </div> -->
+
+            <div class="settings-section glass-card">
+                <!-- <h3 class="section-title">Danger Zone</h3>
+                <p class="text-tertiary mb-md">These actions cannot be undone.</p> -->
+                <button onclick="logout()" class="glass-button btn-danger">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Simple settings functionality
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Force logout by clearing storage and redirecting
+                localStorage.removeItem('user');
+                window.location.href = 'login.html';
+            }
+        }
+
+        async function updateAccountInfo() {
+            const username = document.getElementById('userUsername').value;
+            const name = document.getElementById('userName').value;
+            
+            if (!username.trim()) {
+                alert('Username cannot be empty');
+                return;
+            }
+            
+            try {
+                // In demo mode, just update localStorage and UI
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user) {
+                    user.username = username.trim();
+                    user.name = name.trim();
+                    localStorage.setItem('user', JSON.stringify(user));
+                    
+                    // Update the greeting in the navigation
+                    const userGreetings = document.querySelectorAll('#userGreeting');
+                    userGreetings.forEach(greeting => {
+                        if (greeting) {
+                            greeting.textContent = `Hello, ${user.username}`;
+                        }
+                    });
+                    
+                    alert('Account updated successfully!');
+                } else {
+                    alert('Please log in to update account information');
+                }
+            } catch (error) {
+                console.error('Update error:', error);
+                alert('Error updating account information');
+            }
+        }
+
+        async function changePassword() {
+            // Simple demo function
+            alert('Password change functionality - Demo mode');
+        }
+
+        // Load user info on page load
+        window.addEventListener('load', () => {
+            // Initialize mobile menu
+            if (typeof initializeMobileMenu === 'function') {
+                initializeMobileMenu();
+            } else {
+                console.error('initializeMobileMenu function not found');
+            }
+            
+            // Load current user information
+            loadUserInfo();
+        });
+        
+        function loadUserInfo() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user && user.username) {
+                    // Populate the form fields with current user data
+                    const emailField = document.getElementById('userEmail');
+                    const usernameField = document.getElementById('userUsername');
+                    const nameField = document.getElementById('userName');
+                    
+                    if (emailField) emailField.value = user.email || '';
+                    if (usernameField) usernameField.value = user.username || '';
+                    if (nameField) nameField.value = user.name || '';
+                } else {
+                    // No user logged in, maybe redirect to login
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        // Initialize PracTrac demo
+        window.pracTracDemo = new PracTracDemo();
+    </script>
+</body>
+</html>

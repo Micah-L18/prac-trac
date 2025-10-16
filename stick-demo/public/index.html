@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .container{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 80px); /* Account for nav height */
+             padding: 2rem;
+        }
+        
+        .hero-section {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-content">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html" class="active">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html" class="active">Dashboard</a></li>
+                    <li><a href="practice.html">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <div class="nav-user">
+                <span id="userGreeting">Guest User</span>
+                <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
+        </div>
+    </nav>
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Guest User Hero Section -->
+        <section id="guestHero" class="hero-section fade-in-up" style="display: none;">
+            <h1 class="hero-title">Welcome to PracTrac</h1>
+            <p class="hero-subtitle">
+                Elite volleyball practice management for coaches. Plan practices, manage drills, 
+                track attendance and organize your team with our modern interface.
+            </p>
+            <div class="flex-center gap-md">
+                <a href="login.html" class="glass-button primary">Login to Get Started</a>
+                <a href="register.html" class="glass-button">Create Account</a>
+            </div>
+            <div style="margin-top: 2rem; text-align: center;">
+                <p style="color: var(--text-tertiary); font-size: var(--font-size-sm);">
+                    Please log in to access practice planning, roster management, and drill library.
+                </p>
+            </div>
+        </section>
+
+        <!-- Authenticated User Hero Section -->
+        <section id="authenticatedHero" class="hero-section fade-in-up" style="display: none;">
+            <h1 class="hero-title">Elite Volleyball Practice Management</h1>
+            <p class="hero-subtitle">
+                Modern glass-style interface powered by a custom database for volleyball coaches. 
+                Plan and manage your practices in real time, create and use custom drills, track attendance and manage your roster.
+            </p>
+            <div class="flex-center gap-md">
+                <a href="practice.html" class="glass-button primary">Start Planning Practice</a>
+                <a href="roster.html" class="glass-button">Manage Roster</a>
+            </div>
+        </section>
+     
+    </main>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Initialize PracTrac demo
+        window.pracTracDemo = new PracTracDemo();
+        
+        // Add custom method to update dashboard based on auth status
+        window.pracTracDemo.updateDashboardContent = function() {
+            const guestHero = document.getElementById('guestHero');
+            const authenticatedHero = document.getElementById('authenticatedHero');
+            
+            if (this.currentUser) {
+                // User is logged in
+                guestHero.style.display = 'none';
+                authenticatedHero.style.display = 'block';
+            } else {
+                // User is not logged in
+                guestHero.style.display = 'block';
+                authenticatedHero.style.display = 'none';
+            }
+        };
+        
+        // Override the auth status update methods to also update dashboard
+        const originalUpdateLoggedIn = window.pracTracDemo.updateUIForLoggedInUser.bind(window.pracTracDemo);
+        const originalUpdateLoggedOut = window.pracTracDemo.updateUIForLoggedOutUser.bind(window.pracTracDemo);
+        
+        window.pracTracDemo.updateUIForLoggedInUser = function() {
+            originalUpdateLoggedIn();
+            this.updateDashboardContent();
+        };
+        
+        window.pracTracDemo.updateUIForLoggedOutUser = function() {
+            originalUpdateLoggedOut();
+            this.updateDashboardContent();
+        };
+
+        // Initialize mobile menu
+        if (typeof initializeMobileMenu === 'function') {
+            initializeMobileMenu();
+        }
+    </script>
+</body>
+</html>

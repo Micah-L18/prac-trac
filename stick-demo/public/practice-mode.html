@@ -1,0 +1,4427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <title>Practice Mode - PracTrac</title>
+    <link rel="stylesheet" href="/css/glass-style.css">
+    <style>
+        /* Fullscreen practice mode - no navigation */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000000;
+            min-height: 100vh;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* iOS Safari specific */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .practice-mode-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            overflow: hidden;
+            /* Safari iPad fullscreen fixes */
+            -webkit-app-region: no-drag;
+            /* Prevent iOS Safari bounce */
+            overscroll-behavior: contain;
+            /* Disable pull-to-refresh */
+            touch-action: pan-x pan-y;
+        }
+
+        /* iPad Safari fullscreen specific styles */
+        @supports (-webkit-touch-callout: none) {
+            .practice-mode-container:fullscreen {
+                padding-top: env(safe-area-inset-top, 0);
+                padding-bottom: env(safe-area-inset-bottom, 0);
+                padding-left: env(safe-area-inset-left, 0);
+                padding-right: env(safe-area-inset-right, 0);
+            }
+            
+            /* Hide Safari's default fullscreen controls */
+            .practice-mode-container:fullscreen::backdrop {
+                background: #000000;
+            }
+            
+            /* Disable iPad swipe gestures in fullscreen */
+            .practice-mode-container:fullscreen {
+                -webkit-user-select: none;
+                user-select: none;
+                -webkit-touch-callout: none;
+                pointer-events: auto;
+                touch-action: none !important;
+            }
+            
+            /* Hide iPad's fullscreen exit button */
+            .practice-mode-container:fullscreen::-webkit-media-controls-fullscreen-button {
+                display: none !important;
+            }
+            
+            .practice-mode-container:fullscreen video::-webkit-media-controls-fullscreen-button {
+                display: none !important;
+            }
+            
+            /* Position fullscreen button away from Safari's X button */
+            .fullscreen-toggle {
+                position: absolute;
+                top: calc(env(safe-area-inset-top, 0) + 20px);
+                left: calc(env(safe-area-inset-left, 0) + 20px);
+                z-index: 999;
+                background: rgba(0, 0, 0, 0.8);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+        }
+
+        /* Top phase navigation */
+        .phase-navigation-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 100;
+        }
+
+        .phase-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            justify-self: start;
+        }
+
+        .phase-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            justify-self: center;
+        }
+
+        .phase-timer {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--accent-orange);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .timer-section {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            justify-self: end;
+        }
+
+        .overall-timer {
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .phase-timer {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--accent-orange);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .nav-btn {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            color: var(--text-primary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .nav-btn:hover {
+            background: var(--glass-secondary);
+            border-color: var(--accent-orange);
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .nav-btn:disabled:hover {
+            transform: none;
+            border-color: var(--glass-border);
+        }
+
+        .phase-indicator {
+            background: var(--glass-primary);
+            border: 1px solid var(--accent-orange);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            color: var(--accent-orange);
+            font-weight: 600;
+            font-size: var(--font-size-lg);
+        }
+
+        /* Remove old timer header positioning */
+        .practice-timer-header {
+            display: none;
+        }
+
+        .timer-display-main {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--accent-orange);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .timer-btn {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: var(--font-size-lg);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-btn:hover {
+            background: var(--glass-secondary);
+            transform: translateY(-1px);
+        }
+
+        .timer-btn.danger {
+            border-color: rgba(220, 38, 127, 0.3);
+            color: var(--accent-pink);
+        }
+
+        .timer-btn.danger:hover {
+            background: rgba(220, 38, 127, 0.1);
+        }
+
+        /* Main practice content */
+        .practice-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--spacing-xl);
+            padding-top: calc(var(--spacing-xl) + 80px); /* Account for top nav bar */
+            height: calc(100vh - 80px); /* Account for top navigation only */
+            overflow-y: auto;
+        }
+
+        /* Phase header */
+        .phase-header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .phase-title {
+            font-size: var(--font-size-4xl);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .phase-description {
+            font-size: var(--font-size-xl);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* Phase content area */
+        .phase-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-xl);
+            max-width: none;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            min-height: 0; /* Allow grid items to shrink */
+        }
+
+        /* Drills section */
+        .drills-section {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Allow content to shrink */
+            overflow: hidden;
+        }
+
+        .drills-list-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .drill-item {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .drill-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .drill-meta {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .drill-category {
+            color: var(--accent-orange);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        .drill-difficulty {
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+        }
+
+        .drill-description {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.4;
+        }
+
+        .drill-duration {
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .drill-video-btn {
+            background: var(--glass-tertiary);
+            border: 1px solid var(--accent-orange);
+            border-radius: var(--radius-sm);
+            color: var(--accent-orange);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .drill-video-btn:hover {
+            background: rgba(255, 107, 53, 0.1);
+        }
+
+        /* Notes section */
+        .notes-section {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Allow content to shrink */
+        }
+
+        .notes-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notes-textarea {
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            padding: var(--spacing-md);
+            width: 100%;
+            flex: 1;
+            min-height: 150px;
+            resize: none;
+            font-family: inherit;
+            font-size: var(--font-size-base);
+            /* Mobile keyboard improvements */
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+            touch-action: manipulation;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+
+        /* Mobile keyboard overlay for dismissing */
+        .keyboard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 999;
+            display: none;
+            pointer-events: none;
+        }
+
+        .keyboard-overlay.active {
+            display: block;
+            pointer-events: auto;
+        }
+
+        /* Enhanced input support for screens < 1000px and fullscreen mode */
+        @media (max-width: 999px) {
+            .notes-textarea, .form-input, input, textarea, select {
+                /* Ensure inputs work properly on narrow screens */
+                -webkit-user-select: text !important;
+                user-select: text !important;
+                -webkit-touch-callout: default !important;
+                pointer-events: auto !important;
+                touch-action: manipulation !important;
+            }
+            
+            /* Show keyboard overlay hint */
+            .keyboard-overlay.active::before {
+                content: 'Tap outside to close keyboard';
+                position: absolute;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                z-index: 1000;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+        }
+
+        /* Fullscreen input support */
+        body.custom-fullscreen .notes-textarea,
+        body.custom-fullscreen .form-input,
+        body.custom-fullscreen input,
+        body.custom-fullscreen textarea,
+        body.custom-fullscreen select,
+        :fullscreen .notes-textarea,
+        :fullscreen .form-input,
+        :fullscreen input,
+        :fullscreen textarea,
+        :fullscreen select {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+            -webkit-touch-callout: default !important;
+            pointer-events: auto !important;
+            touch-action: manipulation !important;
+        }
+
+        /* Notes Tabs */
+        .notes-tabs {
+            display: flex;
+            margin-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .notes-tab {
+            background: transparent;
+            border: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        .notes-tab:hover {
+            color: var(--text-primary);
+            background: var(--glass-tertiary);
+        }
+
+        .notes-tab.active {
+            color: var(--accent-orange);
+            border-bottom-color: var(--accent-orange);
+            background: var(--glass-tertiary);
+        }
+
+        .notes-tab-content {
+            display: none;
+        }
+
+        .notes-tab-content.active {
+            display: block;
+        }
+
+        .player-notes-header {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .glass-select {
+            width: 100%;
+            background: var(--glass-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+        }
+
+        .glass-select:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+        }
+
+        .player-notes-info {
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--glass-tertiary);
+            border-left: 4px solid var(--accent-orange);
+        }
+
+        /* Drill Details Modal */
+        #drillDetailsModal {
+            z-index: 1300;
+        }
+
+        .drill-details-content {
+            color: var(--text-primary);
+        }
+
+        .info-item {
+            padding: var(--spacing-sm);
+            background: var(--glass-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        .info-item label {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .clickable-drill:hover {
+            background: rgba(255, 107, 53, 0.1);
+            padding: var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+
+        /* Enhanced drill item styling */
+        .drill-item {
+            transition: transform 0.2s ease;
+        }
+
+        .drill-item:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Video Clip Modal */
+        .clip-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .clip-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .clip-modal-content {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .clip-close-btn {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            background: rgba(220, 38, 127, 0.2);
+            border: 1px solid var(--accent-pink);
+            border-radius: var(--radius-md);
+            color: var(--accent-pink);
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            font-size: var(--font-size-lg);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .clip-close-btn:hover {
+            background: rgba(220, 38, 127, 0.3);
+            transform: scale(1.1);
+        }
+
+        .clip-video-placeholder {
+            width: 80vw;
+            max-width: 800px;
+            height: 60vh;
+            max-height: 450px;
+            background: linear-gradient(135deg, var(--glass-secondary) 0%, rgba(255, 107, 53, 0.1) 100%);
+            border: 2px dashed var(--accent-orange);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .clip-title {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            color: var(--accent-orange);
+            margin-bottom: var(--spacing-md);
+            text-align: center;
+        }
+
+        .clip-description {
+            font-size: var(--font-size-lg);
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+            max-width: 600px;
+        }
+
+        .clip-controls {
+            display: flex;
+            gap: var(--spacing-md);
+            align-items: center;
+        }
+
+        .clip-play-btn {
+            background: linear-gradient(135deg, var(--accent-orange), #ff7a4d);
+            border: none;
+            border-radius: var(--radius-lg);
+            color: white;
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .clip-play-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+        }
+
+        /* Responsive design for different screen sizes */
+        @media (max-width: 1200px) {
+            .phase-content {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-lg);
+            }
+            
+            .practice-content {
+                padding: var(--spacing-md);
+                padding-top: calc(var(--spacing-md) + 80px);
+            }
+        }
+
+        /* iPhone and small mobile devices */
+        @media (max-width: 999px) {
+            .phase-navigation-top {
+                display: flex;
+                flex-direction: column;
+                gap: var(--spacing-sm);
+                padding: var(--spacing-xs);
+                min-height: 140px;
+            }
+            
+            .phase-info {
+                gap: var(--spacing-xs);
+                order: 1;
+                justify-self: center;
+                font-size: var(--font-size-sm);
+            }
+            
+            .phase-controls {
+                gap: var(--spacing-sm);
+                order: 2;
+                justify-self: center;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .timer-section {
+                align-items: center;
+                gap: var(--spacing-sm);
+                order: 3;
+                justify-self: center;
+            }
+            
+            .overall-timer {
+                font-size: var(--font-size-xs);
+            }
+            
+            .phase-timer {
+                font-size: var(--font-size-md);
+                padding: var(--spacing-xs) var(--spacing-sm);
+                min-width: 80px;
+            }
+            
+            .nav-btn {
+                padding: var(--spacing-xs) var(--spacing-sm);
+                font-size: var(--font-size-xs);
+                min-width: 60px;
+            }
+            
+            .phase-indicator {
+                font-size: var(--font-size-xs);
+                padding: 2px var(--spacing-xs);
+            }
+            
+            .timer-btn {
+                width: 28px;
+                height: 28px;
+                font-size: var(--font-size-sm);
+            }
+            
+            .practice-content {
+                padding: var(--spacing-sm);
+                padding-top: 150px; /* More space for stacked nav */
+            }
+
+            .clip-modal-content {
+                padding: var(--spacing-md);
+                margin: var(--spacing-sm);
+                max-height: 85vh;
+                overflow-y: auto;
+            }
+            
+            .clip-video-placeholder {
+                width: 90vw;
+                height: 40vh;
+            }
+            
+            /* Mobile notes improvements */
+            .notes-section {
+                min-height: 200px;
+            }
+            
+            .notes-textarea {
+                min-height: 120px;
+                font-size: 16px; /* Prevent zoom on iOS */
+                -webkit-appearance: none;
+                appearance: none;
+                border-radius: 8px;
+            }
+            
+            /* Improve touch targets */
+            .notes-tab {
+                padding: var(--spacing-sm) var(--spacing-md);
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+            }
+        }
+
+        /* iPad and tablet specific */
+        @media (min-width: 1000px) and (max-width: 1024px) {
+            .phase-navigation-top {
+                padding: var(--spacing-sm);
+            }
+            
+            .practice-content {
+                padding: var(--spacing-md);
+                padding-top: calc(var(--spacing-md) + 100px);
+            }
+            
+            .notes-textarea {
+                font-size: 16px; /* Prevent zoom on iPad */
+            }
+            
+            /* Better touch targets for iPad */
+            .timer-btn {
+                width: 36px;
+                height: 36px;
+            }
+            
+            .nav-btn {
+                padding: var(--spacing-sm) var(--spacing-md);
+                min-height: 44px;
+            }
+        }
+
+        /* Fullscreen utilities */
+        @media (orientation: landscape) {
+            .phase-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (orientation: portrait) {
+            .phase-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Historical Notes Styles */
+        .historical-notes {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            background: rgba(255, 255, 255, 0.02);
+            padding: var(--spacing-md);
+        }
+
+        .historical-notes-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: var(--border-radius);
+        }
+
+        .historical-note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .historical-note-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .historical-note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .historical-note-type {
+            background: var(--accent-orange);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .historical-note-text {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .note-type-selector {
+            display: flex;
+            gap: var(--spacing-md);
+        }
+
+        .note-type-selector label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .note-type-selector input[type="radio"] {
+            accent-color: var(--accent-orange);
+        }
+
+        .current-session-notes-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .current-note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .current-note-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .current-note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .current-note-text {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .empty-notes-message {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: var(--spacing-md);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Attendance Check Modal -->
+    <div id="attendanceModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="text-align: center;">
+                <h2 style="margin: 0; color: var(--accent-orange); font-size: var(--font-size-2xl);">📋 Attendance Check</h2>
+                <p style="margin: var(--spacing-sm) 0 0 0; color: var(--text-secondary);">Review attendance before starting practice. All players are marked present by default.</p>
+            </div>
+            
+            <div class="attendance-list" style="max-height: 400px; overflow-y: auto; margin-bottom: var(--spacing-lg);">
+                <div id="attendanceGrid" class="grid grid-2" style="gap: var(--spacing-sm);">
+                    <!-- Players will be loaded here -->
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="glass-button" onclick="goBackToPractices()" style="padding: var(--spacing-md) var(--spacing-lg);">
+                    ← Back to Practices
+                </button>
+                <button type="button" class="glass-button primary" onclick="startPracticeWithAttendance()" style="padding: var(--spacing-md) var(--spacing-lg);">
+                    🏐 Start Practice
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Practice Mode Container -->
+    <div class="practice-mode-container" style="display: none;" id="practiceContainer">
+        <!-- Top phase navigation with timer -->
+        <div class="phase-navigation-top">
+            <div class="phase-info">
+                <div class="phase-indicator" id="phaseIndicator">
+                    Phase 1: Warm-up
+                </div>
+                <div class="phase-timer" id="phaseTimer">
+                    15:00
+                </div>
+            </div>
+            
+            <div class="phase-controls">
+                <button class="nav-btn" id="prevBtn" onclick="previousPhase()">
+                    ← Prev
+                </button>
+                <button class="timer-btn" id="pauseBtn" onclick="togglePause()" title="Pause/Resume">
+                    ⏸️
+                </button>
+                <button class="nav-btn" onclick="showAttendanceManager()" title="Manage Attendance">
+                    👥 Attendance
+                </button>
+                <button class="nav-btn" onclick="showScoreboard()" title="Quick Scoreboard">
+                    🏆 Score
+                </button>
+                <button class="nav-btn" onclick="startWaterBreak()" title="Water Break">
+                    💧 Break
+                </button>
+                <button class="nav-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+                    ⛶ Full
+                </button>
+                <button class="nav-btn" id="nextBtn" onclick="nextPhase()">
+                    Next →
+                </button>
+            </div>
+            
+            <div class="timer-section">
+                <div class="overall-timer" id="overallTimer">
+                    Total: 1:45:00
+                </div>
+                <div class="timer-controls">
+                    <button class="timer-btn danger" onclick="endPractice()" title="End Practice">
+                        ⏹️
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main practice content -->
+        <div class="practice-content">
+            <!-- Phase header -->
+            <div class="phase-header">
+                <h1 class="phase-title" id="phaseTitle">Warm-up</h1>
+                <p class="phase-description" id="phaseDescription">
+                    Dynamic stretching and light cardio to prepare for practice
+                </p>
+            </div>
+
+            <!-- Phase content -->
+            <div class="phase-content">
+                <!-- Drills section -->
+                <div class="drills-section">
+                    <h2 class="section-title">
+                        🏐 Phase Drills
+                    </h2>
+                    <div class="drills-list-container">
+                        <div id="drillsList">
+                            <!-- Drills will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes section -->
+                <div class="notes-section">
+                    <div class="notes-tabs">
+                        <button class="notes-tab active" onclick="switchNotesTab('general')">
+                            📝 Practice Notes
+                        </button>
+                        <button class="notes-tab" onclick="switchNotesTab('player')">
+                            👤 Player Notes
+                        </button>
+                    </div>
+                    
+                    <!-- General practice notes tab -->
+                    <div id="generalNotesTab" class="notes-tab-content active">
+                        <div class="notes-content">
+                            <textarea class="notes-textarea" id="coachNotes" placeholder="Add notes about this phase... player performance, adjustments needed, etc."></textarea>
+                            <div style="margin-top: var(--spacing-md);">
+                                <button class="glass-button" onclick="saveNotes()">💾 Save Practice Notes</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Player notes tab -->
+                    <div id="playerNotesTab" class="notes-tab-content">
+                        <div class="player-notes-header">
+                            <select id="playerSelect" class="glass-select" onchange="onPlayerSelect()">
+                                <option value="">Select a player...</option>
+                            </select>
+                        </div>
+                        <div id="playerNotesContent" class="notes-content" style="display: none;">
+                            <div class="player-notes-info">
+                                <span id="selectedPlayerName" style="color: var(--accent-orange); font-weight: 600;"></span>
+                                <span style="color: var(--text-secondary); margin-left: 8px;" id="selectedPlayerPosition"></span>
+                            </div>
+                            
+                            <!-- Historical Notes Section -->
+                            <div id="historicalNotesSection" class="historical-notes" style="margin-bottom: var(--spacing-md);">
+                                <h4 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-sm);">📋 Past Practice Notes</h4>
+                                <div id="historicalNotesList" class="historical-notes-list">
+                                    <!-- Historical notes will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Current Session Notes -->
+                            <div class="current-session-notes">
+                                <h4 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: var(--spacing-sm);">✍️ Add New Note for This Practice</h4>
+                                <div class="note-type-selector" style="margin-bottom: var(--spacing-sm);">
+                                    <label style="color: var(--text-secondary); font-size: 0.85rem; margin-right: var(--spacing-md);">
+                                        <input type="radio" name="noteType" value="practice" checked style="margin-right: 4px;"> 📝 Practice Note
+                                    </label>
+                                    <label style="color: var(--text-secondary); font-size: 0.85rem;">
+                                        <input type="radio" name="noteType" value="player" style="margin-right: 4px;"> 👤 Player-Specific Note
+                                    </label>
+                                </div>
+                                <textarea class="notes-textarea" id="playerNotesTextarea" placeholder="Add specific notes about this player's performance during practice..."></textarea>
+                                <div style="margin-top: var(--spacing-md);">
+                                    <button class="glass-button" onclick="savePlayerNotes()">💾 Add Note</button>
+                                </div>
+                                
+                                <!-- Current Session Notes List -->
+                                <div id="currentSessionNotes" class="current-session-notes-list" style="margin-top: var(--spacing-md);">
+                                    <!-- Current session notes will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Clip Modal -->
+        <div class="clip-modal" id="clipModal">
+            <div class="clip-modal-content">
+                <button class="clip-close-btn" onclick="closeClipModal()">✕</button>
+                
+                <h2 class="clip-title" id="clipTitle">Drill Demonstration Clip</h2>
+                <p class="clip-description" id="clipDescription">
+                    Professional technique demonstration or match footage to show proper execution
+                </p>
+                
+                <div class="clip-video-placeholder" id="clipVideoArea">
+                    <div style="font-size: var(--font-size-4xl); margin-bottom: var(--spacing-md);">🎥</div>
+                    <div style="font-size: var(--font-size-xl); font-weight: 600; margin-bottom: var(--spacing-sm);">Video Clip Player</div>
+                    <div>Demonstration clip would play here</div>
+                </div>
+                
+                <div class="clip-controls">
+                    <button class="clip-play-btn" onclick="playClip()">
+                        ▶️ Play Clip
+                    </button>
+                    <button class="glass-button" onclick="markClipComplete()">
+                        ✅ Mark Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Management Modal -->
+        <div id="attendanceManagerModal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header" style="text-align: center;">
+                    <h2 style="margin: 0; color: var(--accent-orange); font-size: var(--font-size-xl);">👥 Manage Attendance</h2>
+                    <p style="margin: var(--spacing-sm) 0 0 0; color: var(--text-secondary);">Update attendance during practice</p>
+                </div>
+                
+                <div class="attendance-manager-list" style="max-height: 400px; overflow-y: auto; margin-bottom: var(--spacing-lg);">
+                    <div id="attendanceManagerGrid">
+                        <!-- Current attendance will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="glass-button" onclick="closeAttendanceManager()">
+                        Cancel
+                    </button>
+                    <button type="button" class="glass-button primary" onclick="saveAttendanceChanges()">
+                        💾 Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drill Details Modal -->
+        <div id="drillDetailsModal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2 id="drillModalTitle" style="color: var(--accent-orange); margin: 0;">🏐 Drill Details</h2>
+                    <button class="modal-close" onclick="closeDrillDetailsModal()">✕</button>
+                </div>
+                
+                <div class="drill-details-content">
+                    <div class="drill-info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-lg);">
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Category</label>
+                            <div id="drillModalCategory" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Difficulty</label>
+                            <div id="drillModalDifficulty" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Duration</label>
+                            <div id="drillModalDuration" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                        <div class="info-item">
+                            <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600;">Players</label>
+                            <div id="drillModalPlayers" style="color: var(--text-primary); font-size: var(--font-size-base);">--</div>
+                        </div>
+                    </div>
+                    
+                    <div class="drill-description-section" style="margin-bottom: var(--spacing-lg);">
+                        <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; display: block; margin-bottom: var(--spacing-sm);">Description</label>
+                        <div id="drillModalDescription" style="color: var(--text-primary); line-height: 1.6; background: var(--glass-tertiary); padding: var(--spacing-md); border-left: 4px solid var(--accent-orange);">
+                            --
+                        </div>
+                    </div>
+                    
+                    <div class="drill-equipment-section" style="margin-bottom: var(--spacing-lg);">
+                        <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; display: block; margin-bottom: var(--spacing-sm);">Equipment Needed</label>
+                        <div id="drillModalEquipment" style="color: var(--text-primary);">
+                            --
+                        </div>
+                    </div>
+                    
+                    <div class="drill-focus-section">
+                        <label style="color: var(--text-secondary); font-size: var(--font-size-sm); font-weight: 600; display: block; margin-bottom: var(--spacing-sm);">Focus Areas</label>
+                        <div id="drillModalFocus" style="color: var(--text-primary);">
+                            --
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: flex-end; margin-top: var(--spacing-lg);">
+                    <button onclick="closeDrillDetailsModal()" class="glass-button secondary">
+                        Close
+                    </button>
+                    <button id="drillVideoBtn" onclick="playDrillFromModal()" class="glass-button primary" style="display: none;">
+                        🎥 Play Demo Video
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard dismissal overlay for mobile -->
+    <div class="keyboard-overlay" id="keyboardOverlay"></div>
+
+    <script>
+        // Practice mode state
+        let practiceState = {
+            currentPhase: 0,
+            isPaused: false,
+            phaseTimeRemaining: 0,
+            overallTimeElapsed: 0,
+            phases: [],
+            practiceId: null,
+            practiceName: "Loading...",
+            practiceObjective: "",
+            sessionId: null
+        };
+
+        let timerInterval;
+        let players = [];
+        let attendanceData = [];
+
+        // Initialize attendance check
+        async function initializeAttendance() {
+            // Get practice ID and session ID from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const practiceId = urlParams.get('practice');
+            const sessionId = urlParams.get('session');
+            const isResume = urlParams.get('resume') === 'true';
+            
+            if (!practiceId) {
+                glassModal.error('No practice plan specified!', 'Practice Not Found');
+                setTimeout(() => {
+                    window.location.href = '/practice.html';
+                }, 2000);
+                return;
+            }
+            
+            practiceState.practiceId = practiceId;
+            
+            // If resuming a session, set the session ID
+            if (isResume && sessionId) {
+                practiceState.sessionId = parseInt(sessionId);
+            }
+            
+            try {
+                // Load practice and players data
+                const [practiceResponse, playersResponse] = await Promise.all([
+                    fetch(`/api/practices/${practiceId}`),
+                    fetch('/api/players')
+                ]);
+                
+                if (!practiceResponse.ok) {
+                    throw new Error('Practice not found');
+                }
+                
+                const practice = await practiceResponse.json();
+                players = await playersResponse.json();
+                
+                // Update practice state
+                practiceState.practiceName = practice.name;
+                practiceState.practiceObjective = practice.objective;
+                practiceState.players = players; // Add players to practice state
+                practiceState.phases = practice.phases.map(phase => ({
+                    name: phase.name,
+                    description: phase.objective || 'Phase objective',
+                    duration: phase.duration,
+                    drills: phase.drills.map(drill => ({
+                        id: drill.id,
+                        name: drill.name,
+                        category: drill.category,
+                        difficulty: drill.difficulty,
+                        description: drill.description,
+                        equipment: drill.equipment,
+                        focus: drill.focus,
+                        minPlayers: drill.minPlayers,
+                        maxPlayers: drill.maxPlayers,
+                        duration: drill.duration,
+                        hasVideo: false // You can enhance this later
+                    }))
+                }));
+                
+                // Initialize attendance with all players present
+                attendanceData = players.map(player => ({
+                    player_id: player.id,
+                    attended: true,
+                    late_minutes: 0,
+                    notes: ''
+                }));
+                
+                // If resuming a session, restore session data
+                if (isResume && sessionId) {
+                    await restoreSessionData(sessionId);
+                } else {
+                    // Show attendance modal for new sessions
+                    displayAttendanceCheck();
+                }
+                
+            } catch (error) {
+                console.error('Error loading practice data:', error);
+                glassModal.error('Error loading practice. Please try again.', 'Loading Failed');
+                setTimeout(() => {
+                    window.location.href = '/practice.html';
+                }, 2000);
+            }
+        }
+
+        // Restore session data when resuming
+        async function restoreSessionData(sessionId) {
+            try {
+                const response = await fetch(`/api/practice-sessions/${sessionId}`);
+                if (!response.ok) {
+                    throw new Error('Session not found');
+                }
+                
+                const session = await response.json();
+                
+                // Restore notes if they exist
+                if (session.notes) {
+                    const notesTextarea = document.getElementById('coachNotes');
+                    if (notesTextarea) {
+                        notesTextarea.value = session.notes;
+                    }
+                }
+                
+                // Restore timer state if it exists
+                if (session.timer_state) {
+                    try {
+                        const timerState = typeof session.timer_state === 'string' 
+                            ? JSON.parse(session.timer_state) 
+                            : session.timer_state;
+                        
+                        if (timerState.currentPhase !== undefined) {
+                            practiceState.currentPhase = timerState.currentPhase;
+                        }
+                        if (timerState.phaseTimeRemaining !== undefined) {
+                            practiceState.phaseTimeRemaining = timerState.phaseTimeRemaining;
+                        }
+                        if (timerState.totalTimeElapsed !== undefined) {
+                            practiceState.overallTimeElapsed = timerState.totalTimeElapsed;
+                        }
+                        if (timerState.pausedAt) {
+                            practiceState.isPaused = true;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing timer state:', e);
+                    }
+                }
+                
+                // Restore attendance data
+                if (session.attendance) {
+                    attendanceData = session.attendance.map(attendance => ({
+                        player_id: attendance.player_id,
+                        attended: attendance.attended,
+                        late_minutes: attendance.late_minutes || 0,
+                        notes: attendance.notes || ''
+                    }));
+                }
+                
+                // Skip attendance modal and go straight to practice
+                startPracticeWithAttendance();
+                
+            } catch (error) {
+                console.error('Error restoring session data:', error);
+                glassModal.error('Error restoring session. Starting fresh.', 'Restore Failed');
+                // Fall back to normal attendance check
+                displayAttendanceCheck();
+            }
+        }
+
+        function displayAttendanceCheck() {
+            const attendanceGrid = document.getElementById('attendanceGrid');
+            
+            attendanceGrid.innerHTML = players.map(player => `
+                <div class="glass-card" style="padding: var(--spacing-md); display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                        <div style="font-size: var(--font-size-lg); font-weight: 600;">#${player.jerseyNumber}</div>
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${player.firstName} ${player.lastName}</div>
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">${player.position}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; color: var(--text-primary);">
+                            <input type="checkbox" id="player-${player.id}" checked onchange="togglePlayerAttendance(${player.id}, this.checked)" style="width: 18px; height: 18px;">
+                            Present
+                        </label>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Show the attendance modal
+            document.getElementById('attendanceModal').style.display = 'flex';
+        }
+
+        function togglePlayerAttendance(playerId, attended) {
+            const attendanceRecord = attendanceData.find(record => record.player_id === playerId);
+            if (attendanceRecord) {
+                attendanceRecord.attended = attended;
+            }
+        }
+
+        function goBackToPractices() {
+            window.location.href = '/practice.html';
+        }
+
+        async function startPracticeWithAttendance() {
+            try {
+                // Only create a new session if we're not resuming an existing one
+                if (!practiceState.sessionId) {
+                    // Start practice session with attendance
+                    const response = await fetch('/api/practice-sessions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            practice_id: practiceState.practiceId,
+                            attendance: attendanceData
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to start practice session');
+                    }
+
+                    const session = await response.json();
+                    practiceState.sessionId = session.id;
+                } else {
+                    // Resuming existing session
+                }
+
+                // Hide attendance modal and show practice
+                document.getElementById('attendanceModal').style.display = 'none';
+                document.getElementById('practiceContainer').style.display = 'flex';
+
+                // Initialize practice timers and display
+                initializePracticeMode();
+
+            } catch (error) {
+                console.error('Error starting practice:', error);
+                glassModal.error('Error starting practice session. Please try again.', 'Practice Start Failed');
+            }
+        }
+
+        // Initialize practice mode (after attendance)
+        function initializePracticeMode() {
+            try {
+                // Handle practices with or without phases
+                
+                // Set initial phase time if phases exist
+                if (practiceState.phases && practiceState.phases.length > 0) {
+                    practiceState.phaseTimeRemaining = (practiceState.phases[0].duration || 0) * 60;
+                } else {
+                    // For practices without phases, set a default duration
+                    practiceState.phaseTimeRemaining = practiceState.estimatedDuration * 60 || 3600; // Default 1 hour
+                }
+                
+                // Update display
+                updatePracticeTitle();
+                updatePhaseDisplay();
+                updateOverallTimerDisplay();
+                startTimer();
+                updateNavigationButtons();
+                
+            } catch (error) {
+                console.error('Error initializing practice mode:', error);
+                glassModal.error('Error initializing practice. Please try again.', 'Initialization Failed');
+            }
+        }
+        
+        function updatePracticeTitle() {
+            // Update any practice title elements if they exist
+            const titleElements = document.querySelectorAll('.practice-title');
+            titleElements.forEach(el => {
+                el.textContent = practiceState.practiceName;
+            });
+        }
+
+        // Timer functions
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                if (!practiceState.isPaused) {
+                    // Update phase timer (countdown)
+                    if (practiceState.phaseTimeRemaining > 0) {
+                        practiceState.phaseTimeRemaining--;
+                        updatePhaseTimerDisplay();
+                        
+                        // Auto-advance to next phase when time is up
+                        if (practiceState.phaseTimeRemaining === 0) {
+                            if (practiceState.currentPhase < practiceState.phases.length - 1) {
+                                nextPhase();
+                            } else {
+                                endPractice();
+                            }
+                        }
+                    }
+                    
+                    // Update overall timer (count up)
+                    practiceState.overallTimeElapsed++;
+                    updateOverallTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function updatePhaseTimerDisplay() {
+            const minutes = Math.floor(practiceState.phaseTimeRemaining / 60);
+            const seconds = practiceState.phaseTimeRemaining % 60;
+            document.getElementById('phaseTimer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateOverallTimerDisplay() {
+            const hours = Math.floor(practiceState.overallTimeElapsed / 3600);
+            const minutes = Math.floor((practiceState.overallTimeElapsed % 3600) / 60);
+            const seconds = practiceState.overallTimeElapsed % 60;
+            document.getElementById('overallTimer').textContent = 
+                `Total: ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function togglePause() {
+            practiceState.isPaused = !practiceState.isPaused;
+            const pauseBtn = document.getElementById('pauseBtn');
+            pauseBtn.textContent = practiceState.isPaused ? '▶️' : '⏸️';
+            pauseBtn.title = practiceState.isPaused ? 'Resume' : 'Pause';
+        }
+
+        async function endPractice() {
+            const confirmed = await glassModal.confirm(
+                'Are you sure you want to end this practice session? This action cannot be undone.',
+                'End Practice Session'
+            );
+            
+            if (confirmed) {
+                clearInterval(timerInterval);
+                
+                try {
+                    // Calculate actual duration in minutes
+                    const actualDurationMinutes = Math.round(practiceState.overallTimeElapsed / 60);
+                    
+                    // Get any notes from the notes textarea
+                    const notes = document.getElementById('coachNotes')?.value || '';
+                    
+                    // Complete the practice session
+                    if (practiceState.sessionId) {
+                        const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/complete`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                actual_duration: actualDurationMinutes,
+                                notes: notes
+                            })
+                        });
+
+                        if (!response.ok) {
+                            console.error('Failed to complete practice session');
+                            glassModal.error('Failed to save practice session. Please try again.', 'Save Failed');
+                            return;
+                        } else {
+                            glassModal.success('Practice session completed successfully! 🏐', 'Practice Complete');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error completing practice session:', error);
+                    glassModal.error('Error completing practice session. Please try again.', 'Completion Failed');
+                    return;
+                }
+                
+                // Redirect back to practice list after a short delay
+                setTimeout(() => {
+                    window.location.href = '/practice';
+                }, 1500);
+            }
+        }
+
+        // Phase navigation
+        function updatePhaseDisplay() {
+            // Handle practices with or without phases
+            if (!practiceState.phases || practiceState.phases.length === 0) {
+                document.getElementById('phaseTitle').textContent = 'Free Practice';
+                document.getElementById('phaseDescription').textContent = 'No structured phases - practice freely';
+                document.getElementById('phaseIndicator').textContent = 'Open Session';
+                
+                // Hide phase navigation for free practice
+                const phaseNav = document.querySelector('.phase-navigation');
+                if (phaseNav) phaseNav.style.display = 'none';
+                
+                return;
+            }
+            
+            if (practiceState.currentPhase >= practiceState.phases.length) {
+                console.error('Current phase index out of bounds:', practiceState.currentPhase, 'of', practiceState.phases.length);
+                practiceState.currentPhase = 0; // Reset to first phase
+            }
+            
+            const phase = practiceState.phases[practiceState.currentPhase];
+            
+            if (!phase) {
+                console.error('Phase is undefined at index:', practiceState.currentPhase);
+                return;
+            }
+            
+            document.getElementById('phaseTitle').textContent = phase.name || 'Unnamed Phase';
+            document.getElementById('phaseDescription').textContent = phase.description || 'No description available';
+            document.getElementById('phaseIndicator').textContent = 
+                `Phase ${practiceState.currentPhase + 1}: ${phase.name || 'Unnamed Phase'}`;
+                
+            // Set timer for current phase
+            practiceState.phaseTimeRemaining = (phase.duration || 0) * 60;
+            updatePhaseTimerDisplay();
+            
+            // Update drills list
+            updateDrillsList();
+        }
+
+        function updateDrillsList() {
+            const phase = practiceState.phases[practiceState.currentPhase];
+            const drillsList = document.getElementById('drillsList');
+            
+            if (!phase || !phase.drills || phase.drills.length === 0) {
+                drillsList.innerHTML = '<div class="drill-item"><div class="drill-name">No drills assigned to this phase</div></div>';
+                return;
+            }
+            
+            drillsList.innerHTML = phase.drills.map((drill, index) => `
+                <div class="drill-item clickable-drill-card" onclick="showDrillDetails(${practiceState.currentPhase}, ${index})" style="cursor: pointer; position: relative;">
+                    <div class="drill-name">
+                        ${drill.name}
+                        <span style="color: var(--accent-orange); margin-left: 8px;">🔍</span>
+                    </div>
+                    <div class="drill-meta">
+                        <span class="drill-category">📋 ${drill.category}</span>
+                        <span class="drill-difficulty">⭐ ${drill.difficulty}</span>
+                    </div>
+                    ${drill.description ? `<div class="drill-description">${drill.description}</div>` : ''}
+                    ${drill.hasVideo ? 
+                        `<button class="drill-video-btn" onclick="event.stopPropagation(); playDrillClip('${drill.name}')">
+                            🎥 Play Clip
+                        </button>` : ''
+                    }
+                    <div style="position: absolute; top: 8px; right: 8px; color: var(--text-secondary); font-size: 12px;">
+                        Click for details
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = practiceState.currentPhase === 0;
+            nextBtn.disabled = practiceState.currentPhase === practiceState.phases.length - 1;
+            
+            if (practiceState.currentPhase === practiceState.phases.length - 1) {
+                nextBtn.textContent = 'End Practice';
+                nextBtn.onclick = endPractice;
+            } else {
+                nextBtn.textContent = 'Next →';
+                nextBtn.onclick = nextPhase;
+            }
+        }
+
+        function previousPhase() {
+            if (practiceState.currentPhase > 0) {
+                practiceState.currentPhase--;
+                updatePhaseDisplay();
+                updateNavigationButtons();
+            }
+        }
+
+        function nextPhase() {
+            if (practiceState.currentPhase < practiceState.phases.length - 1) {
+                practiceState.currentPhase++;
+                updatePhaseDisplay();
+                updateNavigationButtons();
+            }
+        }
+
+        // Drill clip playback
+        function playDrillClip(drillName) {
+            document.getElementById('clipTitle').textContent = `${drillName} - Technique Clip`;
+            document.getElementById('clipDescription').textContent = 
+                `Professional demonstration or match footage showing proper execution of ${drillName}`;
+            document.getElementById('clipModal').classList.add('active');
+        }
+
+        function closeClipModal() {
+            document.getElementById('clipModal').classList.remove('active');
+        }
+
+        function playClip() {
+            glassModal.success('🎥 Playing clip in fullscreen! Perfect for iPad coaching display.', 'Video Playing');
+        }
+
+        function markClipComplete() {
+            glassModal.success('✅ Clip review completed! Players have seen the demonstration.', 'Clip Review Complete');
+            closeClipModal();
+        }
+
+        // Close modal on background click
+        document.getElementById('clipModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeClipModal();
+            }
+        });
+
+        // Attendance Management Functions
+        async function showAttendanceManager() {
+            try {
+                // Get current session attendance
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}`);
+                const session = await response.json();
+                
+                displayAttendanceManager(session.attendance);
+                document.getElementById('attendanceManagerModal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading attendance:', error);
+                glassModal.error('Error loading attendance data. Please try again.', 'Attendance Loading Failed');
+            }
+        }
+
+        function displayAttendanceManager(attendance) {
+            const attendanceGrid = document.getElementById('attendanceManagerGrid');
+            
+            attendanceGrid.innerHTML = attendance.map(record => `
+                <div class="glass-card" style="padding: var(--spacing-md); margin-bottom: var(--spacing-sm); display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                        <div style="font-size: var(--font-size-lg); font-weight: 600;">#${record.jerseyNumber}</div>
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${record.firstName} ${record.lastName}</div>
+                            <div style="color: var(--text-secondary); font-size: var(--font-size-sm);">${record.position}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                        <label style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer; color: var(--text-primary);">
+                            <input type="checkbox" id="manager-player-${record.player_id}" ${record.attended ? 'checked' : ''} style="width: 18px; height: 18px;">
+                            Present
+                        </label>
+                        <input type="number" id="manager-late-${record.player_id}" placeholder="Late (min)" min="0" max="120" value="${record.late_minutes || ''}" style="width: 80px; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary);">
+                        <input type="text" id="manager-notes-${record.player_id}" placeholder="Notes" value="${record.notes || ''}" style="width: 100px; padding: var(--spacing-xs); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: var(--glass-secondary); color: var(--text-primary);">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function closeAttendanceManager() {
+            document.getElementById('attendanceManagerModal').style.display = 'none';
+        }
+
+        async function saveAttendanceChanges() {
+            try {
+                const attendanceGrid = document.getElementById('attendanceManagerGrid');
+                const cards = attendanceGrid.querySelectorAll('.glass-card');
+                
+                for (const card of cards) {
+                    const playerCheckbox = card.querySelector('[id^="manager-player-"]');
+                    const lateInput = card.querySelector('[id^="manager-late-"]');
+                    const notesInput = card.querySelector('[id^="manager-notes-"]');
+                    
+                    if (playerCheckbox) {
+                        const playerId = playerCheckbox.id.split('-')[2];
+                        const attended = playerCheckbox.checked;
+                        const lateMinutes = parseInt(lateInput.value) || 0;
+                        const notes = notesInput.value.trim();
+                        
+                        // Update attendance via API
+                        await fetch(`/api/practice-sessions/${practiceState.sessionId}/attendance`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                player_id: parseInt(playerId),
+                                attended: attended,
+                                late_minutes: lateMinutes,
+                                notes: notes
+                            })
+                        });
+                    }
+                }
+                
+                closeAttendanceManager();
+                glassModal.success('✅ Attendance updated successfully!', 'Attendance Saved');
+                
+            } catch (error) {
+                console.error('Error saving attendance:', error);
+                glassModal.error('Error saving attendance changes. Please try again.', 'Save Failed');
+            }
+        }
+
+        // Notes saving
+        async function saveNotes() {
+            const notes = document.getElementById('coachNotes').value;
+            
+            if (!practiceState.sessionId) {
+                glassModal.error('No active session to save notes to', 'Save Failed');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/notes`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: notes })
+                });
+
+                if (response.ok) {
+                    const phase = practiceState.phases[practiceState.currentPhase];
+                    glassModal.success(`Notes saved for ${phase.name} phase! 📝`, 'Notes Saved');
+                } else {
+                    glassModal.error('Failed to save notes. Please try again.', 'Save Failed');
+                }
+            } catch (error) {
+                console.error('Error saving notes:', error);
+                glassModal.error('Error saving notes. Please try again.', 'Save Failed');
+            }
+        }
+
+        // Notes tab management
+        let selectedPlayerId = null;
+        let playerNotes = {};
+
+        function switchNotesTab(tabType) {
+            // Update tab buttons
+            document.querySelectorAll('.notes-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.notes-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Show selected tab
+            if (tabType === 'general') {
+                document.querySelector('.notes-tab[onclick*="general"]').classList.add('active');
+                document.getElementById('generalNotesTab').classList.add('active');
+            } else if (tabType === 'player') {
+                document.querySelector('.notes-tab[onclick*="player"]').classList.add('active');
+                document.getElementById('playerNotesTab').classList.add('active');
+                populatePlayerSelect();
+            }
+        }
+
+        function populatePlayerSelect() {
+            const select = document.getElementById('playerSelect');
+            select.innerHTML = '<option value="">Select a player...</option>';
+            
+            if (practiceState.players && practiceState.players.length > 0) {
+                practiceState.players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player.id;
+                    option.textContent = `${player.firstName} ${player.lastName} (#${player.jerseyNumber})`;
+                    select.appendChild(option);
+                });
+            }
+        }
+
+        async function onPlayerSelect() {
+            const select = document.getElementById('playerSelect');
+            const playerId = select.value;
+            const playerNotesContent = document.getElementById('playerNotesContent');
+            
+            if (!playerId) {
+                playerNotesContent.style.display = 'none';
+                selectedPlayerId = null;
+                return;
+            }
+
+            selectedPlayerId = playerId;
+            const selectedPlayer = practiceState.players.find(p => p.id == playerId);
+            
+            if (selectedPlayer) {
+                document.getElementById('selectedPlayerName').textContent = `${selectedPlayer.firstName} ${selectedPlayer.lastName}`;
+                document.getElementById('selectedPlayerPosition').textContent = `#${selectedPlayer.jerseyNumber} - ${selectedPlayer.position}`;
+                
+                // Clear the textarea for new notes
+                document.getElementById('playerNotesTextarea').value = '';
+                
+                // Load historical notes for this player
+                await loadHistoricalNotes(playerId);
+                
+                // Load current session notes for this player
+                await loadCurrentSessionNotes(playerId);
+                
+                playerNotesContent.style.display = 'block';
+            }
+        }
+
+        async function loadHistoricalNotes(playerId) {
+            try {
+                const response = await fetch(`/api/players/${playerId}/notes`);
+                if (response.ok) {
+                    const notes = await response.json();
+                    displayHistoricalNotes(notes.filter(note => note.session_id != practiceState.sessionId));
+                } else {
+                    console.error('Failed to load historical notes');
+                    displayHistoricalNotes([]);
+                }
+            } catch (error) {
+                console.error('Error loading historical notes:', error);
+                displayHistoricalNotes([]);
+            }
+        }
+
+        async function loadCurrentSessionNotes(playerId) {
+            if (!practiceState.sessionId) {
+                displayCurrentSessionNotes([]);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/player-notes/${playerId}`);
+                if (response.ok) {
+                    const notes = await response.json();
+                    displayCurrentSessionNotes(notes);
+                } else {
+                    console.error('Failed to load current session notes');
+                    displayCurrentSessionNotes([]);
+                }
+            } catch (error) {
+                console.error('Error loading current session notes:', error);
+                displayCurrentSessionNotes([]);
+            }
+        }
+
+        function displayHistoricalNotes(notes) {
+            const container = document.getElementById('historicalNotesList');
+            
+            if (notes.length === 0) {
+                container.innerHTML = '<div class="empty-notes-message">📝 No previous practice notes for this player</div>';
+                return;
+            }
+
+            const notesHtml = notes.map(note => {
+                const date = new Date(note.started_at).toLocaleDateString();
+                const time = new Date(note.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const noteTypeIcon = note.note_type === 'practice' ? '📝' : '👤';
+                const noteTypeLabel = note.note_type === 'practice' ? 'Practice' : 'Player-Specific';
+                
+                return `
+                    <div class="historical-note-item">
+                        <div class="historical-note-header">
+                            <span>${noteTypeIcon} ${note.practice_name} - ${date}</span>
+                            <span class="historical-note-type">${noteTypeLabel}</span>
+                        </div>
+                        <div class="historical-note-text">${note.notes}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = notesHtml;
+        }
+
+        function displayCurrentSessionNotes(notes) {
+            const container = document.getElementById('currentSessionNotes');
+            
+            if (notes.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const notesHtml = notes.map(note => {
+                const time = new Date(note.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const noteTypeIcon = note.note_type === 'practice' ? '📝' : '👤';
+                const noteTypeLabel = note.note_type === 'practice' ? 'Practice' : 'Player-Specific';
+                
+                return `
+                    <div class="current-note-item">
+                        <div class="current-note-header">
+                            <span>${noteTypeIcon} ${time}</span>
+                            <span class="historical-note-type">${noteTypeLabel}</span>
+                        </div>
+                        <div class="current-note-text">${note.notes}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <h5 style="color: var(--text-secondary); font-size: 0.85rem; margin: var(--spacing-sm) 0;">📋 Notes from This Practice</h5>
+                ${notesHtml}
+            `;
+        }
+
+        async function savePlayerNotes() {
+            if (!selectedPlayerId) {
+                glassModal.error('Please select a player first', 'No Player Selected');
+                return;
+            }
+
+            if (!practiceState.sessionId) {
+                glassModal.error('No active session to save notes to', 'Save Failed');
+                return;
+            }
+
+            const notes = document.getElementById('playerNotesTextarea').value.trim();
+            if (!notes) {
+                glassModal.error('Please enter some notes before saving', 'No Notes Entered');
+                return;
+            }
+
+            const noteType = document.querySelector('input[name="noteType"]:checked').value;
+            const selectedPlayer = practiceState.players.find(p => p.id == selectedPlayerId);
+
+            try {
+                const response = await fetch(`/api/practice-sessions/${practiceState.sessionId}/player-notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        playerId: selectedPlayerId, 
+                        notes: notes,
+                        noteType: noteType
+                    })
+                });
+
+                if (response.ok) {
+                    // Clear the textarea
+                    document.getElementById('playerNotesTextarea').value = '';
+                    
+                    // Reload current session notes to show the new note
+                    await loadCurrentSessionNotes(selectedPlayerId);
+                    
+                    const noteTypeLabel = noteType === 'practice' ? 'Practice note' : 'Player-specific note';
+                    glassModal.success(`${noteTypeLabel} added for ${selectedPlayer.firstName} ${selectedPlayer.lastName}! 👤`, 'Note Saved');
+                } else {
+                    glassModal.error('Failed to save player notes. Please try again.', 'Save Failed');
+                }
+            } catch (error) {
+                console.error('Error saving player notes:', error);
+                glassModal.error('Error saving player notes. Please try again.', 'Save Failed');
+            }
+        }
+
+        // Drill Details Modal Functions
+        function showDrillDetails(phaseIndex, drillIndex) {
+            const drill = practiceState.phases[phaseIndex].drills[drillIndex];
+            
+            // Populate modal with drill data
+            document.getElementById('drillModalTitle').textContent = `🏐 ${drill.name}`;
+            document.getElementById('drillModalCategory').textContent = drill.category || 'Not specified';
+            document.getElementById('drillModalDifficulty').textContent = drill.difficulty || 'Not specified';
+            document.getElementById('drillModalDuration').textContent = drill.duration ? `${drill.duration} minutes` : 'Not specified';
+            
+            // Players info
+            const playersInfo = [];
+            if (drill.minPlayers) playersInfo.push(`Min: ${drill.minPlayers}`);
+            if (drill.maxPlayers) playersInfo.push(`Max: ${drill.maxPlayers}`);
+            document.getElementById('drillModalPlayers').textContent = playersInfo.length > 0 ? playersInfo.join(', ') : 'Any number';
+            
+            // Description
+            document.getElementById('drillModalDescription').textContent = drill.description || 'No description available';
+            
+            // Equipment
+            const equipmentContainer = document.getElementById('drillModalEquipment');
+            if (drill.equipment && drill.equipment.length > 0) {
+                equipmentContainer.innerHTML = drill.equipment.map(item => 
+                    `<span style="display: inline-block; background: var(--glass-secondary); padding: var(--spacing-xs) var(--spacing-sm); margin: var(--spacing-xs); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">${item}</span>`
+                ).join('');
+            } else {
+                equipmentContainer.textContent = 'No specific equipment needed';
+            }
+            
+            // Focus areas
+            const focusContainer = document.getElementById('drillModalFocus');
+            if (drill.focus && drill.focus.length > 0) {
+                focusContainer.innerHTML = drill.focus.map(area => 
+                    `<span style="display: inline-block; background: var(--accent-orange); color: white; padding: var(--spacing-xs) var(--spacing-sm); margin: var(--spacing-xs); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">${area}</span>`
+                ).join('');
+            } else {
+                focusContainer.textContent = 'No specific focus areas listed';
+            }
+            
+            // Show/hide video button
+            const videoBtn = document.getElementById('drillVideoBtn');
+            if (drill.hasVideo) {
+                videoBtn.style.display = 'inline-block';
+                videoBtn.onclick = () => {
+                    closeDrillDetailsModal();
+                    playDrillClip(drill.name);
+                };
+            } else {
+                videoBtn.style.display = 'none';
+            }
+            
+            // Show the modal
+            document.getElementById('drillDetailsModal').style.display = 'flex';
+        }
+
+        function closeDrillDetailsModal() {
+            document.getElementById('drillDetailsModal').style.display = 'none';
+        }
+
+        function playDrillFromModal() {
+            const drillName = document.getElementById('drillModalTitle').textContent.replace('🏐 ', '');
+            closeDrillDetailsModal();
+            playDrillClip(drillName);
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeAttendance);
+
+        // Save session state when user navigates away or refreshes
+        window.addEventListener('beforeunload', async function(event) {
+            if (practiceState.sessionId && practiceState.isActive) {
+                try {
+                    // Calculate current elapsed times
+                    const currentTime = new Date();
+                    const totalElapsed = Math.floor((currentTime - practiceState.startTime) / 1000);
+                    const phaseElapsed = practiceState.phaseStartTime ? 
+                        Math.floor((currentTime - practiceState.phaseStartTime) / 1000) : 0;
+
+                    // Create timer state object
+                    const timerState = {
+                        currentPhase: practiceState.currentPhase,
+                        phaseTimeRemaining: practiceState.phaseTimeRemaining,
+                        totalTimeElapsed: totalElapsed,
+                        phaseTimeElapsed: phaseElapsed,
+                        isRunning: true,
+                        pausedAt: currentTime.toISOString()
+                    };
+
+                    // Send synchronous request to save state (must be sync for beforeunload)
+                    const data = {
+                        status: 'paused',
+                        timer_state: timerState,
+                        current_phase_id: practiceState.phases?.[practiceState.currentPhase]?.id || null,
+                        phase_elapsed_time: phaseElapsed,
+                        total_elapsed_time: totalElapsed
+                    };
+
+                    // Use sendBeacon for better reliability during page unload
+                    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                    navigator.sendBeacon(`/api/practice-sessions/${practiceState.sessionId}/timer-state`, blob);
+                    
+                } catch (error) {
+                    console.error('Error saving session state on unload:', error);
+                }
+            }
+        });
+
+        // Scoreboard functionality
+        let scoreboardState = {
+            teamAName: 'Home',
+            teamBName: 'Away',
+            teamAScore: 0,
+            teamBScore: 0,
+            gameTime: 0,
+            gameTimerInterval: null,
+            isGameTimerRunning: false
+        };
+
+        function showScoreboard() {
+            const modal = document.getElementById('scoreboardModal');
+            modal.classList.add('active');
+            updateScoreDisplay();
+        }
+
+        function closeScoreboard() {
+            const modal = document.getElementById('scoreboardModal');
+            modal.classList.remove('active');
+        }
+
+        function changeScore(team, change) {
+            if (team === 'A') {
+                scoreboardState.teamAScore = Math.max(0, scoreboardState.teamAScore + change);
+            } else {
+                scoreboardState.teamBScore = Math.max(0, scoreboardState.teamBScore + change);
+            }
+            updateScoreDisplay();
+        }
+
+        function resetScores() {
+            scoreboardState.teamAScore = 0;
+            scoreboardState.teamBScore = 0;
+            scoreboardState.gameTime = 0;
+            updateScoreDisplay();
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('teamAScore').textContent = scoreboardState.teamAScore;
+            document.getElementById('teamBScore').textContent = scoreboardState.teamBScore;
+            document.getElementById('teamAName').textContent = scoreboardState.teamAName;
+            document.getElementById('teamBName').textContent = scoreboardState.teamBName;
+            
+            const minutes = Math.floor(scoreboardState.gameTime / 60);
+            const seconds = scoreboardState.gameTime % 60;
+            document.getElementById('gameTimer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function toggleGameTimer() {
+            if (scoreboardState.isGameTimerRunning) {
+                clearInterval(scoreboardState.gameTimerInterval);
+                scoreboardState.isGameTimerRunning = false;
+            } else {
+                scoreboardState.gameTimerInterval = setInterval(() => {
+                    scoreboardState.gameTime++;
+                    updateScoreDisplay();
+                }, 1000);
+                scoreboardState.isGameTimerRunning = true;
+            }
+        }
+
+        function updateTeamName(team) {
+            if (team === 'A') {
+                const newName = document.getElementById('teamAName').textContent.trim();
+                if (newName) {
+                    scoreboardState.teamAName = newName;
+                } else {
+                    // If empty, reset to default and update display
+                    scoreboardState.teamAName = 'Home';
+                    document.getElementById('teamAName').textContent = 'Home';
+                }
+            } else {
+                const newName = document.getElementById('teamBName').textContent.trim();
+                if (newName) {
+                    scoreboardState.teamBName = newName;
+                } else {
+                    // If empty, reset to default and update display
+                    scoreboardState.teamBName = 'Away';
+                    document.getElementById('teamBName').textContent = 'Away';
+                }
+            }
+        }
+
+        // Team Setup functionality
+        let teamAssignments = {
+            teamA: [],
+            teamB: []
+        };
+
+        function showTeamSetupModal() {
+            const modal = document.getElementById('teamSetupModal');
+            
+            // Update team name inputs with current values
+            document.getElementById('teamANameInput').value = scoreboardState.teamAName;
+            document.getElementById('teamBNameInput').value = scoreboardState.teamBName;
+            
+            // Populate available players
+            populateAvailablePlayers();
+            
+            // Setup drop zones
+            setupDropZones();
+            
+            modal.style.display = 'block';
+        }
+
+        function closeTeamSetupModal() {
+            const modal = document.getElementById('teamSetupModal');
+            modal.style.display = 'none';
+        }
+
+        function populateAvailablePlayers() {
+            const availableContainer = document.getElementById('availablePlayers');
+            availableContainer.innerHTML = '';
+            
+            // Fallback: if attendanceData is empty or not working, use all players
+            let playersToShow = [];
+            
+            if (attendanceData && attendanceData.length > 0) {
+                // Get present players from attendance
+                const presentPlayers = attendanceData.filter(record => record.attended);
+                
+                // Find players not assigned to teams
+                const assignedPlayerIds = [...teamAssignments.teamA, ...teamAssignments.teamB];
+                const availablePlayers = presentPlayers.filter(record => !assignedPlayerIds.includes(record.player_id));
+                
+                playersToShow = availablePlayers;
+            } else {
+                // Fallback: show all players if attendance data is not available
+                const assignedPlayerIds = [...teamAssignments.teamA, ...teamAssignments.teamB];
+                playersToShow = players.filter(player => !assignedPlayerIds.includes(player.id)).map(player => ({
+                    player_id: player.id,
+                    attended: true
+                }));
+            }
+            
+            if (playersToShow.length === 0) {
+                availableContainer.innerHTML = `
+                    <div style="color: var(--text-secondary); font-style: italic; text-align: center; width: 100%; padding: 1rem;">
+                        ${(attendanceData && attendanceData.length > 0) ? 'All players assigned' : 'No players found - check console for debug info'}
+                    </div>
+                `;
+                return;
+            }
+            
+            playersToShow.forEach(record => {
+                // Find player details from the loaded players data
+                const player = players.find(p => p.id === record.player_id);
+                if (player) {
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'available-player-card';
+                    playerCard.draggable = true;
+                    playerCard.dataset.playerId = player.id;
+                    
+                    // Create player display with name, number, and position
+                    const playerName = player.name || player.firstName || `Player ${player.id}`;
+                    const jerseyNumber = player.jerseyNumber || player.number || '#';
+                    const position = player.position || '';
+                    
+                    const displayText = `${jerseyNumber} ${playerName}${position ? ` (${position})` : ''}`;
+                    playerCard.innerHTML = `
+                        <div style="font-weight: bold; font-size: 0.9rem;">#${jerseyNumber}</div>
+                        <div style="font-size: 1rem;">${playerName}</div>
+                        ${position ? `<div style="font-size: 0.8rem; opacity: 0.8;">${position}</div>` : ''}
+                    `;
+                    playerCard.title = 'Click to assign to team or drag to team area';
+                    
+                    // Add click handler as alternative to drag-and-drop
+                    playerCard.addEventListener('click', function() {
+                        showPlayerAssignmentMenu(player.id, playerName, playerCard);
+                    });
+                    
+                    // Add drag event listeners
+                    playerCard.addEventListener('dragstart', handleDragStart);
+                    playerCard.addEventListener('dragend', handleDragEnd);
+                    
+                    availableContainer.appendChild(playerCard);
+                } else {
+                    // Create a card even if player details aren't found
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'available-player-card';
+                    playerCard.draggable = true;
+                    playerCard.dataset.playerId = record.player_id;
+                    playerCard.innerHTML = `
+                        <div style="font-weight: bold;">#?</div>
+                        <div>Player ${record.player_id}</div>
+                    `;
+                    playerCard.title = 'Click to assign to team';
+                    
+                    playerCard.addEventListener('click', function() {
+                        showPlayerAssignmentMenu(record.player_id, `Player ${record.player_id}`, playerCard);
+                    });
+                    
+                    availableContainer.appendChild(playerCard);
+                }
+            });
+        }
+
+        function showPlayerAssignmentMenu(playerId, playerName, playerCard) {
+            // Create a simple context menu for team assignment
+            const existingMenu = document.querySelector('.player-assignment-menu');
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+            
+            const menu = document.createElement('div');
+            menu.className = 'player-assignment-menu';
+            menu.style.cssText = `
+                position: absolute;
+                background: var(--glass-primary);
+                border: 1px solid var(--glass-border);
+                border-radius: 8px;
+                padding: 0.5rem;
+                z-index: 10001;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            
+            const rect = playerCard.getBoundingClientRect();
+            menu.style.left = rect.left + 'px';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            
+            const teamAButton = document.createElement('button');
+            teamAButton.textContent = `Assign to ${scoreboardState.teamAName}`;
+            teamAButton.className = 'assignment-btn';
+            teamAButton.style.cssText = `
+                display: block;
+                width: 100%;
+                padding: 0.5rem;
+                margin-bottom: 0.25rem;
+                background: var(--accent-orange);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.9rem;
+            `;
+            teamAButton.onclick = () => {
+                assignPlayerToTeam(playerId, 'A');
+                menu.remove();
+            };
+            
+            const teamBButton = document.createElement('button');
+            teamBButton.textContent = `Assign to ${scoreboardState.teamBName}`;
+            teamBButton.className = 'assignment-btn';
+            teamBButton.style.cssText = `
+                display: block;
+                width: 100%;
+                padding: 0.5rem;
+                background: var(--accent-blue);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.9rem;
+            `;
+            teamBButton.onclick = () => {
+                assignPlayerToTeam(playerId, 'B');
+                menu.remove();
+            };
+            
+            menu.appendChild(teamAButton);
+            menu.appendChild(teamBButton);
+            document.body.appendChild(menu);
+            
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target) && e.target !== playerCard) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 100);
+        }
+
+        function assignPlayerToTeam(playerId, team) {
+            const teamKey = team === 'A' ? 'teamA' : 'teamB';
+            const otherTeamKey = team === 'A' ? 'teamB' : 'teamA';
+            
+            // Remove from other team if already assigned
+            teamAssignments[otherTeamKey] = teamAssignments[otherTeamKey].filter(id => id !== playerId);
+            
+            // Add to this team if not already there
+            if (!teamAssignments[teamKey].includes(playerId)) {
+                teamAssignments[teamKey].push(playerId);
+            }
+            
+            // Update displays
+            updateTeamDisplay('A');
+            updateTeamDisplay('B');
+            populateAvailablePlayers();
+        }
+
+        function updateTeamDisplay(team) {
+            const containerId = team === 'A' ? 'teamAPlayers' : 'teamBPlayers';
+            const container = document.getElementById(containerId);
+            const playerIds = teamAssignments[team === 'A' ? 'teamA' : 'teamB'];
+            
+            container.innerHTML = '';
+            
+            if (playerIds.length === 0) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'team-placeholder';
+                placeholder.style.cssText = 'text-align: center; color: var(--text-secondary); font-style: italic;';
+                placeholder.textContent = 'Drag players here';
+                container.appendChild(placeholder);
+                return;
+            }
+            
+            playerIds.forEach(playerId => {
+                const player = players.find(p => p.id === playerId);
+                
+                const playerCard = document.createElement('div');
+                playerCard.className = 'team-player-card';
+                playerCard.dataset.playerId = playerId;
+                
+                const playerInfo = document.createElement('div');
+                playerInfo.style.cssText = 'display: flex; flex-direction: column; flex-grow: 1;';
+                
+                if (player) {
+                    const name = player.name || player.firstName || `Player ${player.id}`;
+                    const jerseyNumber = player.jerseyNumber || player.number || '#';
+                    const position = player.position || '';
+                    
+                    playerInfo.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: bold; color: var(--accent-orange);">#${jerseyNumber}</span>
+                            <span style="font-weight: 500;">${name}</span>
+                        </div>
+                        ${position ? `<div style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.2rem;">${position}</div>` : ''}
+                    `;
+                } else {
+                    playerInfo.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: bold; color: var(--accent-orange);">#?</span>
+                            <span>Player ${playerId}</span>
+                        </div>
+                    `;
+                }
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'player-remove-btn';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => removePlayerFromTeam(playerId, team);
+                
+                playerCard.appendChild(playerInfo);
+                playerCard.appendChild(removeBtn);
+                container.appendChild(playerCard);
+            });
+        }
+
+        function removePlayerFromTeam(playerId, team) {
+            const teamKey = team === 'A' ? 'teamA' : 'teamB';
+            teamAssignments[teamKey] = teamAssignments[teamKey].filter(id => id !== playerId);
+            updateTeamDisplay(team);
+            populateAvailablePlayers();
+        }
+
+        function autoAssignTeams() {
+
+            
+            // Use the same logic as populateAvailablePlayers to get available players
+            let availablePlayerIds = [];
+            
+            if (attendanceData && attendanceData.length > 0) {
+                // Get present players from attendance
+                const presentPlayers = attendanceData.filter(record => record.attended);
+                availablePlayerIds = presentPlayers.map(record => record.player_id);
+            } else {
+                // Fallback: use all players if attendance data is not available
+                availablePlayerIds = players.map(player => player.id);
+            }
+            
+            if (availablePlayerIds.length === 0) {
+                return;
+            }
+            
+            // Shuffle players randomly using Fisher-Yates shuffle for better randomness
+            const shuffled = [...availablePlayerIds];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            
+            // Split into two teams
+            const midpoint = Math.ceil(shuffled.length / 2);
+            teamAssignments.teamA = shuffled.slice(0, midpoint);
+            teamAssignments.teamB = shuffled.slice(midpoint);
+            
+            // Update displays
+            updateTeamDisplay('A');
+            updateTeamDisplay('B');
+            populateAvailablePlayers();
+        }
+
+        function clearTeams() {
+            teamAssignments.teamA = [];
+            teamAssignments.teamB = [];
+            updateTeamDisplay('A');
+            updateTeamDisplay('B');
+            populateAvailablePlayers();
+        }
+
+        function applyTeamSetup() {
+            // Update team names
+            const teamAName = document.getElementById('teamANameInput').value.trim() || 'Home';
+            const teamBName = document.getElementById('teamBNameInput').value.trim() || 'Away';
+            
+            scoreboardState.teamAName = teamAName;
+            scoreboardState.teamBName = teamBName;
+            
+            // Update scoreboard display
+            updateScoreDisplay();
+            
+            // Close modal
+            closeTeamSetupModal();
+            
+            // Show success message
+            glassModal.showSuccess('Teams setup successfully!', 'Team Setup Complete');
+        }
+
+        // Drag and drop functionality
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedElement = null;
+        }
+
+        // Set up drop zones for team containers
+        function setupDropZones() {
+            const teamAContainer = document.getElementById('teamAPlayers');
+            const teamBContainer = document.getElementById('teamBPlayers');
+            
+            [teamAContainer, teamBContainer].forEach((container, index) => {
+                const team = index === 0 ? 'A' : 'B';
+                
+                container.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    container.classList.add('drag-over');
+                });
+                
+                container.addEventListener('dragleave', (e) => {
+                    if (!container.contains(e.relatedTarget)) {
+                        container.classList.remove('drag-over');
+                    }
+                });
+                
+                container.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    container.classList.remove('drag-over');
+                    
+                    if (draggedElement) {
+                        const playerId = parseInt(draggedElement.dataset.playerId);
+                        const teamKey = team === 'A' ? 'teamA' : 'teamB';
+                        
+                        // Remove from other team if already assigned
+                        const otherTeamKey = team === 'A' ? 'teamB' : 'teamA';
+                        teamAssignments[otherTeamKey] = teamAssignments[otherTeamKey].filter(id => id !== playerId);
+                        
+                        // Add to this team if not already there
+                        if (!teamAssignments[teamKey].includes(playerId)) {
+                            teamAssignments[teamKey].push(playerId);
+                        }
+                        
+                        // Update displays
+                        updateTeamDisplay('A');
+                        updateTeamDisplay('B');
+                        populateAvailablePlayers();
+                    }
+                });
+            });
+        }
+
+        // Initialize drop zones when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setupDropZones();
+        });
+
+        // Save score functionality
+        function showSaveScoreModal() {
+            const modal = document.getElementById('saveScoreModal');
+            
+            // Get current phase information
+            const currentPhaseIndex = practiceState.currentPhase;
+            const currentPhaseData = practiceState.phases[currentPhaseIndex];
+            const phaseName = currentPhaseData ? currentPhaseData.name : 'Unknown Phase';
+            
+            // Populate the modal with current score data
+            document.getElementById('saveTeamAName').textContent = scoreboardState.teamAName;
+            document.getElementById('saveTeamBName').textContent = scoreboardState.teamBName;
+            document.getElementById('saveTeamAScore').textContent = scoreboardState.teamAScore;
+            document.getElementById('saveTeamBScore').textContent = scoreboardState.teamBScore;
+            
+            const minutes = Math.floor(scoreboardState.gameTime / 60);
+            const seconds = scoreboardState.gameTime % 60;
+            document.getElementById('saveGameTime').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update the modal header to show current phase
+            const modalHeader = document.querySelector('.save-score-header h2');
+            modalHeader.textContent = `💾 Save Game Score - ${phaseName}`;
+            
+            // Populate phase selection dropdown
+            populatePhaseSelection(currentPhaseIndex);
+            
+            // Populate drill selection for current phase
+            populateDrillSelection(currentPhaseIndex);
+            
+            modal.style.display = 'flex';
+        }
+
+        // Populate phase selection dropdown
+        function populatePhaseSelection(currentPhaseIndex = 0) {
+            const phaseSelect = document.getElementById('phaseSelection');
+            phaseSelect.innerHTML = '';
+            
+            if (practiceState.phases && practiceState.phases.length > 0) {
+                practiceState.phases.forEach((phase, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `Phase ${index + 1}: ${phase.name || 'Unnamed Phase'}`;
+                    if (index === currentPhaseIndex) {
+                        option.selected = true;
+                    }
+                    phaseSelect.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = '0';
+                option.textContent = 'Current Phase';
+                phaseSelect.appendChild(option);
+            }
+            
+            // Add event listener for phase selection change
+            phaseSelect.addEventListener('change', function() {
+                populateDrillSelection(parseInt(this.value));
+            });
+        }
+
+        // Populate drill selection dropdown based on selected phase
+        function populateDrillSelection(phaseIndex) {
+            const drillSelect = document.getElementById('drillSelection');
+            drillSelect.innerHTML = '<option value="">Select a drill...</option>';
+            
+            if (practiceState.phases && practiceState.phases[phaseIndex] && practiceState.phases[phaseIndex].drills) {
+                const drills = practiceState.phases[phaseIndex].drills;
+                drills.forEach((drill, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = drill.name || `Drill ${index + 1}`;
+                    drillSelect.appendChild(option);
+                });
+                
+                // If no drills in this phase, show message
+                if (drills.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No drills in this phase';
+                    option.disabled = true;
+                    drillSelect.appendChild(option);
+                }
+            }
+        }
+
+        function closeSaveScoreModal() {
+            const modal = document.getElementById('saveScoreModal');
+            modal.style.display = 'none';
+            
+            // Reset modal header
+            const modalHeader = document.querySelector('.save-score-header h2');
+            modalHeader.textContent = '💾 Save Game Score';
+            
+            // Clear form
+            document.getElementById('phaseSelection').innerHTML = '';
+            document.getElementById('drillSelection').innerHTML = '<option value="">Select a drill...</option>';
+            document.getElementById('gameNotes').value = '';
+        }
+
+        function saveGameScore() {
+            // Get selected phase and drill information
+            const selectedPhaseIndex = parseInt(document.getElementById('phaseSelection').value);
+            const selectedDrillIndex = document.getElementById('drillSelection').value !== '' ? 
+                parseInt(document.getElementById('drillSelection').value) : null;
+            
+            const selectedPhaseData = practiceState.phases[selectedPhaseIndex];
+            const selectedPhaseName = selectedPhaseData ? selectedPhaseData.name : 'Unknown Phase';
+            
+            let selectedDrillData = null;
+            let selectedDrillName = null;
+            if (selectedDrillIndex !== null && selectedPhaseData && selectedPhaseData.drills) {
+                selectedDrillData = selectedPhaseData.drills[selectedDrillIndex];
+                selectedDrillName = selectedDrillData ? selectedDrillData.name : null;
+            }
+            
+            const gameData = {
+                date: new Date().toISOString(),
+                sessionId: practiceState.sessionId,
+                teamAName: scoreboardState.teamAName,
+                teamBName: scoreboardState.teamBName,
+                teamAScore: scoreboardState.teamAScore,
+                teamBScore: scoreboardState.teamBScore,
+                gameTime: scoreboardState.gameTime,
+                notes: document.getElementById('gameNotes').value,
+                practicePlan: practiceState.practiceName || 'Unknown Practice',
+                // Phase and drill information
+                phaseIndex: selectedPhaseIndex,
+                phaseName: selectedPhaseName,
+                drillIndex: selectedDrillIndex,
+                drillName: selectedDrillName,
+                drillData: selectedDrillData,
+                phaseType: 'scoreboard_game',
+                practiceData: {
+                    totalPhases: practiceState.phases.length,
+                    selectedPhase: selectedPhaseIndex + 1,
+                    practiceId: practiceState.practiceId || null
+                }
+            };
+            
+            // Get existing saved games or initialize empty array
+            let savedGames = [];
+            try {
+                const saved = localStorage.getItem('practrac_saved_games');
+                if (saved) {
+                    savedGames = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Error loading saved games:', e);
+                savedGames = [];
+            }
+            
+            // Save to database instead of localStorage
+            try {
+                if (!practiceState.sessionId) {
+                    showNotification('No active practice session found. Please start a practice first.', 'error');
+                    return;
+                }
+
+                // Prepare team roster data
+                const teamARoster = teamAssignments.teamA.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                const teamBRoster = teamAssignments.teamB.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                // Prepare score data for API
+                const scoreData = {
+                    teamAName: gameData.teamAName,
+                    teamBName: gameData.teamBName,
+                    teamAScore: gameData.teamAScore,
+                    teamBScore: gameData.teamBScore,
+                    gameTime: gameData.gameTime,
+                    notes: gameData.notes,
+                    phaseName: gameData.phaseName,
+                    phaseIndex: gameData.phaseIndex,
+                    drillName: gameData.drillName,
+                    drillIndex: gameData.drillIndex,
+                    teamARoster: JSON.stringify(teamARoster),
+                    teamBRoster: JSON.stringify(teamBRoster)
+                };
+
+                // Save to database via API
+                fetch(`/api/practice-sessions/${practiceState.sessionId}/scores`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scoreData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save score to database');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    
+                    // Show success message with phase and drill info
+                    let successMessage = `Game saved to ${selectedPhaseName}!`;
+                    if (selectedDrillName) {
+                        successMessage += ` (${selectedDrillName})`;
+                    }
+                    successMessage += ' 🎉';
+                    showNotification(successMessage, 'success');
+                    
+                    // Close save modal but keep scoreboard open
+                    closeSaveScoreModal();
+                })
+                .catch(error => {
+                    console.error('Error saving score to database:', error);
+                    showNotification('Failed to save score to database. Please try again.', 'error');
+                });
+                
+            } catch (e) {
+                console.error('Error saving game:', e);
+                showNotification('Failed to save game. Please try again.', 'error');
+            }
+        }
+
+        // Save game data to past practices for integration
+        function saveToPastPractices(gameData) {
+            try {
+                // Get existing past practices
+                let pastPractices = [];
+                const savedPractices = localStorage.getItem('practrac_past_practices');
+                if (savedPractices) {
+                    pastPractices = JSON.parse(savedPractices);
+                }
+                
+                // Find or create a practice entry for current session
+                let currentPractice = null;
+                if (practiceState.sessionId) {
+                    currentPractice = pastPractices.find(p => p.sessionId === practiceState.sessionId);
+                }
+                
+                if (!currentPractice) {
+                    // Create new practice entry for current session
+                    currentPractice = {
+                        id: practiceState.sessionId || Date.now(),
+                        sessionId: practiceState.sessionId,
+                        date: new Date().toISOString(),
+                        plan: gameData.practicePlan,
+                        duration: 0,
+                        notes: '',
+                        scores: [],
+                        phases: practiceState.phases || []
+                    };
+                    pastPractices.unshift(currentPractice);
+                } else if (!currentPractice.scores) {
+                    currentPractice.scores = [];
+                }
+                
+                // Add the game score to this practice
+                currentPractice.scores.push({
+                    id: Date.now(),
+                    sessionId: practiceState.sessionId,
+                    teamAName: gameData.teamAName,
+                    teamBName: gameData.teamBName,
+                    teamAScore: gameData.teamAScore,
+                    teamBScore: gameData.teamBScore,
+                    gameTime: gameData.gameTime,
+                    notes: gameData.notes,
+                    phaseName: gameData.phaseName,
+                    phaseIndex: gameData.phaseIndex,
+                    drillName: gameData.drillName,
+                    drillIndex: gameData.drillIndex,
+                    drillData: gameData.drillData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Save back to localStorage
+                localStorage.setItem('practrac_past_practices', JSON.stringify(pastPractices));
+                
+            } catch (e) {
+                console.error('Error saving to past practices:', e);
+            }
+        }
+
+        // Save and exit function - saves the game and closes both modals
+        function saveAndExit() {
+            // Get selected phase and drill information
+            const selectedPhaseIndex = parseInt(document.getElementById('phaseSelection').value);
+            const selectedDrillIndex = document.getElementById('drillSelection').value !== '' ? 
+                parseInt(document.getElementById('drillSelection').value) : null;
+            
+            const selectedPhaseData = practiceState.phases[selectedPhaseIndex];
+            const selectedPhaseName = selectedPhaseData ? selectedPhaseData.name : 'Unknown Phase';
+            
+            let selectedDrillData = null;
+            let selectedDrillName = null;
+            if (selectedDrillIndex !== null && selectedPhaseData && selectedPhaseData.drills) {
+                selectedDrillData = selectedPhaseData.drills[selectedDrillIndex];
+                selectedDrillName = selectedDrillData ? selectedDrillData.name : null;
+            }
+            
+            const gameData = {
+                date: new Date().toISOString(),
+                sessionId: practiceState.sessionId,
+                teamAName: scoreboardState.teamAName,
+                teamBName: scoreboardState.teamBName,
+                teamAScore: scoreboardState.teamAScore,
+                teamBScore: scoreboardState.teamBScore,
+                gameTime: scoreboardState.gameTime,
+                notes: document.getElementById('gameNotes').value,
+                practicePlan: practiceState.practiceName || 'Unknown Practice',
+                // Phase and drill information
+                phaseIndex: selectedPhaseIndex,
+                phaseName: selectedPhaseName,
+                drillIndex: selectedDrillIndex,
+                drillName: selectedDrillName,
+                drillData: selectedDrillData,
+                phaseType: 'scoreboard_game',
+                practiceData: {
+                    totalPhases: practiceState.phases.length,
+                    selectedPhase: selectedPhaseIndex + 1,
+                    practiceId: practiceState.practiceId || null
+                }
+            };
+            
+            // Save to database instead of localStorage
+            try {
+                if (!practiceState.sessionId) {
+                    showNotification('No active practice session found. Please start a practice first.', 'error');
+                    return;
+                }
+
+                // Prepare team roster data
+                const teamARoster = teamAssignments.teamA.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                const teamBRoster = teamAssignments.teamB.map(playerId => {
+                    const player = players.find(p => p.id === playerId);
+                    return player ? {
+                        id: player.id,
+                        name: player.name || player.firstName || `Player ${player.id}`,
+                        jerseyNumber: player.jerseyNumber || player.number || '#',
+                        position: player.position || ''
+                    } : {
+                        id: playerId,
+                        name: `Player ${playerId}`,
+                        jerseyNumber: '#',
+                        position: ''
+                    };
+                });
+
+                // Prepare score data for API
+                const scoreData = {
+                    teamAName: gameData.teamAName,
+                    teamBName: gameData.teamBName,
+                    teamAScore: gameData.teamAScore,
+                    teamBScore: gameData.teamBScore,
+                    gameTime: gameData.gameTime,
+                    notes: gameData.notes,
+                    phaseName: gameData.phaseName,
+                    phaseIndex: gameData.phaseIndex,
+                    drillName: gameData.drillName,
+                    drillIndex: gameData.drillIndex,
+                    teamARoster: JSON.stringify(teamARoster),
+                    teamBRoster: JSON.stringify(teamBRoster)
+                };
+
+                // Save to database via API
+                fetch(`/api/practice-sessions/${practiceState.sessionId}/scores`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scoreData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save score to database');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    
+                    // Show success message with phase and drill info
+                    let successMessage = `Game saved to ${selectedPhaseName}!`;
+                    if (selectedDrillName) {
+                        successMessage += ` (${selectedDrillName})`;
+                    }
+                    successMessage += ' Exiting scoreboard... 🎉';
+                    showNotification(successMessage, 'success');
+                    
+                    // Close both modals
+                    closeSaveScoreModal();
+                    closeScoreboard();
+                })
+                .catch(error => {
+                    console.error('Error saving score to database:', error);
+                    showNotification('Failed to save score to database. Please try again.', 'error');
+                });
+                
+            } catch (e) {
+                console.error('Error saving game:', e);
+                showNotification('Failed to save game. Please try again.', 'error');
+            }
+        }
+
+        // Notification system for save feedback
+        function showNotification(message, type = 'info') {
+            // Remove any existing notification
+            const existing = document.querySelector('.save-notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `save-notification ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--accent-orange)' : '#e74c3c'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: var(--radius-md);
+                z-index: 3000;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Water break functionality
+        let waterBreakState = {
+            duration: 120, // 2 minutes default
+            timeLeft: 120,
+            interval: null,
+            isActive: false
+        };
+
+        function startWaterBreak() {
+            waterBreakState.timeLeft = waterBreakState.duration;
+            waterBreakState.isActive = true;
+            
+            const modal = document.getElementById('waterBreakModal');
+            modal.classList.add('active');
+            
+            updateWaterBreakDisplay();
+            
+            waterBreakState.interval = setInterval(() => {
+                waterBreakState.timeLeft--;
+                updateWaterBreakDisplay();
+                
+                if (waterBreakState.timeLeft <= 0) {
+                    endWaterBreak();
+                }
+            }, 1000);
+        }
+
+        function endWaterBreak() {
+            if (waterBreakState.interval) {
+                clearInterval(waterBreakState.interval);
+            }
+            
+            waterBreakState.isActive = false;
+            const modal = document.getElementById('waterBreakModal');
+            modal.classList.remove('active');
+        }
+
+        function updateWaterBreakDisplay() {
+            const minutes = Math.floor(waterBreakState.timeLeft / 60);
+            const seconds = waterBreakState.timeLeft % 60;
+            document.getElementById('waterBreakTimer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Enhanced fullscreen functionality for all devices including iPhone
+        function toggleFullscreen() {
+            if (isInFullscreen()) {
+                exitFullscreen();
+            } else {
+                enterFullscreen();
+            }
+        }
+
+        function isInFullscreen() {
+            // Check multiple fullscreen APIs and custom fullscreen state
+            return !!(document.fullscreenElement || 
+                     document.webkitFullscreenElement || 
+                     document.mozFullScreenElement || 
+                     document.msFullscreenElement ||
+                     document.body.classList.contains('custom-fullscreen'));
+        }
+
+        function enterFullscreen() {
+            const element = document.documentElement;
+            
+            // Try standard fullscreen API first
+            if (element.requestFullscreen) {
+                element.requestFullscreen().catch(err => {
+                    console.log('Standard fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else if (element.webkitRequestFullscreen) {
+                // Safari
+                element.webkitRequestFullscreen().catch(err => {
+                    console.log('WebKit fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else if (element.mozRequestFullScreen) {
+                // Firefox
+                element.mozRequestFullScreen().catch(err => {
+                    console.log('Mozilla fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else if (element.msRequestFullscreen) {
+                // IE/Edge
+                element.msRequestFullscreen().catch(err => {
+                    console.log('MS fullscreen failed, using custom fullscreen');
+                    enterCustomFullscreen();
+                });
+            } else {
+                // Fallback for unsupported browsers (like iPhone Safari)
+                enterCustomFullscreen();
+            }
+        }
+
+        function exitFullscreen() {
+            // Exit standard fullscreen if active
+            if (document.fullscreenElement || document.webkitFullscreenElement || 
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            } else {
+                // Exit custom fullscreen
+                exitCustomFullscreen();
+            }
+        }
+
+        function enterCustomFullscreen() {
+            // Custom fullscreen for iPhone and other devices that don't support fullscreen API
+            document.body.classList.add('custom-fullscreen');
+            
+            // Hide browser UI on mobile
+            if (isMobile()) {
+                // Scroll to hide address bar
+                setTimeout(() => {
+                    window.scrollTo(0, 1);
+                    document.body.scrollTop = 1;
+                }, 100);
+                
+                // Lock orientation on mobile if possible
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(err => {
+                        console.log('Orientation lock not supported');
+                    });
+                }
+            }
+            
+            // Add visual indicator for custom fullscreen
+            showFullscreenNotification('Fullscreen mode active (tap fullscreen button to exit)');
+        }
+
+        function exitCustomFullscreen() {
+            document.body.classList.remove('custom-fullscreen');
+            
+            // Unlock orientation if locked
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+            
+            showFullscreenNotification('Exited fullscreen mode');
+        }
+
+        function showFullscreenNotification(message) {
+            // Remove existing notification
+            const existing = document.querySelector('.fullscreen-notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = 'fullscreen-notification';
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: var(--radius-md);
+                z-index: 10000;
+                font-size: 0.9rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid var(--glass-border);
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Fade in
+            setTimeout(() => {
+                notification.style.opacity = '1';
+            }, 100);
+            
+            // Auto remove after 2 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                if (document.getElementById('scoreboardModal').classList.contains('active')) {
+                    closeScoreboard();
+                }
+                if (document.getElementById('waterBreakModal').classList.contains('active')) {
+                    endWaterBreak();
+                }
+            }
+        });
+
+        // Mobile keyboard and touch improvements
+        function initializeMobileSupport() {
+            const keyboardOverlay = document.getElementById('keyboardOverlay');
+            
+            // Check if we should enable mobile support based on screen width
+            function shouldEnableMobileSupport() {
+                return window.innerWidth < 1000 || isMobile();
+            }
+            
+            // Get all input elements (textareas, inputs, selects)
+            function getAllInputElements() {
+                return document.querySelectorAll('.notes-textarea, .form-input, input, textarea, select');
+            }
+            
+            // Setup input event handlers
+            function setupInputHandlers() {
+                const inputs = getAllInputElements();
+                
+                inputs.forEach(input => {
+                    // Remove existing event listeners to avoid duplicates
+                    input.removeEventListener('focus', handleInputFocus);
+                    input.removeEventListener('blur', handleInputBlur);
+                    
+                    // Add new event listeners
+                    input.addEventListener('focus', handleInputFocus);
+                    input.addEventListener('blur', handleInputBlur);
+                });
+            }
+            
+            function handleInputFocus(event) {
+                const input = event.target;
+                if (shouldEnableMobileSupport()) {
+                    keyboardOverlay.classList.add('active');
+                    // Prevent zoom on iOS and enable proper input in fullscreen
+                    if (input.style.fontSize !== '16px') {
+                        input.style.fontSize = '16px';
+                    }
+                    // Ensure input works in fullscreen mode
+                    enableFullscreenInput(input);
+                }
+            }
+            
+            function handleInputBlur(event) {
+                if (shouldEnableMobileSupport()) {
+                    keyboardOverlay.classList.remove('active');
+                }
+            }
+            
+            // Initial setup
+            setupInputHandlers();
+            
+            // Re-setup handlers when new elements are added (like modals)
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        setupInputHandlers();
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Click outside to dismiss keyboard - enabled for screens < 1000px
+            keyboardOverlay.addEventListener('click', function() {
+                if (shouldEnableMobileSupport()) {
+                    const inputs = getAllInputElements();
+                    inputs.forEach(input => input.blur());
+                    keyboardOverlay.classList.remove('active');
+                }
+            });
+            
+            // Handle window resize to update mobile support status
+            window.addEventListener('resize', function() {
+                // If screen gets wider than 1000px and we're not on mobile, disable overlay
+                if (!shouldEnableMobileSupport() && keyboardOverlay.classList.contains('active')) {
+                    keyboardOverlay.classList.remove('active');
+                }
+            });
+            
+            // Prevent default touch behaviors that interfere with fullscreen
+            if (isIOS()) {
+                document.addEventListener('touchstart', function(e) {
+                    // Prevent pull-to-refresh and bounce effects
+                    if (e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                
+                document.addEventListener('touchmove', function(e) {
+                    // Prevent scrolling when in fullscreen mode unless it's inside an input
+                    if (document.fullscreenElement || document.body.classList.contains('custom-fullscreen')) {
+                        if (!e.target.closest('.notes-textarea, .form-input, input, textarea, select')) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
+                
+                // Disable double-tap zoom
+                let lastTouchEnd = 0;
+                document.addEventListener('touchend', function(e) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        e.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, { passive: false });
+            }
+        }
+
+        // Enable input functionality in fullscreen mode
+        function enableFullscreenInput(inputElement) {
+            // Ensure the input element is focusable and interactive in fullscreen
+            inputElement.style.pointerEvents = 'auto';
+            inputElement.style.touchAction = 'manipulation';
+            inputElement.style.webkitUserSelect = 'text';
+            inputElement.style.userSelect = 'text';
+            
+            // For iOS Safari fullscreen issues
+            if (isIOS() && (document.fullscreenElement || document.body.classList.contains('custom-fullscreen'))) {
+                // Temporarily allow user selection for input
+                const container = inputElement.closest('.practice-mode-container, .save-score-modal, .scoreboard-modal');
+                if (container) {
+                    container.style.webkitUserSelect = 'auto';
+                    container.style.userSelect = 'auto';
+                    container.style.webkitTouchCallout = 'default';
+                    container.style.webkitTapHighlightColor = 'rgba(0,0,0,0.1)';
+                }
+                
+                // Ensure the input itself allows interaction
+                inputElement.style.webkitTouchCallout = 'default';
+                inputElement.style.webkitTapHighlightColor = 'rgba(0,0,0,0.1)';
+                
+                // Restore after input is finished (on blur)
+                const restoreSettings = () => {
+                    if (container) {
+                        container.style.webkitUserSelect = 'none';
+                        container.style.userSelect = 'none';
+                        container.style.webkitTouchCallout = 'none';
+                        container.style.webkitTapHighlightColor = 'transparent';
+                    }
+                    inputElement.removeEventListener('blur', restoreSettings);
+                };
+                
+                inputElement.addEventListener('blur', restoreSettings, { once: true });
+            }
+            
+            // Ensure proper keyboard display on mobile devices
+            if (isMobile() || window.innerWidth < 1000) {
+                // Force the input to be visible and scrollable if needed
+                setTimeout(() => {
+                    inputElement.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }, 100);
+            }
+        }
+
+        // Device detection utilities
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent);
+        }
+
+        function isIPad() {
+            return /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        // Enhanced fullscreen functionality for mobile/iPad
+        function enhanceFullscreenForMobile() {
+            if (isIOS()) {
+                const practiceContainer = document.getElementById('practiceContainer');
+                
+                // Listen for fullscreen changes
+                document.addEventListener('fullscreenchange', function() {
+                    if (document.fullscreenElement) {
+                        // Entering fullscreen - disable iOS gestures
+                        practiceContainer.style.touchAction = 'none';
+                        practiceContainer.style.webkitUserSelect = 'none';
+                        practiceContainer.style.userSelect = 'none';
+                        
+                        // Hide address bar on iOS
+                        setTimeout(() => {
+                            window.scrollTo(0, 1);
+                        }, 100);
+                    } else {
+                        // Exiting fullscreen - restore normal behavior
+                        practiceContainer.style.touchAction = 'pan-x pan-y';
+                        practiceContainer.style.webkitUserSelect = 'text';
+                        practiceContainer.style.userSelect = 'text';
+                    }
+                });
+                
+                // Prevent accidental exit gestures
+                practiceContainer.addEventListener('touchstart', function(e) {
+                    if (document.fullscreenElement && e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        const isTopEdge = touch.clientY < 50;
+                        const isBottomEdge = touch.clientY > window.innerHeight - 50;
+                        
+                        // Prevent swipe from edges in fullscreen
+                        if (isTopEdge || isBottomEdge) {
+                            e.preventDefault();
+                        }
+                    }
+                }, { passive: false });
+            }
+        }
+
+        // Initialize mobile support when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMobileSupport();
+            enhanceFullscreenForMobile();
+        });
+    </script>
+    <script src="/js/modal.js"></script>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            border-radius: 0;
+            padding: var(--spacing-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: var(--font-size-xl);
+            cursor: pointer;
+            padding: var(--spacing-sm);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            margin-top: var(--spacing-lg);
+        }
+
+        /* Scoreboard Modal Styles */
+        .scoreboard-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .scoreboard-modal.active {
+            display: flex;
+        }
+
+        .scoreboard-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .scoreboard-title {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0;
+            color: var(--accent-orange);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .game-timer {
+            font-size: 2rem;
+            margin: 1rem 0;
+            color: #fff;
+        }
+
+        .score-container {
+            display: flex;
+            gap: 4rem;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .team-score {
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .team-name {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--accent-orange);
+        }
+
+        .team-points {
+            font-size: 8rem;
+            font-weight: bold;
+            line-height: 1;
+            margin: 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        .vs-divider {
+            font-size: 4rem;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .score-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .score-btn {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            min-width: 60px;
+        }
+
+        .score-btn:hover {
+            background: var(--accent-orange);
+        }
+
+        .scoreboard-actions {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .scoreboard-close-btn {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .scoreboard-close-btn:hover {
+            background: var(--accent-orange);
+        }
+
+        /* Scoreboard Mobile Responsive Styles */
+        @media (max-width: 999px) {
+            .scoreboard-title {
+                font-size: 1.8rem;
+            }
+
+            .game-timer {
+                font-size: 1.3rem;
+                margin: 0.5rem 0;
+            }
+
+            .score-container {
+                gap: 1.5rem;
+                margin: 1rem 0;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .team-score {
+                min-width: 150px;
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .team-name {
+                font-size: 1.3rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .team-points {
+                font-size: 4rem;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            }
+
+            .vs-divider {
+                font-size: 2rem;
+                margin: 0.5rem 0;
+                transform: rotate(90deg);
+            }
+
+            .score-controls {
+                gap: 0.5rem;
+                margin-top: 0.5rem;
+            }
+
+            .score-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 1rem;
+                min-width: 50px;
+            }
+
+            .scoreboard-actions {
+                top: 10px;
+                right: 10px;
+            }
+
+            .scoreboard-close-btn {
+                padding: 0.5rem 1rem;
+                font-size: 1rem;
+            }
+        }
+
+        /* iPhone specific adjustments (smaller screens) */
+        @media (max-width: 414px) {
+            .scoreboard-title {
+                font-size: 1.5rem;
+            }
+
+            .game-timer {
+                font-size: 1.1rem;
+            }
+
+            .score-container {
+                gap: 1rem;
+            }
+
+            .team-name {
+                font-size: 1.1rem;
+            }
+
+            .team-points {
+                font-size: 3rem;
+            }
+
+            .vs-divider {
+                font-size: 1.5rem;
+            }
+
+            .score-btn {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.9rem;
+                min-width: 45px;
+            }
+        }
+
+        /* Water Break Modal Styles */
+        .water-break-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 150, 255, 0.9);
+            z-index: 9998;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .water-break-modal.active {
+            display: flex;
+        }
+
+        .water-break-content {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .water-break-title {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .water-break-timer {
+            font-size: 6rem;
+            font-weight: bold;
+            margin: 2rem 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+
+        .water-break-message {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .water-break-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        /* Save Score Modal Styles */
+        .save-score-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .save-score-content {
+            background: var(--glass-primary);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .save-score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .save-score-header h2 {
+            margin: 0;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #999;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .save-score-summary {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .final-score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-orange);
+            margin-bottom: 0.5rem;
+        }
+
+        .game-duration {
+            color: #ccc;
+            font-size: 1rem;
+        }
+
+        .save-score-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            color: white;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-input::placeholder {
+            color: #999;
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+
+        .save-score-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .cancel-btn, .save-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cancel-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 1px solid var(--glass-border);
+        }
+
+        .cancel-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, var(--accent-orange), #ff7a4d);
+            color: white;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+        }
+
+        /* Mobile responsive for save score modal */
+        @media (max-width: 999px) {
+            .save-score-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                width: calc(100% - 2rem);
+            }
+
+            .final-score {
+                font-size: 1.5rem;
+            }
+
+            .save-score-actions {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .cancel-btn, .save-btn {
+                width: 100%;
+                margin-left: 0 !important;
+            }
+        }
+
+        /* Team Setup Modal Styles */
+        .team-players-list {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .team-player-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            color: white;
+            cursor: move;
+            user-select: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+            font-size: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .team-player-card:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+            transform: translateY(-1px);
+        }
+
+        .team-player-card.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+        }
+
+        .available-player-card {
+            background: linear-gradient(135deg, rgba(76, 237, 196, 0.3), rgba(76, 237, 196, 0.2));
+            border: 2px solid var(--accent-green);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            text-align: center;
+            min-width: 100px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            align-items: center;
+        }
+
+        .available-player-card:hover {
+            background: linear-gradient(135deg, rgba(76, 237, 196, 0.5), rgba(76, 237, 196, 0.3));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-color: #4ECDC4;
+        }
+
+        .team-players-list.drag-over {
+            background: rgba(255, 255, 255, 0.1);
+            border-style: solid !important;
+        }
+
+        .team-placeholder {
+            transition: opacity 0.2s ease;
+        }
+
+        .team-players-list:not(:empty) .team-placeholder {
+            display: none;
+        }
+
+        .player-remove-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .player-remove-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+            border-color: #ef4444;
+        }
+
+        /* Custom fullscreen styles for iPhone and unsupported browsers */
+        body.custom-fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+            z-index: 99999;
+        }
+
+        body.custom-fullscreen .practice-mode-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 100000;
+        }
+
+        /* Hide system UI on custom fullscreen for iPhone */
+        body.custom-fullscreen {
+            /* iOS Safari specific */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            /* Hide scrollbars */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body.custom-fullscreen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Enhance fullscreen button visibility */
+        .nav-btn[onclick="toggleFullscreen()"] {
+            position: relative;
+        }
+
+        body.custom-fullscreen .nav-btn[onclick="toggleFullscreen()"]::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px solid var(--accent-orange);
+            border-radius: inherit;
+            pointer-events: none;
+            animation: fullscreen-pulse 2s infinite;
+        }
+
+        @keyframes fullscreen-pulse {
+            0%, 100% { 
+                opacity: 0.5;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.05);
+            }
+        }
+    </style>
+
+    <!-- Scoreboard Modal -->
+    <div id="scoreboardModal" class="scoreboard-modal">
+        <div class="scoreboard-actions">
+            <button class="scoreboard-close-btn" onclick="closeScoreboard()">✕ Close</button>
+        </div>
+        
+        <div class="scoreboard-header">
+            <h1 class="scoreboard-title">🏐 SCOREBOARD</h1>
+            <div class="game-timer" id="gameTimer">00:00</div>
+        </div>
+        
+        <div class="score-container">
+            <div class="team-score">
+                <div class="team-name" id="teamAName" contenteditable="true" onblur="updateTeamName('A')" style="cursor: text;">Home</div>
+                <div class="team-points" id="teamAScore">0</div>
+                <div class="score-controls">
+                    <button class="score-btn" onclick="changeScore('A', -1)">-</button>
+                    <button class="score-btn" onclick="changeScore('A', 1)">+</button>
+                </div>
+            </div>
+            
+            <div class="vs-divider">VS</div>
+            
+            <div class="team-score">
+                <div class="team-name" id="teamBName" contenteditable="true" onblur="updateTeamName('B')" style="cursor: text;">Away</div>
+                <div class="team-points" id="teamBScore">0</div>
+                <div class="score-controls">
+                    <button class="score-btn" onclick="changeScore('B', -1)">-</button>
+                    <button class="score-btn" onclick="changeScore('B', 1)">+</button>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <button class="score-btn" onclick="showTeamSetupModal()" style="background: var(--accent-blue); margin-right: 1rem;">👥 Setup Teams</button>
+            <button class="score-btn" onclick="resetScores()" style="background: #666; margin-right: 1rem;">Reset Scores</button>
+            <button class="score-btn" onclick="toggleGameTimer()" style="margin-right: 1rem;">Start/Stop Timer</button>
+            <button class="score-btn" onclick="showSaveScoreModal()" style="background: var(--accent-orange);">💾 Save Score</button>
+        </div>
+    </div>
+
+    <!-- Save Score Modal -->
+    <div id="saveScoreModal" class="save-score-modal" style="display: none;">
+        <div class="save-score-content">
+            <div class="save-score-header">
+                <h2>💾 Save Game Score</h2>
+                <button class="close-btn" onclick="closeSaveScoreModal()">✕</button>
+            </div>
+            
+            <div class="save-score-summary">
+                <div class="final-score">
+                    <span id="saveTeamAName">Home</span> <span id="saveTeamAScore">0</span> - <span id="saveTeamBScore">0</span> <span id="saveTeamBName">Away</span>
+                </div>
+                <div class="game-duration">
+                    Game Time: <span id="saveGameTime">00:00</span>
+                </div>
+            </div>
+            
+            <div class="save-score-form">
+                <div class="form-group">
+                    <label for="phaseSelection">Practice Phase:</label>
+                    <select id="phaseSelection" class="form-input">
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="drillSelection">Drill (Optional):</label>
+                    <select id="drillSelection" class="form-input">
+                        <option value="">Select a drill...</option>
+                        <!-- Options will be populated dynamically based on selected phase -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="gameNotes">Score Notes:</label>
+                    <textarea id="gameNotes" class="form-input" rows="4" placeholder="Key plays, highlights, areas for improvement..."></textarea>
+                </div>
+                
+                <div class="save-score-actions">
+                    <button class="cancel-btn" onclick="closeSaveScoreModal()">Cancel</button>
+                    <button class="save-btn" onclick="saveGameScore()">Save Game</button>
+                    <button class="save-btn" onclick="saveAndExit()" style="background: linear-gradient(135deg, #4ECDC4, #44a8a0); margin-left: 0.5rem;">Save & Exit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Setup Modal -->
+    <div id="teamSetupModal" class="save-score-modal" style="display: none;">
+        <div class="save-score-content" style="max-width: 800px;">
+            <div class="save-score-header">
+                <h2>👥 Setup Teams</h2>
+                <button class="close-btn" onclick="closeTeamSetupModal()">✕</button>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="teamANameInput" style="display: block; margin-bottom: 0.5rem; color: var(--accent-orange); font-weight: bold;">Team A Name:</label>
+                        <input type="text" id="teamANameInput" value="Home" class="form-input" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label for="teamBNameInput" style="display: block; margin-bottom: 0.5rem; color: var(--accent-blue); font-weight: bold;">Team B Name:</label>
+                        <input type="text" id="teamBNameInput" value="Away" class="form-input" style="width: 100%;">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: start;">
+                    <div>
+                        <h3 style="color: var(--accent-orange); margin-bottom: 1rem; text-align: center;">Team A Players</h3>
+                        <div id="teamAPlayers" class="team-players-list" style="min-height: 200px; border: 2px dashed var(--accent-orange); border-radius: 8px; padding: 1rem;">
+                            <div class="team-placeholder" style="text-align: center; color: var(--text-secondary); font-style: italic;">
+                                Drag players here
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding-top: 2rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <button onclick="autoAssignTeams()" class="score-btn" style="background: var(--accent-green); padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                🎲 Auto Assign
+                            </button>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <button onclick="clearTeams()" class="score-btn" style="background: #666; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                🗑️ Clear All
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--accent-blue); margin-bottom: 1rem; text-align: center;">Team B Players</h3>
+                        <div id="teamBPlayers" class="team-players-list" style="min-height: 200px; border: 2px dashed var(--accent-blue); border-radius: 8px; padding: 1rem;">
+                            <div class="team-placeholder" style="text-align: center; color: var(--text-secondary); font-style: italic;">
+                                Drag players here
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h3 style="color: var(--text-primary); margin-bottom: 1rem; text-align: center;">Available Players</h3>
+                    <div id="availablePlayers" class="available-players-list" style="min-height: 100px; border: 2px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <!-- Players will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="save-score-actions">
+                <button class="cancel-btn" onclick="closeTeamSetupModal()">Cancel</button>
+                <button class="save-btn" onclick="applyTeamSetup()">Apply Team Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Water Break Modal -->
+    <div id="waterBreakModal" class="water-break-modal">
+        <div class="water-break-content">
+            <div class="water-break-title">💧 WATER BREAK</div>
+            <div class="water-break-timer" id="waterBreakTimer">2:00</div>
+            <div class="water-break-message">Stay hydrated! Break ends automatically.</div>
+            <div class="water-break-controls">
+                <button class="scoreboard-close-btn" onclick="endWaterBreak()">End Break Now</button>
+            </div>
+        </div>
+    </div>
+
+    </style>
+</body>
+</html>

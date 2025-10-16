@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Plans - StickTrac</title>
+    <link rel="stylesheet" href="css/glass-style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-content">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html" class="active">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="practice.html" class="active">Practice Plans</a></li>
+                    <li><a href="past-practices.html">Past Practices</a></li>
+                    <li><a href="roster.html">Roster</a></li>
+                    <li><a href="drills.html">Drills</a></li>
+                    <li><a href="settings.html">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <div class="nav-user">
+                <span id="userGreeting">Guest User</span>
+                <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Active Session Banner (hidden by default) -->
+    <div id="activeSessionBanner" class="active-session-banner" style="display: none;">
+        <div class="banner-content">
+            <div class="session-info">
+                <h3>🏐 Active Practice Session</h3>
+                <div class="session-details">
+                    <span id="sessionPracticeName">Practice Name</span>
+                    <span id="sessionStartTime">Started: --:--</span>
+                    <span id="sessionStatus">Status: --</span>
+                </div>
+            </div>
+            <div class="banner-actions">
+                <button id="resumeSessionBtn" class="glass-button primary">
+                    Resume Session
+                </button>
+                <button id="dismissBannerBtn" class="glass-button secondary">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-container main-with-banner">
+        <!-- Header -->
+        <section class="flex-between mb-xl">
+            <div>
+                <h1 class="text-2xl font-bold mb-sm">Practice Plans</h1>
+                <p class="text-secondary">Plan and manage your volleyball practice sessions</p>
+            </div>
+            <button class="glass-button primary" onclick="showCreatePracticeModal()">
+                ➕ Create Practice Plan
+            </button>
+        </section>
+
+        <div id="practicesList" class="practices-list">
+            <!-- Practice plans will be loaded here -->
+        </div>
+    </main>
+
+    <!-- Create Practice Modal -->
+    <div id="createPracticeModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">🏐 Create Practice Plan</h2>
+                <button class="modal-close" onclick="closeCreatePracticeModal()">✕</button>
+            </div>
+            
+            <form id="createPracticeForm" onsubmit="submitPracticeForm(event)">
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Practice Name</label>
+                        <input type="text" name="practiceName" class="glass-input" placeholder="e.g., Game Prep vs Eagles" required>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Practice Date</label>
+                        <input type="date" name="practiceDate" class="glass-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: var(--spacing-md);">
+                    <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Estimated Duration (minutes)</label>
+                    <input type="number" name="practiceEstimatedDuration" class="glass-input" placeholder="90" min="15" max="300" required>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: var(--spacing-lg);">
+                    <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Practice Objective</label>
+                    <textarea name="practiceObjective" class="glass-input" placeholder="What do you want to accomplish in this practice?" rows="3" style="resize: vertical; min-height: 80px;"></textarea>
+                </div>
+
+                <div class="phases-section" style="margin-bottom: var(--spacing-lg);">
+                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-secondary); border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                        <h3 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">Practice Phases</h3>
+                    </div>
+                    
+                    <div id="practicePhases">
+                        <!-- Phases will be added here dynamically -->
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; margin-top: var(--spacing-md);">
+                        <button type="button" class="glass-button" onclick="addPhase()">➕ Add Phase</button>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: flex-end; margin-top: var(--spacing-lg);">
+                    <button type="button" class="glass-button" onclick="closeCreatePracticeModal()">Cancel</button>
+                    <button type="submit" class="glass-button primary">Create Practice Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Drill Selector Modal -->
+    <div id="drillSelectorModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">🏐 Select Drills for Phase</h2>
+                <button class="modal-close" onclick="closeDrillSelector()">✕</button>
+            </div>
+            
+            <div class="mb-md" style="margin-bottom: var(--spacing-md);">
+                <input type="text" id="drillSearchInput" class="glass-input" placeholder="🔍 Search drills..." onkeyup="filterDrillsInSelector()">
+            </div>
+
+            <div id="drillSelectorGrid" class="grid grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-md); max-height: 400px; overflow-y: auto;">
+                <!-- Drills will be loaded here -->
+            </div>
+
+            <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: space-between; align-items: center; margin-top: var(--spacing-lg);">
+                <div id="drillSelectionCount" style="color: var(--text-secondary); font-size: var(--font-size-sm);">
+                    No drills selected
+                </div>
+                <div style="display: flex; gap: var(--spacing-md);">
+                    <button type="button" class="glass-button" onclick="closeDrillSelector()">Cancel</button>
+                    <button type="button" class="glass-button primary" onclick="closeDrillSelector()">✅ Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Practice Modal -->
+    <div id="editPracticeModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">🏐 Edit Practice Plan</h2>
+                <button class="modal-close" onclick="closeEditPracticeModal()">✕</button>
+            </div>
+            
+            <form id="editPracticeForm" onsubmit="updatePracticeForm(event)">
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Practice Name</label>
+                        <input type="text" name="editPracticeName" class="glass-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Practice Date</label>
+                        <input type="date" name="editPracticeDate" class="glass-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: var(--spacing-md);">
+                    <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Estimated Duration (minutes)</label>
+                    <input type="number" name="editPracticeEstimatedDuration" class="glass-input" placeholder="90" min="15" max="300" required>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: var(--spacing-lg);">
+                    <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Practice Objective</label>
+                    <textarea name="editPracticeObjective" class="glass-input" placeholder="What do you want to accomplish in this practice?" rows="3" style="resize: vertical; min-height: 80px;"></textarea>
+                </div>
+
+                <div class="phases-section" style="margin-bottom: var(--spacing-lg);">
+                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); padding: var(--spacing-md); background: var(--glass-secondary); border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+                        <h3 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">Practice Phases</h3>
+                    </div>
+                    
+                    <div id="editPracticePhases">
+                        <!-- Phases will be loaded here -->
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; margin-top: var(--spacing-md);">
+                        <button type="button" class="glass-button" onclick="addEditPhase()">➕ Add Phase</button>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: flex-end; margin-top: var(--spacing-lg);">
+                    <button type="button" class="glass-button" onclick="closeEditPracticeModal()">Cancel</button>
+                    <button type="submit" class="glass-button primary">Update Practice Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Practice Conflict Modal -->
+    <div id="activePracticeModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h2 style="color: var(--accent-orange); margin: 0;">⚠️ Active Practice Session</h2>
+                <button class="modal-close" onclick="closeActivePracticeModal()">✕</button>
+            </div>
+            
+            <div style="margin-bottom: var(--spacing-lg);">
+                <p style="color: var(--text-primary); margin-bottom: var(--spacing-md);">
+                    There is already an active practice session running:
+                </p>
+                <div style="background: var(--glass-tertiary); padding: var(--spacing-md); border-left: 4px solid var(--accent-orange); margin-bottom: var(--spacing-lg);">
+                    <h4 id="conflictPracticeName" style="color: var(--accent-orange); margin: 0 0 var(--spacing-xs) 0;">Practice Name</h4>
+                    <p id="conflictPracticeDetails" style="color: var(--text-secondary); margin: 0; font-size: var(--font-size-sm);">Started: --:--</p>
+                </div>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-sm);">
+                    You can either resume the current session or end it to start a new practice.
+                </p>
+            </div>
+
+            <div class="modal-actions" style="display: flex; gap: var(--spacing-md); justify-content: flex-end; margin-top: var(--spacing-lg);">
+                <button onclick="closeActivePracticeModal()" class="glass-button secondary">
+                    Cancel
+                </button>
+                <button id="resumeConflictBtn" class="glass-button primary">
+                    Resume Current
+                </button>
+                <button id="endCurrentBtn" class="glass-button" style="background-color: var(--accent-red); border-color: var(--accent-red);">
+                    End Current & Start New
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let drills = [];
+        let currentPhaseId = null;
+        let selectedDrillsForPhase = {};
+
+        async function loadPractices() {
+            try {
+                const response = await fetch('/api/practices');
+                const practicesData = await response.json();
+                const practicesList = document.getElementById('practicesList');
+                
+                if (practicesData.length === 0) {
+                    practicesList.innerHTML = '<div class="glass-card p-lg text-center">No practice plans created yet. Create your first practice plan!</div>';
+                    return;
+                }
+
+                practicesList.innerHTML = practicesData.map(practice => `
+                    <div class="glass-card" style="padding: var(--spacing-lg); margin-bottom: var(--spacing-md); display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-sm);">
+                                <h3 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">${practice.name}</h3>
+                                <span style="color: var(--accent-orange); font-weight: 500; font-size: var(--font-size-sm);">⏱️ ${practice.estimated_duration} min</span>
+                            </div>
+                            <div style="display: flex; gap: var(--spacing-lg); margin-bottom: var(--spacing-xs);">
+                                <p style="margin: 0; color: var(--text-secondary); font-size: var(--font-size-sm);">📅 ${practice.date}</p>
+                            </div>
+                            <p style="margin: 0; color: var(--text-tertiary); font-size: var(--font-size-sm); line-height: 1.4;">${practice.objective || 'No objective set'}</p>
+                        </div>
+                        <div style="display: flex; gap: var(--spacing-sm); margin-left: var(--spacing-lg);">
+                            <button class="glass-button" onclick="viewEditPractice(${practice.id})" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
+                                ✏️ Edit
+                            </button>
+                            <button class="glass-button primary" onclick="startPractice(${practice.id})" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
+                                ▶️ Start
+                            </button>
+                            <button class="glass-button danger" onclick="deletePractice(${practice.id}, '${practice.name}')" style="padding: var(--spacing-sm) var(--spacing-md); font-size: var(--font-size-sm);">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading practices:', error);
+            }
+        }
+
+        async function loadDrills() {
+            try {
+                const response = await fetch('/api/drills');
+                drills = await response.json();
+            } catch (error) {
+                console.error('Error loading drills:', error);
+            }
+        }
+
+        function showCreatePracticeModal() {
+            const modal = document.getElementById('createPracticeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            } else {
+                console.error('Modal element not found');
+            }
+        }
+
+        function closeCreatePracticeModal() {
+            document.getElementById('createPracticeModal').style.display = 'none';
+            document.getElementById('createPracticeForm').reset();
+            resetPhases();
+        }
+
+        function resetPhases() {
+            document.getElementById('practicePhases').innerHTML = '';
+            selectedDrillsForPhase = {};
+        }
+
+        function addPhase() {
+            const phasesContainer = document.getElementById('practicePhases');
+            const phaseId = `phase-${Date.now()}`;
+            
+            const phaseHtml = `
+                <div class="glass-card" data-phase-id="${phaseId}" style="margin-bottom: var(--spacing-md); padding: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                        <h4 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">🎯 Phase ${phasesContainer.children.length + 1}</h4>
+                        <button type="button" class="glass-button" onclick="removePhase(this)">🗑️ Remove</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                        <div class="form-group">
+                            <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Phase Name</label>
+                            <input type="text" name="phaseName" class="glass-input" placeholder="e.g., Warm-up" required>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Duration (minutes)</label>
+                            <input type="number" name="phaseDuration" class="glass-input" placeholder="15" min="1" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: var(--spacing-md);">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Phase Objective</label>
+                        <textarea name="phaseObjective" class="glass-input" placeholder="What do you want to accomplish in this phase?" rows="2" style="resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div style="margin-top: var(--spacing-md);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                            <label style="color: var(--text-primary); font-weight: 500;">🏐 Selected Drills</label>
+                            <button type="button" class="glass-button" onclick="openDrillSelector('${phaseId}')">➕ Add Drill</button>
+                        </div>
+                        <div style="background: var(--glass-secondary); border-radius: var(--radius-md); padding: var(--spacing-md); border: 1px solid var(--glass-border);" id="selectedDrills-${phaseId}">
+                            <div style="text-align: center; color: var(--text-secondary);">No drills selected</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            phasesContainer.insertAdjacentHTML('beforeend', phaseHtml);
+            selectedDrillsForPhase[phaseId] = [];
+        }
+
+        function removePhase(button) {
+            const phaseCard = button.closest('[data-phase-id]');
+            const phaseId = phaseCard.dataset.phaseId;
+            delete selectedDrillsForPhase[phaseId];
+            phaseCard.remove();
+            updatePhaseNumbers();
+        }
+
+        function updatePhaseNumbers() {
+            const phaseCards = document.querySelectorAll('[data-phase-id]');
+            phaseCards.forEach((card, index) => {
+                const header = card.querySelector('h4');
+                header.textContent = `Phase ${index + 1}`;
+            });
+        }
+
+        function openDrillSelector(phaseId) {
+            currentPhaseId = phaseId;
+            loadDrillsIntoSelector();
+            updateDrillSelectionCount();
+            document.getElementById('drillSelectorModal').style.display = 'flex';
+        }
+
+        function closeDrillSelector() {
+            document.getElementById('drillSelectorModal').style.display = 'none';
+            document.getElementById('drillSearchInput').value = ''; // Clear search
+            currentPhaseId = null;
+        }
+
+        function loadDrillsIntoSelector() {
+            const drillGrid = document.getElementById('drillSelectorGrid');
+            
+            drillGrid.innerHTML = drills.map(drill => {
+                const isSelected = selectedDrillsForPhase[currentPhaseId]?.some(d => d.id === drill.id);
+                return `
+                    <div class="glass-card" 
+                         data-drill-id="${drill.id}" 
+                         onclick="toggleDrillSelection(${drill.id}, this)"
+                         style="padding: var(--spacing-md); cursor: pointer; transition: all 0.3s ease; ${isSelected ? 'border-color: var(--accent-orange); box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);' : ''}">
+                        <h5 style="margin: 0 0 var(--spacing-sm) 0; color: var(--text-primary); font-size: var(--font-size-md);">${drill.name}</h5>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
+                            <span style="color: var(--accent-orange); font-size: var(--font-size-sm); font-weight: 500;">📋 ${drill.category}</span>
+                            <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">⭐ ${drill.difficulty}</span>
+                        </div>
+                        <p style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin: 0; line-height: 1.4;">${drill.description || 'No description available'}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleDrillSelection(drillId, element) {
+            const drill = drills.find(d => d.id === drillId);
+            const phaseSelectedDrills = selectedDrillsForPhase[currentPhaseId];
+            const existingIndex = phaseSelectedDrills.findIndex(d => d.id === drillId);
+            
+            if (existingIndex >= 0) {
+                // Remove drill
+                phaseSelectedDrills.splice(existingIndex, 1);
+                element.style.borderColor = 'var(--glass-border)';
+                element.style.boxShadow = 'none';
+            } else {
+                // Add drill
+                phaseSelectedDrills.push(drill);
+                element.style.borderColor = 'var(--accent-orange)';
+                element.style.boxShadow = '0 0 0 2px rgba(255, 107, 53, 0.2)';
+            }
+            
+            updateSelectedDrillsDisplay(currentPhaseId);
+            updateDrillSelectionCount();
+        }
+
+        function updateDrillSelectionCount() {
+            const countElement = document.getElementById('drillSelectionCount');
+            const selectedCount = selectedDrillsForPhase[currentPhaseId]?.length || 0;
+            
+            if (selectedCount === 0) {
+                countElement.textContent = 'No drills selected';
+                countElement.style.color = 'var(--text-secondary)';
+            } else if (selectedCount === 1) {
+                countElement.textContent = '1 drill selected';
+                countElement.style.color = 'var(--accent-orange)';
+            } else {
+                countElement.textContent = `${selectedCount} drills selected`;
+                countElement.style.color = 'var(--accent-orange)';
+            }
+        }
+
+        function updateSelectedDrillsDisplay(phaseId) {
+            const container = document.getElementById(`selectedDrills-${phaseId}`);
+            const selectedDrills = selectedDrillsForPhase[phaseId];
+            
+            if (selectedDrills.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary);">No drills selected</div>';
+                return;
+            }
+            
+            container.innerHTML = selectedDrills.map(drill => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-sm); border-bottom: 1px solid var(--glass-border); margin-bottom: var(--spacing-xs);">
+                    <div>
+                        <h6 style="margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary); font-size: var(--font-size-sm);">${drill.name}</h6>
+                        <small style="color: var(--text-secondary); font-size: var(--font-size-xs);">📋 ${drill.category} • ⭐ ${drill.difficulty}</small>
+                    </div>
+                    <button class="glass-button" style="padding: var(--spacing-xs); font-size: var(--font-size-xs);" onclick="removeDrillFromPhase('${phaseId}', ${drill.id})">
+                        ✕
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeDrillFromPhase(phaseId, drillId) {
+            const phaseSelectedDrills = selectedDrillsForPhase[phaseId];
+            const index = phaseSelectedDrills.findIndex(d => d.id === drillId);
+            if (index >= 0) {
+                phaseSelectedDrills.splice(index, 1);
+                updateSelectedDrillsDisplay(phaseId);
+                
+                // Update drill selector if open
+                if (currentPhaseId === phaseId) {
+                    const drillElement = document.querySelector(`[data-drill-id="${drillId}"]`);
+                    if (drillElement) {
+                        drillElement.style.borderColor = 'var(--glass-border)';
+                        drillElement.style.boxShadow = 'none';
+                    }
+                }
+            }
+        }
+
+        function filterDrillsInSelector() {
+            const searchTerm = document.getElementById('drillSearchInput').value.toLowerCase();
+            const drillItems = document.querySelectorAll('[data-drill-id]');
+            
+            drillItems.forEach(item => {
+                const title = item.querySelector('h5').textContent.toLowerCase();
+                const category = item.querySelector('.text-accent').textContent.toLowerCase();
+                const description = item.querySelector('.text-tertiary').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || category.includes(searchTerm) || description.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        async function submitPracticeForm(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const phases = [];
+            
+            // Collect phase data
+            const phaseCards = document.querySelectorAll('[data-phase-id]');
+            phaseCards.forEach(card => {
+                const phaseId = card.dataset.phaseId;
+                const phaseName = card.querySelector('[name="phaseName"]').value;
+                const phaseDuration = parseInt(card.querySelector('[name="phaseDuration"]').value);
+                const phaseObjective = card.querySelector('[name="phaseObjective"]').value;
+                const phaseSelectedDrills = selectedDrillsForPhase[phaseId] || [];
+                
+                phases.push({
+                    name: phaseName,
+                    duration: phaseDuration,
+                    objective: phaseObjective,
+                    drills: phaseSelectedDrills.map(d => d.id)
+                });
+            });
+            
+            const practiceData = {
+                name: formData.get('practiceName'),
+                objective: formData.get('practiceObjective'),
+                estimated_duration: parseInt(formData.get('practiceEstimatedDuration')),
+                date: formData.get('practiceDate'),
+                phases: phases
+            };
+
+            try {
+                const response = await fetch('/api/practices', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(practiceData)
+                });
+
+                if (response.ok) {
+                    closeCreatePracticeModal();
+                    loadPractices();
+                    glassModal.success('Practice plan created successfully!', 'Practice Created');
+                } else {
+                    const error = await response.text();
+                    glassModal.error(`Error creating practice: ${error}`, 'Creation Failed');
+                }
+            } catch (error) {
+                console.error('Error creating practice:', error);
+                glassModal.error('Error creating practice plan', 'Creation Failed');
+            }
+        }
+
+        let editingPracticeId = null;
+        let editSelectedDrillsForPhase = {};
+
+        async function viewEditPractice(practiceId) {
+            editingPracticeId = practiceId;
+            try {
+                // Load practice details with phases and drills
+                const response = await fetch(`/api/practices/${practiceId}`);
+                const practice = await response.json();
+                
+                // Populate form fields
+                document.querySelector('[name="editPracticeName"]').value = practice.name;
+                document.querySelector('[name="editPracticeDate"]').value = practice.date;
+                document.querySelector('[name="editPracticeEstimatedDuration"]').value = practice.estimated_duration;
+                document.querySelector('[name="editPracticeObjective"]').value = practice.objective || '';
+                
+                // Clear and populate phases
+                const phasesContainer = document.getElementById('editPracticePhases');
+                phasesContainer.innerHTML = '';
+                editSelectedDrillsForPhase = {};
+                
+                if (practice.phases) {
+                    practice.phases.forEach((phase, index) => {
+                        addEditPhase(phase, index + 1);
+                    });
+                }
+                
+                // Show modal
+                document.getElementById('editPracticeModal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading practice:', error);
+                glassModal.error('Error loading practice details', 'Loading Failed');
+            }
+        }
+
+        function closeEditPracticeModal() {
+            document.getElementById('editPracticeModal').style.display = 'none';
+            editingPracticeId = null;
+            editSelectedDrillsForPhase = {};
+        }
+
+        function addEditPhase(existingPhase = null, phaseNumber = null) {
+            const phasesContainer = document.getElementById('editPracticePhases');
+            const phaseId = `edit-phase-${Date.now()}`;
+            const phaseNum = phaseNumber || (phasesContainer.children.length + 1);
+            
+            const phaseHtml = `
+                <div class="glass-card" data-phase-id="${phaseId}" style="margin-bottom: var(--spacing-md); padding: var(--spacing-lg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                        <h4 style="margin: 0; color: var(--text-primary); font-size: var(--font-size-lg);">🎯 Phase ${phaseNum}</h4>
+                        <button type="button" class="glass-button" onclick="removeEditPhase(this)">🗑️ Remove</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                        <div class="form-group">
+                            <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Phase Name</label>
+                            <input type="text" name="editPhaseName" class="glass-input" placeholder="e.g., Warm-up" value="${existingPhase ? existingPhase.name : ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Duration (minutes)</label>
+                            <input type="number" name="editPhaseDuration" class="glass-input" placeholder="15" min="1" value="${existingPhase ? existingPhase.duration : ''}" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: var(--spacing-md);">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); color: var(--text-primary); font-weight: 500;">Phase Objective</label>
+                        <textarea name="editPhaseObjective" class="glass-input" placeholder="What do you want to accomplish in this phase?" rows="2" style="resize: vertical;">${existingPhase ? existingPhase.objective || '' : ''}</textarea>
+                    </div>
+                    
+                    <div style="margin-top: var(--spacing-md);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                            <label style="color: var(--text-primary); font-weight: 500;">🏐 Selected Drills</label>
+                            <button type="button" class="glass-button" onclick="openEditDrillSelector('${phaseId}')">➕ Add Drill</button>
+                        </div>
+                        <div style="background: var(--glass-secondary); border-radius: var(--radius-md); padding: var(--spacing-md); border: 1px solid var(--glass-border);" id="editSelectedDrills-${phaseId}">
+                            <div style="text-align: center; color: var(--text-secondary);">No drills selected</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            phasesContainer.insertAdjacentHTML('beforeend', phaseHtml);
+            editSelectedDrillsForPhase[phaseId] = [];
+            
+            // If we have existing drills, add them
+            if (existingPhase && existingPhase.drills) {
+                existingPhase.drills.forEach(drill => {
+                    editSelectedDrillsForPhase[phaseId].push(drill);
+                });
+                updateEditSelectedDrillsDisplay(phaseId);
+            }
+        }
+
+        function removeEditPhase(button) {
+            const phaseCard = button.closest('[data-phase-id]');
+            const phaseId = phaseCard.dataset.phaseId;
+            delete editSelectedDrillsForPhase[phaseId];
+            phaseCard.remove();
+            updateEditPhaseNumbers();
+        }
+
+        function updateEditPhaseNumbers() {
+            const phaseCards = document.querySelectorAll('#editPracticePhases [data-phase-id]');
+            phaseCards.forEach((card, index) => {
+                const header = card.querySelector('h4');
+                header.textContent = `🎯 Phase ${index + 1}`;
+            });
+        }
+
+        function openEditDrillSelector(phaseId) {
+            currentPhaseId = phaseId;
+            loadDrillsIntoSelector();
+            // Update selector to use edit data
+            const drillGrid = document.getElementById('drillSelectorGrid');
+            drillGrid.innerHTML = drills.map(drill => {
+                const isSelected = editSelectedDrillsForPhase[currentPhaseId]?.some(d => d.id === drill.id);
+                return `
+                    <div class="glass-card" 
+                         data-drill-id="${drill.id}" 
+                         onclick="toggleEditDrillSelection(${drill.id}, this)"
+                         style="padding: var(--spacing-md); cursor: pointer; transition: all 0.3s ease; ${isSelected ? 'border-color: var(--accent-orange); box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);' : ''}">
+                        <h5 style="margin: 0 0 var(--spacing-sm) 0; color: var(--text-primary); font-size: var(--font-size-md);">${drill.name}</h5>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: var(--spacing-xs);">
+                            <span style="color: var(--accent-orange); font-size: var(--font-size-sm); font-weight: 500;">📋 ${drill.category}</span>
+                            <span style="color: var(--text-secondary); font-size: var(--font-size-sm);">⭐ ${drill.difficulty}</span>
+                        </div>
+                        <p style="color: var(--text-tertiary); font-size: var(--font-size-sm); margin: 0; line-height: 1.4;">${drill.description || 'No description available'}</p>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('drillSelectorModal').style.display = 'flex';
+        }
+
+        function toggleEditDrillSelection(drillId, element) {
+            const drill = drills.find(d => d.id === drillId);
+            const phaseSelectedDrills = editSelectedDrillsForPhase[currentPhaseId];
+            const existingIndex = phaseSelectedDrills.findIndex(d => d.id === drillId);
+            
+            if (existingIndex >= 0) {
+                // Remove drill
+                phaseSelectedDrills.splice(existingIndex, 1);
+                element.style.borderColor = 'var(--glass-border)';
+                element.style.boxShadow = 'none';
+            } else {
+                // Add drill
+                phaseSelectedDrills.push(drill);
+                element.style.borderColor = 'var(--accent-orange)';
+                element.style.boxShadow = '0 0 0 2px rgba(255, 107, 53, 0.2)';
+            }
+            
+            updateEditSelectedDrillsDisplay(currentPhaseId);
+        }
+
+        function updateEditSelectedDrillsDisplay(phaseId) {
+            const container = document.getElementById(`editSelectedDrills-${phaseId}`);
+            const selectedDrills = editSelectedDrillsForPhase[phaseId];
+            
+            if (selectedDrills.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary);">No drills selected</div>';
+                return;
+            }
+            
+            container.innerHTML = selectedDrills.map(drill => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-sm); border-bottom: 1px solid var(--glass-border); margin-bottom: var(--spacing-xs);">
+                    <div>
+                        <h6 style="margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary); font-size: var(--font-size-sm);">${drill.name}</h6>
+                        <small style="color: var(--text-secondary); font-size: var(--font-size-xs);">📋 ${drill.category} • ⭐ ${drill.difficulty}</small>
+                    </div>
+                    <button class="glass-button" style="padding: var(--spacing-xs); font-size: var(--font-size-xs);" onclick="removeEditDrillFromPhase('${phaseId}', ${drill.id})">
+                        ✕
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeEditDrillFromPhase(phaseId, drillId) {
+            const phaseSelectedDrills = editSelectedDrillsForPhase[phaseId];
+            const index = phaseSelectedDrills.findIndex(d => d.id === drillId);
+            if (index >= 0) {
+                phaseSelectedDrills.splice(index, 1);
+                updateEditSelectedDrillsDisplay(phaseId);
+                
+                // Update drill selector if open
+                if (currentPhaseId === phaseId) {
+                    const drillElement = document.querySelector(`[data-drill-id="${drillId}"]`);
+                    if (drillElement) {
+                        drillElement.style.borderColor = 'var(--glass-border)';
+                        drillElement.style.boxShadow = 'none';
+                    }
+                }
+            }
+        }
+
+        async function updatePracticeForm(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const phases = [];
+            
+            // Collect phase data
+            const phaseCards = document.querySelectorAll('#editPracticePhases [data-phase-id]');
+            phaseCards.forEach(card => {
+                const phaseId = card.dataset.phaseId;
+                const phaseName = card.querySelector('[name="editPhaseName"]').value;
+                const phaseDuration = parseInt(card.querySelector('[name="editPhaseDuration"]').value);
+                const phaseObjective = card.querySelector('[name="editPhaseObjective"]').value;
+                const phaseSelectedDrills = editSelectedDrillsForPhase[phaseId] || [];
+                
+                phases.push({
+                    name: phaseName,
+                    duration: phaseDuration,
+                    objective: phaseObjective,
+                    drills: phaseSelectedDrills.map(d => d.id)
+                });
+            });
+            
+            const practiceData = {
+                name: formData.get('editPracticeName'),
+                objective: formData.get('editPracticeObjective'),
+                estimated_duration: parseInt(formData.get('editPracticeEstimatedDuration')),
+                date: formData.get('editPracticeDate'),
+                phases: phases
+            };
+
+            try {
+                const response = await fetch(`/api/practices/${editingPracticeId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(practiceData)
+                });
+
+                if (response.ok) {
+                    closeEditPracticeModal();
+                    loadPractices();
+                    glassModal.success('Practice plan updated successfully!', 'Practice Updated');
+                } else {
+                    const error = await response.text();
+                    glassModal.error(`Error updating practice: ${error}`, 'Update Failed');
+                }
+            } catch (error) {
+                console.error('Error updating practice:', error);
+                glassModal.error('Error updating practice plan', 'Update Failed');
+            }
+        }
+
+        async function startPractice(practiceId) {
+            try {
+                // Check if there's already an active practice session
+                const response = await fetch('/api/practice-sessions/active');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.hasActiveSession && data.session) {
+                        // Show conflict modal
+                        showActivePracticeConflict(data.session, practiceId);
+                        return;
+                    }
+                }
+                
+                // No active session, proceed with starting the practice
+                window.location.href = `practice-mode.html?practice=${practiceId}`;
+            } catch (error) {
+                console.error('Error checking for active session:', error);
+                // If there's an error checking, proceed anyway
+                window.location.href = `practice-mode.html?practice=${practiceId}`;
+            }
+        }
+
+        // Show the active practice conflict modal
+        function showActivePracticeConflict(activeSession, newPracticeId) {
+            const modal = document.getElementById('activePracticeModal');
+            const practiceName = document.getElementById('conflictPracticeName');
+            const practiceDetails = document.getElementById('conflictPracticeDetails');
+            const resumeBtn = document.getElementById('resumeConflictBtn');
+            const endBtn = document.getElementById('endCurrentBtn');
+            
+            // Update modal content
+            practiceName.textContent = activeSession.practice_name;
+            practiceDetails.textContent = `Started: ${new Date(activeSession.started_at).toLocaleTimeString()} | Status: ${activeSession.status === 'paused' ? '⏸️ Paused' : '▶️ Running'}`;
+            
+            // Set up event listeners
+            resumeBtn.onclick = () => {
+                closeActivePracticeModal();
+                resumeSession(activeSession.id);
+            };
+            
+            endBtn.onclick = () => {
+                closeActivePracticeModal();
+                endCurrentAndStartNew(activeSession.id, newPracticeId);
+            };
+            
+            // Show the modal
+            modal.style.display = 'flex';
+        }
+
+        // Close the active practice conflict modal
+        function closeActivePracticeModal() {
+            const modal = document.getElementById('activePracticeModal');
+            modal.style.display = 'none';
+        }
+
+        // End current practice and start new one
+        async function endCurrentAndStartNew(currentSessionId, newPracticeId) {
+            try {
+                // End the current practice session
+                const response = await fetch(`/api/practice-sessions/${currentSessionId}/complete`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        actual_duration: 0, // We're ending it early
+                        notes: 'Ended to start new practice session'
+                    })
+                });
+
+                if (response.ok) {
+                    // Hide the banner if it's showing
+                    hideActiveSessionBanner();
+                    
+                    // Start the new practice
+                    window.location.href = `practice-mode.html?practice=${newPracticeId}`;
+                } else {
+                    console.error('Failed to end current session');
+                    glassModal.error('Failed to end current practice session. Please try again.', 'Error');
+                }
+            } catch (error) {
+                console.error('Error ending current session:', error);
+                glassModal.error('Error ending current practice session. Please try again.', 'Error');
+            }
+        }
+
+        async function deletePractice(practiceId, practiceName) {
+            const confirmed = await showGlassConfirm(
+                `Are you sure you want to delete "${practiceName}"? This action cannot be undone and will remove all related practice sessions and attendance records.`,
+                'Delete Practice Plan'
+            );
+            
+            if (confirmed) {
+                fetch(`/api/practices/${practiceId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showGlassError(`Error: ${data.error}`);
+                    } else {
+                        showGlassSuccess('Practice plan deleted successfully');
+                        loadPractices(); // Reload the practice list
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting practice:', error);
+                    showGlassError('Error deleting practice plan');
+                });
+            }
+        } 
+
+        // Check for active practice sessions
+        async function checkForActiveSession() {
+            try {
+                const response = await fetch('/api/practice-sessions/active');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.hasActiveSession && data.session) {
+                        showActiveSessionBanner(data.session);
+                    } else {
+                        // No active session found - hide banner
+                        hideActiveSessionBanner();
+                    }
+                } else {
+                    // Server errors
+                    console.error('Error checking for active session:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.error('Network error checking for active session:', error);
+            }
+        }
+
+        // Show banner for active session
+        function showActiveSessionBanner(session) {
+            const banner = document.getElementById('activeSessionBanner');
+            const mainContainer = document.querySelector('.main-container');
+            const practiceName = document.getElementById('sessionPracticeName');
+            const startTime = document.getElementById('sessionStartTime');
+            const status = document.getElementById('sessionStatus');
+            const resumeBtn = document.getElementById('resumeSessionBtn');
+            const dismissBtn = document.getElementById('dismissBannerBtn');
+            
+            // Update banner content
+            practiceName.textContent = session.practice_name;
+            startTime.textContent = `Started: ${new Date(session.started_at).toLocaleTimeString()}`;
+            status.textContent = `Status: ${session.status === 'paused' ? '⏸️ Paused' : '▶️ Running'}`;
+            
+            // Set up event listeners
+            resumeBtn.onclick = () => resumeSession(session.id);
+            dismissBtn.onclick = hideActiveSessionBanner;
+            
+            // Show the banner and adjust main content
+            banner.style.display = 'block';
+            mainContainer.classList.add('main-with-banner');
+            
+            // Store session data for resume
+            window.activeSessionData = session;
+        }
+
+        // Hide the active session banner
+        function hideActiveSessionBanner() {
+            const banner = document.getElementById('activeSessionBanner');
+            const mainContainer = document.querySelector('.main-container');
+            
+            banner.style.display = 'none';
+            mainContainer.classList.remove('main-with-banner');
+        }
+
+        // Resume active session
+        async function resumeSession(sessionId) {
+            try {
+                // Get the full session data including timer state
+                const response = await fetch(`/api/practice-sessions/${sessionId}`);
+                if (response.ok) {
+                    const sessionData = await response.json();
+                    
+                    // Store session data globally for the practice mode to access
+                    sessionStorage.setItem('resumeSessionData', JSON.stringify(sessionData));
+                    
+                    // Navigate to practice mode with session ID and practice ID
+                    window.location.href = `practice-mode.html?practice=${sessionData.practice_id}&session=${sessionId}&resume=true`;
+                } else {
+                    console.error('Failed to get session data');
+                    glassModal.error('Error resuming session. Please try again.', 'Resume Failed');
+                }
+            } catch (error) {
+                console.error('Error resuming session:', error);
+                glassModal.error('Error resuming session. Please try again.', 'Resume Failed');
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPractices();
+            loadDrills();
+            checkForActiveSession();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.querySelector('input[name="practiceDate"]');
+            if (dateInput) {
+                dateInput.value = today;
+            }
+        });
+
+        // Save session state when navigating away or refreshing
+        window.addEventListener('beforeunload', function(e) {
+            if (window.currentPracticeSession) {
+                saveSessionState();
+            }
+        });
+
+        // Save current session state to backend
+        async function saveSessionState() {
+            if (!window.currentPracticeSession) return;
+            
+            try {
+                const timerState = {
+                    practiceStartTime: window.practiceStartTime,
+                    currentPhaseStartTime: window.currentPhaseStartTime,
+                    isPaused: true,
+                    pausedAt: new Date().toISOString()
+                };
+                
+                await fetch(`/api/practice-sessions/${window.currentPracticeSession.id}/timer-state`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'paused',
+                        timer_state: timerState,
+                        current_phase_id: window.currentPhaseId || null,
+                        phase_elapsed_time: calculatePhaseElapsedTime(),
+                        total_elapsed_time: calculateTotalElapsedTime()
+                    })
+                });
+            } catch (error) {
+                console.error('Error saving session state:', error);
+            }
+        }
+
+        // Calculate elapsed time for current phase
+        function calculatePhaseElapsedTime() {
+            if (!window.currentPhaseStartTime) return 0;
+            return Math.floor((new Date() - new Date(window.currentPhaseStartTime)) / 1000);
+        }
+
+        // Calculate total elapsed time for practice
+        function calculateTotalElapsedTime() {
+            if (!window.practiceStartTime) return 0;
+            return Math.floor((new Date() - new Date(window.practiceStartTime)) / 1000);
+        }
+    </script>
+    <script src="js/main.js"></script>
+    <script>
+        // Initialize PracTrac demo and check authentication
+        window.pracTracDemo = new PracTracDemo();
+
+        // Initialize mobile menu
+        if (typeof initializeMobileMenu === 'function') {
+            initializeMobileMenu();
+        } else {
+            console.error('initializeMobileMenu function not found');
+        }
+    </script>
+    <script src="/js/modal.js"></script>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Higher z-index for drill selector when opened on top of other modals */
+        #drillSelectorModal {
+            z-index: 1100;
+        }
+
+        /* Active session banner styles */
+        .active-session-banner {
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.9), rgba(255, 107, 53, 0.7));
+            border: 2px solid var(--accent-orange);
+            border-radius: 0;
+            padding: var(--spacing-lg);
+            margin: 0;
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 80px; /* Position below the fixed navbar */
+            left: 0;
+            right: 0;
+            z-index: 1200;
+            animation: slideDown 0.3s ease-out;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Adjust main content when banner is visible */
+        .main-container.main-with-banner {
+            margin-top: 140px; /* Account for banner height */
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .banner-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .session-info h3 {
+            color: white;
+            margin: 0 0 var(--spacing-sm) 0;
+            font-size: var(--font-size-lg);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .session-details {
+            display: flex;
+            gap: var(--spacing-lg);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: var(--font-size-sm);
+        }
+
+        .session-details span {
+            font-weight: 500;
+        }
+
+        .banner-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .banner-actions .glass-button {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-sm);
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .banner-actions .glass-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .banner-actions .glass-button.secondary {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .banner-actions .glass-button.secondary:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive design for banner */
+        @media (max-width: 768px) {
+            .banner-content {
+                flex-direction: column;
+                gap: var(--spacing-md);
+                text-align: center;
+            }
+
+            .session-details {
+                flex-direction: column;
+                gap: var(--spacing-xs);
+            }
+
+            .banner-actions {
+                justify-content: center;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Higher z-index for drill selector when opened on top of other modals */
+        #drillSelectorModal {
+            z-index: 1100;
+        }
+
+        /* Active practice conflict modal */
+        #activePracticeModal {
+            z-index: 1300;
+        }
+
+        #activePracticeModal .glass-button {
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        #activePracticeModal .glass-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .modal-content {
+            background: var(--glass-primary);
+            border: 1px solid var(--glass-border);
+            border-radius: 0;
+            padding: var(--spacing-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: var(--font-size-xl);
+            cursor: pointer;
+            padding: var(--spacing-sm);
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+        }
+
+        .glass-input:focus {
+            outline: none;
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: flex-end;
+            margin-top: var(--spacing-lg);
+        }
+    </style>
+</body>
+</html>

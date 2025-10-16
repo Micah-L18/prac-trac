@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PracTrac - Volleyball Practice Management</title>
+    <link rel="stylesheet" href="css/glass-style.css">
+</head>
+<body>
+    <!-- Fixed Navigation Bar -->
+    <nav class="nav-container">
+        <div class="nav-content">
+            <a href="index.html" class="logo">🏐 PracTrac</a>
+            
+            <!-- Mobile menu toggle button -->
+            <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+            
+            <!-- Desktop navigation -->
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
+                    <li><a href="#" data-page="practice">Practice Plans</a></li>
+                    <li><a href="#" data-page="past-practices">Past Practices</a></li>
+                    <li><a href="#" data-page="roster">Roster</a></li>
+                    <li><a href="#" data-page="drills">Drills</a></li>
+                    <li><a href="#" data-page="settings">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <nav class="mobile-menu">
+                <ul class="nav-links">
+                    <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
+                    <li><a href="#" data-page="practice">Practice Plans</a></li>
+                    <li><a href="#" data-page="past-practices">Past Practices</a></li>
+                    <li><a href="#" data-page="roster">Roster</a></li>
+                    <li><a href="#" data-page="drills">Drills</a></li>
+                    <li><a href="#" data-page="settings">Settings</a></li>
+                </ul>
+            </nav>
+            
+            <div class="nav-user">
+                <span id="userGreeting">Guest User</span>
+                <a href="login.html" class="login-link" style="margin-left: 10px;">Login</a>
+                <div id="teamSelector" class="team-selector-container" style="display: none; margin-left: 10px;">
+                    <!-- Team selector will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="mainContent" class="main-content">
+        <!-- Dynamic content will be loaded here -->
+        <div class="loading">Loading...</div>
+    </main>
+
+    <!-- Modals and overlays will be added here -->
+    <div id="modalContainer"></div>
+
+    <script src="js/main.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/spa.js"></script>
+    <script>
+        // Initialize the SPA when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            window.pracTracSPA = new PracTracSPA();
+            window.pracTracDemo = new PracTracDemo();
+        });
+    </script>
+</body>
+</html>
